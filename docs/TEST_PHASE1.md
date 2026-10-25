@@ -1,0 +1,56 @@
+# Validation de la phase 1 sur appareils réels
+
+Objectif du cahier des charges : **vérifier que le jeu fonctionne réellement** entre un PC Windows et de vrais téléphones Android, avant de développer la suite.
+
+Ce qui a déjà été vérifié automatiquement (Linux, processus séparés, UDP local) : voir `tests/run_net_test.sh`. Ce qui **ne peut être vérifié que par vous** : le Wi-Fi réel, le pare-feu Windows, le comportement d'Android (mise en veille, changement de réseau), l'affichage sur vos écrans.
+
+## Matériel
+
+- 1 PC Windows avec `LegendersRPG.exe` (voir [COMPILATION.md](COMPILATION.md)).
+- 1 à 3 téléphones Android avec `LegendersRPG.apk` (même version).
+- Un Wi-Fi commun. Faire le test au moins une fois sur la box, et une fois sur le partage de connexion d'un téléphone.
+
+## Procédure
+
+Cocher chaque ligne et noter les remarques.
+
+### A. Démarrage du serveur
+- [ ] A1. Lancer l'exe → l'écran d'accueil s'affiche.
+- [ ] A2. « Héberger une partie » → « Lancer le serveur » : la fenêtre du pare-feu apparaît, autoriser les réseaux privés.
+- [ ] A3. Le tableau de bord affiche l'adresse IP (192.168.x.x ou 10.x.x.x), le port et le code.
+
+### B. Connexion d'un téléphone
+- [ ] B1. Sur le téléphone : « Rejoindre une partie ». (Bouton « Héberger » grisé : normal.)
+- [ ] B2. La partie apparaît-elle dans « Parties détectées » ? (oui / non — « non » n'est pas bloquant)
+- [ ] B3. Saisir nom, IP, port, code → « Rejoindre ». Le téléphone affiche « En attente du maître du jeu ».
+- [ ] B4. Sur le PC : la demande apparaît avec Accepter / Refuser. Accepter → le téléphone passe sur « Aventure ».
+- [ ] B5. Le ping affiché côté PC et côté téléphone (onglet Groupe) est raisonnable (< 100 ms en général).
+
+### C. Messages
+- [ ] C1. Le MJ écrit à « Tout le groupe » → reçu par tous les téléphones.
+- [ ] C2. Un joueur écrit « Au groupe » → reçu par le MJ et les autres joueurs.
+- [ ] C3. Le MJ choisit « Privé : <joueur A> » → **seul** A le reçoit (vérifier sur le téléphone de B).
+- [ ] C4. Un joueur écrit « Au MJ, en privé » → **seul** le MJ le reçoit (pas les autres joueurs).
+- [ ] C5. Le clavier Android ne masque pas le champ de saisie.
+
+### D. Plusieurs joueurs (critère : 3 joueurs)
+- [ ] D1. Connecter 3 téléphones, tous acceptés, tous visibles dans l'onglet Groupe et côté MJ.
+- [ ] D2. Un 2ᵉ appareil avec le même nom qu'un joueur existant est refusé.
+- [ ] D3. Un mauvais code est refusé avec un message clair.
+
+### E. Coupures
+- [ ] E1. Couper le Wi-Fi d'un téléphone 10 s puis le rallumer → « Reconnexion… » puis « Connecté », messages conservés.
+- [ ] E2. Écrire un message pendant la coupure → envoyé une seule fois au retour.
+- [ ] E3. Mettre le téléphone en veille 30 s, le rallumer → reconnexion automatique.
+- [ ] E4. Fermer complètement l'application, la rouvrir, rejoindre avec le même nom → le joueur retrouve sa place sans nouvelle validation du MJ.
+- [ ] E5. Le MJ clique « Déconnecter » sur un joueur → le téléphone revient à l'écran Rejoindre avec un message.
+- [ ] E6. Le MJ clique « Terminer la session » → tous les téléphones affichent la fin de partie et ne tentent pas de se reconnecter.
+
+### F. Ergonomie
+- [ ] F1. Textes lisibles et boutons faciles à toucher sur chaque téléphone.
+- [ ] F2. Aucun défilement horizontal.
+- [ ] F3. Le tableau de bord du MJ est lisible en plein écran sur le PC.
+
+## Rapport
+
+Merci d'indiquer, pour chaque ligne en échec : modèle de téléphone, version d'Android, type de réseau (box / partage de connexion de quel téléphone), et le message affiché. Ces informations permettent de corriger avant la phase 2.

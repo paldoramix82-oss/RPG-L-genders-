@@ -1,0 +1,45 @@
+; Engine configuration file.
+; Projet LEGENDERS RPG — Godot 4.4+
+
+config_version=5
+
+[application]
+
+config/name="Legenders RPG"
+config/description="RPG narratif multijoueur en réseau local (MJ sur PC, joueurs sur Android)."
+config/version="0.1.0"
+run/main_scene="res://scenes/main_menu.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+config/icon="res://icon.svg"
+boot_splash/bg_color=Color(0.105, 0.102, 0.122, 1)
+
+[autoload]
+
+App="*res://scripts/autoload/app.gd"
+Style="*res://scripts/autoload/style.gd"
+Net="*res://scripts/autoload/net.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/window_width_override=1600
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[gui]
+
+common/snap_controls_to_pixels=true
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=false
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.105, 0.102, 0.122, 1)
