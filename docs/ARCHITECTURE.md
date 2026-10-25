@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 
-Un seul projet Godot pour le PC et Android ; le rôle (MJ / joueur) est choisi à l'écran d'accueil. L'hébergement est désactivé sur mobile.
+Un seul projet Godot pour le PC et Android ; le rôle (hôte-MJ / joueur) est choisi à l'écran d'accueil. Tout appareil peut héberger.
 
 ```
 project.godot
@@ -13,14 +13,25 @@ scripts/
     app.gd               App   : réglages locaux, profil, identifiant d'appareil, navigation
     style.gd             Style : thème visuel commun, mise à l'échelle sur téléphone
     net.gd               Net   : transport ENet, authentification, reconnexion, 2 RPC
+  game/
+    character_data.gd    Fiche de personnage : valeurs par défaut, validation, vue publique
+    map_data.gd          Cartes en cases : terrains, pions, étiquettes, modèles, vue joueur filtrée
+    dice.gd              Lancers de dés (formules), toujours exécutés par l'hôte
+    universe.gd          Univers (codex, suggestions) ; filtrage des entrées « MJ »
+    campaign_store.gd    Sauvegarde JSON atomique avec copie de secours
   net/
     protocol.gd          Constantes, noms des commandes/événements, nettoyage des entrées
     session_server.gd    État officiel de la session (PC du MJ) + règles de visibilité
     session_client.gd    Vue locale d'un joueur + file d'envoi avec accusés de réception
     lan_discovery.gd     Annonce / écoute des parties sur le Wi-Fi (facultatif)
     net_utils.gd         Adresses IP locales
-  ui/                    Écrans, palette, petits composants (UIKit, CenteredColumn, Backdrop)
-tests/                   Test réseau multi-processus, captures d'écran
+  ui/                    Écrans + composants : MapView (carte et pions), FeedView (fil),
+                         Composer (message/action/dés), CharacterEditor/CharacterSheet,
+                         CodexView, TabbedPages, UIKit, Palette
+data/
+  universes/*.json       Univers (lore, codex, suggestions de création)
+  maps/*.json            Cartes prêtes à l'emploi (générées par tools/generate_maps.py)
+tests/                   Test réseau multi-processus (3 scénarios), captures d'écran
 docs/
 ```
 
@@ -52,9 +63,29 @@ Ce bus de messages permet d'ajouter des fonctions (actions libres, dés, inventa
 
 **Détection des coupures** : délai ENet ramené à 4–12 s. Reconnexion automatique toutes les 3 s pendant ~2 min. Une fin de session voulue par le MJ est annoncée aux téléphones (qui ne tentent alors pas de se reconnecter).
 
-## Données (prévu en phase 2)
+## Commandes et événements
 
-L'état du serveur est déjà constitué de dictionnaires simples, sérialisables en JSON. La sauvegarde de campagne (phase 2) écrira un fichier JSON par campagne dans `user://campaigns/<id>/`, via écriture dans un fichier temporaire puis renommage (procédure déjà utilisée pour les réglages locaux), avec conservation de la sauvegarde précédente.
+| Commande (joueur → hôte) | Validation par l'hôte |
+|---|---|
+| `chat_send` | destinataire « groupe » ou « MJ », texte nettoyé |
+| `action_declare` | enregistrée « en attente » ; seul le MJ la résout |
+| `dice_roll` | formule analysée, dés tirés par l'hôte |
+| `char_save` | uniquement sa propre fiche, champs validés, refusé si le MJ a verrouillé les fiches |
+| `pawn_move` | uniquement son propre pion, sur la carte affichée, case franchissable, autorisé par le MJ, à son tour en combat |
+
+| Événement (hôte → joueur) | Filtrage |
+|---|---|
+| `welcome` | historique visible, univers sans entrées MJ, fiches (la sienne complète, les autres en vue publique), carte filtrée |
+| `chat`, `msg_update` | seulement si le message est public, adressé au joueur ou écrit par lui |
+| `characters` | idem `welcome` |
+| `map` | sans pions, étiquettes ni notes cachés |
+| `combat` | ordre limité aux pions visibles |
+
+Les changements de carte, de fiches et de combat sont regroupés et envoyés au plus une fois par image (`SessionServer.flush()`).
+
+## Données et sauvegarde
+
+L'état de l'hôte est fait de dictionnaires simples, sérialisés en JSON dans `user://profiles/<profil>/campaigns/<id>.json` : écriture dans un fichier temporaire, relecture de contrôle, l'ancienne version devient `.bak`, puis remplacement. Sauvegarde automatique toutes les 60 s (si quelque chose a changé) et à la fin de la session. Les jetons des appareils sont sauvegardés : après reprise, chaque joueur retrouve sa place.
 
 ## Interface
 

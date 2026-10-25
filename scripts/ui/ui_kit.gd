@@ -75,16 +75,16 @@ static func spin(value: int, min_value: int, max_value: int) -> SpinBox:
 	return s
 
 
-## Pastille d'état : « ● Connecté ».
+## Pastille d'état : « ◆ Connecté ».
 static func chip(text: String, color: Color) -> Label:
-	var l := label("●  " + text)
+	var l := label("◆  " + text)
 	l.add_theme_color_override("font_color", color)
-	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_font_size_override("font_size", 15)
 	return l
 
 
 static func set_chip(chip_label: Label, text: String, color: Color) -> void:
-	chip_label.text = "●  " + text
+	chip_label.text = "◆  " + text
 	chip_label.add_theme_color_override("font_color", color)
 
 

@@ -18,6 +18,7 @@ enum Role { NONE, HOST, CLIENT }
 enum State { OFFLINE, HOSTING, CONNECTING, CONNECTED, RECONNECTING }
 
 const CONNECT_TIMEOUT := 8.0
+const AUTOSAVE_INTERVAL := 60.0
 
 var role := Role.NONE
 var state := State.OFFLINE
@@ -35,6 +36,7 @@ var _ending := false
 var _reject_reason := ""
 var _reconnect_attempt := 0
 var _attempt_serial := 0
+var _autosave_left := AUTOSAVE_INTERVAL
 
 
 func _ready() -> void:
@@ -52,6 +54,17 @@ func _ready() -> void:
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 
+func _process(delta: float) -> void:
+	if role != Role.HOST or server == null:
+		return
+	server.flush()
+	_autosave_left -= delta
+	if _autosave_left <= 0.0:
+		_autosave_left = AUTOSAVE_INTERVAL
+		if server.has_unsaved_changes() and not _ending:
+			server.save()
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		# Fermeture de la fenêtre : prévenir les joueurs avant de quitter.
@@ -67,8 +80,10 @@ func _notification(what: int) -> void:
 # Hébergement (PC du MJ)
 # ---------------------------------------------------------------------------
 
-## settings : name, mj_name, port, max_players, auto_accept. Renvoie "" ou un message d'erreur.
-func host(settings: Dictionary) -> String:
+## settings : name, mj_name, universe, port, max_players, auto_accept.
+## saved_data : campagne chargée par CampaignStore (vide = nouvelle campagne).
+## Renvoie "" ou un message d'erreur.
+func host(settings: Dictionary, saved_data: Dictionary = {}) -> String:
 	if _ending:
 		return "Fermeture de la session précédente en cours, réessayez."
 	leave()
@@ -83,7 +98,8 @@ func host(settings: Dictionary) -> String:
 		_peer = null
 		return "Impossible d'ouvrir le port %d (déjà utilisé ?). Code Godot : %s" % [port, error_string(err)]
 	role = Role.HOST
-	server = SessionServer.new(settings, _server_send, _server_kick)
+	server = SessionServer.new(settings, _server_send, _server_kick, saved_data)
+	_autosave_left = AUTOSAVE_INTERVAL
 	server.players_changed.connect(func(): discovery.update_payload(server.discovery_payload()))
 	_setup_multiplayer()
 	discovery.start_announcing(server.discovery_payload())
@@ -92,7 +108,12 @@ func host(settings: Dictionary) -> String:
 
 
 func _server_send(peer_id: int, evt: String, payload: Dictionary) -> void:
-	if role == Role.HOST and _known_peers.has(peer_id) and multiplayer.get_peers().has(peer_id):
+	if role != Role.HOST or not _known_peers.has(peer_id) or not multiplayer.get_peers().has(peer_id):
+		return
+	# Un appareil qui vient de se couper peut encore figurer dans la liste : on
+	# n'écrit que vers les connexions réellement établies.
+	var packet_peer := _peer.get_peer(peer_id)
+	if packet_peer and packet_peer.get_state() == ENetPacketPeer.STATE_CONNECTED:
 		_s2c.rpc_id(peer_id, evt, payload)
 
 
@@ -207,7 +228,7 @@ func _on_connection_failed() -> void:
 	elif _ever_connected:
 		_schedule_reconnect()
 	else:
-		_fail("Le PC du MJ ne répond pas à %s:%d.\nVérifiez l'adresse, le Wi-Fi commun et le pare-feu Windows." % [_join.ip, _join.port])
+		_fail("L'appareil du MJ ne répond pas à %s:%d.\nVérifiez l'adresse, le Wi-Fi commun et le pare-feu." % [_join.ip, _join.port])
 
 
 func _on_server_disconnected() -> void:
@@ -290,8 +311,8 @@ func _on_auth_data(peer_id: int, data: PackedByteArray) -> void:
 		smp.send_auth(peer_id, Protocol.encode_auth(result))
 		if result.ok:
 			smp.complete_auth(peer_id)
-		else:
-			_server_kick(peer_id, 0.5)
+		# En cas de refus, le client ferme lui-même la connexion après avoir lu le
+		# motif ; sinon le délai d'authentification (AUTH_TIMEOUT) la coupe.
 	elif role == Role.CLIENT and peer_id == 1:
 		var response := Protocol.decode_auth(data)
 		if response.get("ok", false):
@@ -344,6 +365,8 @@ func _s2c(evt: Variant, payload: Variant) -> void:
 func leave(reason: String = "Le MJ a terminé la partie.") -> void:
 	if role == Role.HOST and server and _peer and not _ending:
 		_ending = true
+		server.flush()
+		server.save()
 		server.close(reason)
 		_flush()
 		# On continue à faire tourner ENet un court instant pour que l'annonce de fin

@@ -1,0 +1,78 @@
+{
+ "id": "foret_cendres",
+ "name": "Forêt des Cendres",
+ "description": "Forêt dense traversée d'un chemin, avec une clairière brûlée et un ruisseau.",
+ "universe": "*",
+ "w": 34,
+ "h": 22,
+ "rows": [
+  "Fff.fw.fFFfffffFf.fffFffFFffffffff",
+  "fffFFwfffF.fffffff.ff.fffffFffFFff",
+  "FffFFwfFf.fFff.fFFfFF.f.mmmf.fffff",
+  ".fffffwFfffFffF.fFffffffmmmfFffFfF",
+  "ffFffFwfFFf.FffFFF.ffFFfffFFfFffFF",
+  "fffFFFwFF.fffFF.ff.ffFf.ffFFFFfFf.",
+  "fffff.wfF.fffffFFf.ffFffFffff.frrr",
+  "FffffFwFFFffFfF..f...FFfffF.rrrfff",
+  "fffffwfFffFfff......FfffrrrrFf.FfF",
+  "FFfFFwFfffff....c....rrrFFFfffffff",
+  "Fffffwff..f....cccrrr.Ff.Fff..fffF",
+  "FFffwf.f.fff..crarc.fffFFffffFFFF.",
+  "ffFfwff.Ffrrrrrccc...ffFF.FffFffff",
+  "Ffffwffrrrff....c..ffFfFFf.fffFFFf",
+  "ffrrrwrFfFffF.......FFff.FfffffFf.",
+  "rrFFfwfffff.ff....ffFfffffFkFf.fff",
+  "fFffFwFFffFffFfffff.fffffkkkk.Ffff",
+  "ffFfffwffffffF..fFfFFFf.FkkkkFf.fF",
+  "ffFfFFwFfF.FfFff..FFffFFfkkkk.FF.f",
+  "fFffffwFFffFFf.f.ffF.fffffkkkk.Ff.",
+  "fffFf.fwf..fffffffF.FffFfFFfFFFf.F",
+  "FfFf.ffwfFFF.FFfFfFfFfff.fFffFfffF"
+ ],
+ "spawn": {
+  "x": 1,
+  "y": 15
+ },
+ "labels": [
+  {
+   "x": 16,
+   "y": 9,
+   "text": "Clairière des cendres",
+   "hidden": false
+  },
+  {
+   "x": 26,
+   "y": 2,
+   "text": "Rochers moussus",
+   "hidden": false
+  },
+  {
+   "x": 16,
+   "y": 11,
+   "text": "Pierre levée — cristal noirci (AEC ?)",
+   "hidden": true
+  }
+ ],
+ "tokens": [
+  {
+   "name": "Loup cendré",
+   "kind": "monster",
+   "x": 22,
+   "y": 14,
+   "color": "#8a4a3c",
+   "hp": 9,
+   "hp_max": 9,
+   "hidden": true
+  },
+  {
+   "name": "Loup cendré",
+   "kind": "monster",
+   "x": 23,
+   "y": 15,
+   "color": "#8a4a3c",
+   "hp": 9,
+   "hp_max": 9,
+   "hidden": true
+  }
+ ]
+}

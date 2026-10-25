@@ -51,6 +51,16 @@ Cocher chaque ligne et noter les remarques.
 - [ ] F2. Aucun défilement horizontal.
 - [ ] F3. Le tableau de bord du MJ est lisible en plein écran sur le PC.
 
+### G. Fonctions de jeu
+- [ ] G1. Un joueur crée sa fiche (onglet Fiche) : son pion apparaît sur la carte de tous.
+- [ ] G2. Le joueur déplace son pion en touchant une case : le mouvement apparaît chez le MJ et les autres joueurs.
+- [ ] G3. Le MJ pose un monstre caché : les joueurs ne le voient pas ; il le révèle : il apparaît.
+- [ ] G4. Combat : initiative, tour suivant, le joueur ne peut bouger qu'à son tour.
+- [ ] G5. Action déclarée par un joueur → le MJ la résout avec un jet → résultat reçu.
+- [ ] G6. Jet de dés secret d'un joueur : visible du MJ seulement.
+- [ ] G7. Terminer la session, puis *Reprendre* la campagne : fiches, cartes et pions sont restaurés ; les joueurs se reconnectent avec le même code.
+- [ ] G8. Héberger depuis un téléphone Android (optionnel) et rejoindre depuis les autres.
+
 ## Rapport
 
 Merci d'indiquer, pour chaque ligne en échec : modèle de téléphone, version d'Android, type de réseau (box / partage de connexion de quel téléphone), et le message affiché. Ces informations permettent de corriger avant la phase 2.

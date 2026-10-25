@@ -5,6 +5,7 @@ extends Node
 ##
 ## Scénario 1 : server, alice, bob, wrongcode, mallory.
 ## Scénario 2 : server2, zoe (tuée brutalement par le script), yann.
+## Scénario 3 : server3, dana, eli (fiches, carte, pions, dés, actions, secrets).
 
 const CODE := "TEST42"
 const DURATION := 16.0
@@ -37,11 +38,17 @@ func _ready() -> void:
 			_run_server2()
 		"zoe", "yann":
 			_run_scenario2_player()
+		"server3":
+			_run_server3()
+		"dana":
+			_run_dana()
+		"eli":
+			_run_eli()
 		_:
 			_finish_now("rôle inconnu: " + role)
 			return
 	# Les serveurs restent en ligne jusqu'aux vérifications de leurs clients.
-	var extra := {"server": 3.0, "server2": 4.0, "yann": 4.0}.get(role, 0.0) as float
+	var extra := {"server": 3.0, "server2": 4.0, "yann": 4.0, "server3": 3.0}.get(role, 0.0) as float
 	await get_tree().create_timer(DURATION + extra).timeout
 	_finish()
 
@@ -202,6 +209,121 @@ func _check_yann() -> void:
 	_expect(Net.state == Net.State.OFFLINE, "client hors ligne")
 
 
+# --- Scénario 3 : fiches, carte, pions, dés, actions, secrets ---------------
+
+func _run_server3() -> void:
+	var err := Net.host({"name": "Test3", "port": port, "auto_accept": true, "code": CODE, "universe": "legenders"})
+	_expect(err == "", "serveur 3 démarré")
+	var server := Net.server
+	server.characters_changed.connect(func():
+		if _state.get("setup", false) or server.characters.size() < 2:
+			return
+		_state.setup = true
+		var map_id := server.active_map
+		server.mj_add_token(map_id, {"kind": "monster", "name": "Monstre caché", "x": 1, "y": 1, "hidden": true, "hp": 9, "hp_max": 9})
+		server.mj_add_token(map_id, {"kind": "npc", "name": "PNJ visible", "x": 2, "y": 1, "hidden": false})
+		server.mj_add_label(map_id, 3, 3, "Passage secret", true)
+		server.mj_roll("d20", Protocol.TO_MJ, "jet secret MJ")
+		server.mj_roll("d6", _find(server, "Dana").id, "jet pour Dana")
+		server.mj_combat_start(false)
+		server.mj_combat_end())
+	server.message_added.connect(func(m):
+		if m.get("kind", "") == Protocol.KIND_ACTION:
+			server.mj_resolve_action(m.id, Protocol.ACTION_RESOLVED, "La porte cède.", "d20+2"))
+
+
+func _check_server3() -> void:
+	var server := Net.server
+	var dana := _find(server, "Dana")
+	var sheet: Dictionary = server.characters.get(dana.get("id", ""), {})
+	_expect(sheet.get("name", "") == "Dana la Brave", "fiche de Dana enregistrée")
+	_expect(sheet.get("secret", "") == "mon secret", "secret de la fiche conservé côté hôte")
+	var pawn := MapData.token(server.maps[server.active_map], "pawn_" + String(dana.get("id", "")))
+	_expect(not pawn.is_empty(), "pion de Dana créé sur la carte")
+	_expect(int(pawn.get("x", -1)) == int(_state.get("dana_target_x", -2)) or pawn.get("x", 0) is int, "pion de Dana présent")
+	_expect(server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and m.status == Protocol.ACTION_RESOLVED).size() == 1, "action de Dana résolue par le MJ")
+	var save_err := server.save()
+	_expect(save_err == "", "campagne sauvegardée (%s)" % save_err)
+	var reloaded := CampaignStore.load_campaign(server.session.id)
+	_expect((reloaded.get("characters", {}) as Dictionary).size() == 2, "sauvegarde relue avec les 2 fiches")
+	var restored := SessionServer.new({"port": port}, func(_a, _b, _c): pass, func(_a, _b): pass, reloaded)
+	_expect(restored.maps.size() == server.maps.size() and restored.active_map == server.active_map, "reprise : cartes et carte affichée restaurées")
+	_expect(not MapData.token(restored.maps[restored.active_map], "pawn_" + String(dana.get("id", ""))).is_empty(), "reprise : pion de Dana restauré")
+	_expect(restored.session.code == server.session.code and restored.players.size() == 2, "reprise : même code et mêmes joueurs (reconnexion possible)")
+	CampaignStore.delete(server.session.id)
+
+
+func _run_dana() -> void:
+	await get_tree().create_timer(0.5).timeout
+	_join("Dana")
+	Net.client.welcomed.connect(func():
+		Net.client.save_character({"name": "Dana la Brave", "secret": "mon secret", "species": "Humain",
+			"magic": {"category": "Renforcement", "name": "Flammes", "public": true},
+			"abilities": [{"name": "Poing de braise", "description": "Un coup enflammé"}],
+			"stats": [{"name": "Force", "value": 14}], "hp": 18, "hp_max": 18}))
+	Net.client.map_changed.connect(func():
+		var pawn := MapData.token(Net.client.map, "pawn_" + String(Net.client.me.get("id", "")))
+		if pawn.is_empty() or _state.get("moved", false):
+			return
+		_state.moved = true
+		var p := MapData.free_cell_near(Net.client.map, int(pawn.x) + 2, int(pawn.y))
+		_state.target = p
+		Net.client.move_pawn(pawn.id, p.x, p.y)
+		Net.client.declare_action(Protocol.TO_ALL, "Je force la porte.")
+		Net.client.roll("2d6+3", Protocol.TO_ALL, "Escalade"))
+
+
+func _check_dana() -> void:
+	var c := Net.client
+	var map := c.map
+	var names := (map.get("tokens", []) as Array).map(func(t): return t.name)
+	_expect(not names.has("Monstre caché"), "Dana ne reçoit pas le pion caché")
+	_expect(names.has("PNJ visible"), "Dana voit le PNJ visible")
+	_expect((map.get("labels", []) as Array).filter(func(l): return l.text == "Passage secret").is_empty(), "Dana ne reçoit pas l'étiquette secrète")
+	var pawn := MapData.token(map, "pawn_" + String(c.me.get("id", "")))
+	var target: Vector2i = _state.get("target", Vector2i(-9, -9))
+	_expect(not pawn.is_empty() and int(pawn.x) == target.x and int(pawn.y) == target.y, "Dana a déplacé son pion")
+	_expect((c.universe.get("codex", []) as Array).filter(func(e): return e.get("mj_only", false)).is_empty(), "codex sans entrées réservées au MJ")
+	_expect(c.my_character().get("secret", "") == "mon secret", "Dana voit son propre secret")
+	var labels := c.messages.map(func(m): return m.get("text", ""))
+	_expect(not labels.has("jet secret MJ"), "Dana ne voit pas le jet secret du MJ")
+	_expect(labels.has("jet pour Dana"), "Dana voit le jet que le MJ lui montre")
+	var rolls := c.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ROLL and m.text == "Escalade")
+	_expect(rolls.size() == 1 and int(rolls[0].roll.total) >= 5 and int(rolls[0].roll.total) <= 15, "jet 2d6+3 calculé par l'hôte")
+	var actions := c.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION)
+	_expect(actions.size() == 1 and actions[0].status == Protocol.ACTION_RESOLVED and actions[0].result == "La porte cède.", "Dana reçoit la résolution de son action")
+
+
+func _run_eli() -> void:
+	await get_tree().create_timer(0.9).timeout
+	_join("Eli")
+	Net.client.welcomed.connect(func():
+		Net.client.save_character({"name": "Eli", "secret": "secret d'Eli"}))
+	Net.client.command_failed.connect(func(_r, error): _state.failed = error)
+	Net.client.characters_changed.connect(func():
+		if _state.get("tried", false):
+			return
+		for ch in Net.client.characters:
+			if ch.get("name", "") == "Dana la Brave":
+				_state.tried = true
+				Net.client.move_pawn("pawn_" + String(ch.id), 0, 0))
+
+
+func _check_eli() -> void:
+	var c := Net.client
+	var dana := {}
+	for ch in c.characters:
+		if ch.get("name", "") == "Dana la Brave":
+			dana = ch
+	_expect(not dana.is_empty(), "Eli voit la fiche publique de Dana")
+	_expect(not dana.has("secret") and not dana.has("stats"), "la fiche de Dana vue par Eli ne contient ni secret ni détails")
+	_expect(dana.get("magic", {}).get("name", "") == "Flammes", "Eli voit le nom public de la magie de Dana")
+	_expect(String(_state.get("failed", "")).contains("propre pion"), "Eli ne peut pas déplacer le pion de Dana")
+	var labels := c.messages.map(func(m): return m.get("text", ""))
+	_expect(not labels.has("jet pour Dana"), "Eli ne voit pas le jet montré à Dana")
+	_expect(labels.has("Je force la porte."), "Eli voit l'action publique de Dana")
+
+
 # --- Outils --------------------------------------------------------------------
 
 func _join(player_name: String) -> void:
@@ -232,12 +354,18 @@ func _finish() -> void:
 			_check_server2()
 		"yann":
 			_check_yann()
+		"server3":
+			_check_server3()
+		"dana":
+			_check_dana()
+		"eli":
+			_check_eli()
 	for c in _checks:
 		print("[%s] OK    %s" % [role, c])
 	for f in _failures:
 		print("[%s] ÉCHEC %s" % [role, f])
-	if role == "server":
-		Net.leave()
+	if Net.role == Net.Role.HOST:
+		await Net.leave()
 	get_tree().quit(1 if _failures.size() > 0 else 0)
 
 

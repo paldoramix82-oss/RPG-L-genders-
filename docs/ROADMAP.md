@@ -1,43 +1,30 @@
 # Feuille de route
 
-## Phase 1 — prototype réseau ✅ (code) / ⏳ (validation sur appareils réels)
+## Fait
 
-| # | Étape | État |
-|---|---|---|
-| 1 | Projet Godot 4.4 (Windows + Android, rendu Compatibility) | ✅ |
-| 2 | Écran d'accueil Héberger / Rejoindre | ✅ |
-| 3 | Lancement du serveur sur le PC | ✅ |
-| 4 | Affichage IP locale, port, code | ✅ |
-| 5 | Connexion d'un client Android (IP + port + code) | ✅ code — ⏳ à tester sur téléphone |
-| 6 | Liste des joueurs connectés (MJ et joueurs), état, ping | ✅ |
-| 7 | Messages PC ⇄ Android (publics et privés) | ✅ |
-| 8 | Test sur appareils réels | ⏳ **à faire** : [TEST_PHASE1.md](TEST_PHASE1.md) |
+**Réseau (phase 1)** — hôte autoritaire ENet/UDP, code de partie, validation par le MJ, anti-force brute, reconnexion automatique avec conservation du joueur, file d'envoi sans doublon, découverte facultative sur le Wi-Fi, fin de session propre. **N'importe quel appareil peut héberger** (PC ou Android).
 
-Déjà en place en plus du minimum : validation des joueurs par le MJ, refus/expulsion/retrait, anti-force brute du code, reconnexion automatique avec conservation du joueur, file d'envoi sans doublon, découverte automatique facultative, fin de session propre, test automatisé.
+**Partie jouable (phases 2 à 4, version actuelle)**
+- Campagnes : création avec choix de l'univers, sauvegarde automatique (JSON, écriture sûre avec copie de secours), reprise.
+- Univers : Légenders (codex tiré des documents fournis), Fantasy classique (Les Cendres de Valombre), Univers libre. Entrées secrètes réservées au MJ.
+- Fiches de personnage libres (joueurs et PNJ), modifiables par le MJ, verrouillables.
+- Actions libres déclarées et résolues par le MJ (résultat, jet facultatif).
+- Dés génériques (d4 → d100, plusieurs dés, modificateurs, formules), jets publics, secrets ou montrés à un joueur, calculés par l'hôte.
+- Messages publics et privés, fil du récit, événements automatiques (arrivée d'un personnage, changement de lieu, combat).
+- Cartes interactives : 9 cartes prêtes, éditeur (terrain, pions, étiquettes, point de départ, taille), pions animés, carte affichée choisie par le MJ, pions et étiquettes cachés.
+- Combat au tour par tour sur la carte (initiative, ordre modifiable, PV, tour en surbrillance, déplacement réservé au combattant actif).
+- Interface responsive : colonnes sur PC, onglets sur téléphone.
 
-**Ce qui manque pour clore la phase 1** : uniquement le retour du test sur un vrai PC Windows et de vrais téléphones Android. Le code n'a pas pu être exécuté sur Windows ni sur Android depuis l'environnement de développement (il a été testé sous Linux, réseau UDP réel entre processus).
+## À valider par vous
 
-## Phase 2 — première partie jouable (après validation de la phase 1)
+L'application n'a été exécutée que sous Linux (tests réseau entre processus, captures d'écran). **Il faut l'essayer sur un vrai PC Windows et de vrais téléphones Android** : [TEST_PHASE1.md](TEST_PHASE1.md).
 
-1. Création d'une campagne (nom, univers, règles de départ, nombre de joueurs) et chargement d'une campagne existante.
-2. Rejointure avec le code (déjà fait) liée à une campagne précise.
-3. Création des personnages sur le téléphone (identité, 6 caractéristiques, compétences, capacités libres).
-4. Champ d'action libre (prioritaire) : identifiant, auteur, date, description, statut, visibilité, jet, difficulté, résultat, commentaire du MJ.
-5. File des actions côté MJ : demander des précisions, demander un jet, fixer une difficulté, résoudre, refuser, conséquence, réponse privée.
-6. Diffusion des résultats (publics au groupe, privés aux seuls concernés).
-7. Journal chronologique (public / privé, notes du MJ, événements importants).
-8. Messages privés (déjà fait, à relier au journal).
-9. Sauvegarde JSON atomique sur le PC + reprise ; personnages conservés entre les soirées.
-10. Campagne de démonstration « Les Cendres de Valombre » (ville, taverne, forêt, ruines, 3 PNJ, une faction, objets, un événement mystérieux, secrets).
+## Pistes suivantes (non commencées)
 
-## Phase 3 — outils du MJ
-
-Lieux, PNJ, objets et inventaires, lancers de dés (D4 à D100, plusieurs dés, modificateurs, jets publics/secrets calculés sur le serveur), événements (immédiats/différés, publics/privés), modification des personnages, outils rapides accessibles sans quitter le tableau de bord.
-
-## Phase 4 — extension du RPG
-
-Combats au tour par tour (sans grille), factions et réputations, carte stylisée filtrée par joueur, progression configurable, variables persistantes du monde, historique avancé, finitions visuelles.
-
-## Univers Légenders
-
-Les documents fournis (système AEC, dix catégories magiques, Gardiens et Légenders, mutants, rangs B → L, géopolitique) pourront alimenter, à partir de la phase 2, des **modèles facultatifs** : catégories de magie proposées à la création des capacités, rangs comme système de progression optionnel, factions et lieux. Le moteur restera générique : le MJ pourra toujours créer des capacités hors catégories et modifier ou ignorer ces modèles. La campagne de démonstration demandée reste « Les Cendres de Valombre ».
+- Inventaire avancé côté MJ : bibliothèque d'objets, transfert d'objets entre personnages, économie.
+- Factions et réputations ; variables persistantes du monde (porte ouverte, pont détruit…).
+- Événements programmés (déclenchement différé), notes du MJ dans le journal, marquage « important ».
+- Brouillard de guerre / zones révélées progressivement sur la carte.
+- Images de fond pour les cartes (photos ou dessins importés).
+- Bestiaire réutilisable (modèles de monstres du MJ).
+- Mode « écran partagé » : un affichage TV/projecteur de la carte pour la table.

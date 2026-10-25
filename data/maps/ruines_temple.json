@@ -1,0 +1,66 @@
+{
+ "id": "ruines_temple",
+ "name": "Ruines de l'ancien temple",
+ "description": "Temple effondré avec un autel central et une crypte cachée.",
+ "universe": "*",
+ "w": 30,
+ "h": 20,
+ "rows": [
+  "......f.......rrf.........f...",
+  "..............rr..f........f.f",
+  "..f...ff......rr......f.f.....",
+  "....f....f....rr..f.f.........",
+  "......######x#oox#######......",
+  "......#oooxooooooooooox#......",
+  "......#oxxxoooooxoooxoo#..f...",
+  ".f....#oo#ooo####ooo#ox#......",
+  ".....f#ooxooo#vv#ooxooo#......",
+  "......xoxoooo#o##ooxxox#......",
+  "..f...xoooooxoooxxooooo#......",
+  "......#oxoxooxooooooooo#......",
+  ".f..ffxoo#ooxxoxoooo#oo#......",
+  "......xxoooxoxoooooxxoxx......",
+  "......#oooxooooxoxoooxx#.....f",
+  "......###x#######x##x###...f.f",
+  "...............ff..f....ff...f",
+  ".f.f...ff.....f.......f.......",
+  "......f....f.f...f.f...f......",
+  "............f....f..ff........"
+ ],
+ "spawn": {
+  "x": 14,
+  "y": 1
+ },
+ "labels": [
+  {
+   "x": 14,
+   "y": 3,
+   "text": "Portail effondré",
+   "hidden": false
+  },
+  {
+   "x": 14,
+   "y": 6,
+   "text": "Autel fendu",
+   "hidden": false
+  },
+  {
+   "x": 14,
+   "y": 8,
+   "text": "Escalier vers la crypte",
+   "hidden": true
+  }
+ ],
+ "tokens": [
+  {
+   "name": "Gardien de pierre",
+   "kind": "monster",
+   "x": 18,
+   "y": 12,
+   "color": "#7d7a70",
+   "hp": 30,
+   "hp_max": 30,
+   "hidden": true
+  }
+ ]
+}

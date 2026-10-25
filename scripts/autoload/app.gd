@@ -25,6 +25,7 @@ func _ready() -> void:
 	var dir := "user://profiles/%s" % profile
 	DirAccess.make_dir_recursive_absolute(dir)
 	_settings_path = dir + "/settings.cfg"
+	CampaignStore.dir_path = dir + "/campaigns"
 	settings.load(_settings_path)
 	if device_token() == "":
 		settings.set_value("device", "token", Protocol.random_hex(16))
@@ -56,9 +57,10 @@ func is_mobile() -> bool:
 	return OS.has_feature("mobile") or OS.has_feature("android") or OS.get_cmdline_user_args().has("--force-mobile")
 
 
-## L'hébergement est réservé à la version PC (Windows ; Linux/macOS pour le développement).
+## Tout appareil peut héberger : PC ou téléphone (le téléphone doit rester allumé,
+## application au premier plan, pendant la partie).
 func can_host() -> bool:
-	return not is_mobile()
+	return true
 
 
 func goto(scene_path: String) -> void:

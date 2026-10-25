@@ -7,7 +7,7 @@ set -u
 cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
 PORT="${PORT:-17777}"
-LOGDIR="$(mktemp -d)"
+LOGDIR="${LOGDIR:-$(mktemp -d)}"
 
 run() {
 	"$GODOT" --headless --path . res://tests/net_test.tscn -- --role="$1" --port="$PORT" --profile="test_$1" \
@@ -32,8 +32,16 @@ sleep 4
 kill -9 $ZOE 2>/dev/null
 wait
 
+# Scénario 3 : fiches, carte, pions, dés, actions et secrets.
+run server3 &
+sleep 1.5
+for role in dana eli; do
+	run "$role" &
+done
+wait
+
 status=0
-for role in server alice bob wrongcode mallory server2 yann; do
+for role in server alice bob wrongcode mallory server2 yann server3 dana eli; do
 	grep -E "^\[$role\]|SCRIPT ERROR|ERROR:" "$LOGDIR/$role.log" | sed "s/^/  /"
 	if [ "$(cat "$LOGDIR/$role.code")" != "0" ]; then
 		status=1

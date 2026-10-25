@@ -9,7 +9,7 @@ extends RefCounted
 ## décide quelles données envoyer à quel client.
 
 ## À incrémenter dès que le format des messages change de façon incompatible.
-const VERSION := 1
+const VERSION := 2
 const APP_ID := "legenders-rpg"
 
 const DEFAULT_PORT := 7777
@@ -49,6 +49,10 @@ const MJ_ID := "mj"
 
 # --- Commandes client -> serveur ---
 const CMD_CHAT_SEND := "chat_send"
+const CMD_ACTION := "action_declare"
+const CMD_ROLL := "dice_roll"
+const CMD_CHAR_SAVE := "char_save"
+const CMD_PAWN_MOVE := "pawn_move"
 
 # --- Événements serveur -> client ---
 const EVT_JOIN_STATUS := "join_status"
@@ -58,6 +62,22 @@ const EVT_CHAT := "chat"
 const EVT_ACK := "ack"
 const EVT_NOTICE := "notice"
 const EVT_SESSION_CLOSED := "session_closed"
+const EVT_MSG_UPDATE := "msg_update"
+const EVT_CHARACTERS := "characters"
+const EVT_MAP := "map"
+const EVT_COMBAT := "combat"
+const EVT_SETTINGS := "settings"
+
+# --- Types de messages du fil ---
+const KIND_CHAT := "chat"
+const KIND_ACTION := "action"
+const KIND_ROLL := "roll"
+const KIND_SYSTEM := "system"
+
+# --- Statut d'une action déclarée ---
+const ACTION_PENDING := "pending"
+const ACTION_RESOLVED := "resolved"
+const ACTION_REFUSED := "refused"
 
 # --- Statuts d'un joueur dans la session ---
 const STATUS_PENDING := "pending"

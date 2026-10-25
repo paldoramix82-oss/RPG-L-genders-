@@ -2,7 +2,7 @@
 
 ## Principe
 
-- Le PC du MJ est le **serveur autoritaire** : il détient l'état officiel de la partie.
+- L'appareil qui héberge (PC Windows **ou téléphone Android**) est le **serveur autoritaire** : il détient l'état officiel de la partie.
 - Transport : **ENet sur UDP**, port **7777** par défaut (modifiable à l'écran « Héberger »).
 - Découverte automatique facultative : annonces UDP *broadcast* sur le port **7778**.
 - Aucune donnée ne passe par Internet. Les données mobiles des téléphones ne sont pas utilisées.
@@ -23,7 +23,14 @@
 | Wi-Fi public / hôtel / entreprise | ❌ souvent | « Isolation des clients » activée : les appareils ne peuvent pas se voir. |
 | Téléphone en 4G/5G uniquement | ❌ | Le téléphone doit être sur le même Wi-Fi que le PC. |
 
-## Pare-feu Windows (PC du MJ)
+## Héberger depuis un téléphone Android
+
+C'est possible : dans l'application, *Héberger une partie*. Points d'attention :
+- l'application doit rester **au premier plan, écran allumé** (l'écran ne se met pas en veille tant que l'application est ouverte) ; si on change d'application, Android peut suspendre le serveur et les joueurs passent en « Reconnexion… » jusqu'au retour ;
+- si ce téléphone partage sa connexion (point d'accès), son adresse est souvent `192.168.43.1` ou `192.168.x.1` ; elle s'affiche dans « Pour rejoindre » ;
+- les sauvegardes restent sur ce téléphone.
+
+## Pare-feu Windows (PC hôte)
 
 Au **premier lancement** de `LegendersRPG.exe` comme serveur, Windows affiche « Le Pare-feu Windows a bloqué certaines fonctionnalités » :
 

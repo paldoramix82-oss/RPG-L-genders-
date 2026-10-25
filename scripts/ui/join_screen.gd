@@ -41,7 +41,7 @@ func _ready() -> void:
 	var form := UIKit.card(page, "Votre table")
 	_name = UIKit.field(form, "Votre nom de joueur", UIKit.line_edit(App.get_setting("join", "name", ""), "Ex. : Camille"))
 	_name.max_length = Protocol.MAX_NAME_LENGTH
-	_ip = UIKit.field(form, "Adresse IP du PC du MJ", UIKit.line_edit(App.get_setting("join", "ip", ""), "Ex. : 192.168.1.20"))
+	_ip = UIKit.field(form, "Adresse IP de l'hôte", UIKit.line_edit(App.get_setting("join", "ip", ""), "Ex. : 192.168.1.20"))
 	_ip.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL
 	var row := HBoxContainer.new()
 	form.add_child(row)
@@ -65,11 +65,11 @@ func _ready() -> void:
 	var found := UIKit.card(page, "Parties détectées sur ce Wi-Fi")
 	_found_list = VBoxContainer.new()
 	found.add_child(_found_list)
-	_found_empty = UIKit.label("Recherche en cours… Si rien n'apparaît, saisissez l'adresse affichée sur le PC du MJ.", "MutedLabel", true)
+	_found_empty = UIKit.label("Recherche en cours… Si rien n'apparaît, saisissez l'adresse affichée chez l'hôte.", "MutedLabel", true)
 	found.add_child(_found_empty)
 
 	var help := UIKit.card(page, "", "InsetPanel")
-	help.add_child(UIKit.label("Le téléphone et le PC doivent être sur le même Wi-Fi (box, routeur ou partage de connexion d'un joueur). Les données mobiles ne sont pas utilisées.", "MutedLabel", true))
+	help.add_child(UIKit.label("Votre appareil et celui de l'hôte doivent être sur le même Wi-Fi (box, routeur ou partage de connexion d'un joueur). Les données mobiles ne sont pas utilisées.", "MutedLabel", true))
 
 	Net.joined.connect(_on_joined)
 	Net.join_failed.connect(_on_failed)
@@ -134,6 +134,7 @@ func _refresh_found() -> void:
 			_code.grab_focus())
 		b.text = "%s  —  %s\n%s:%d  ·  %d/%d joueurs" % [info.name, info.mj, info.ip, info.port, info.players, info.max]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.custom_minimum_size.y = 64
 		if info.proto != Protocol.VERSION:
 			b.disabled = true
