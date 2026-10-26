@@ -49,6 +49,7 @@ var _map_page: VBoxContainer
 var _feed: FeedView
 var _composer: Composer
 var _quick_actions: HFlowContainer
+var _ideas_menu: MenuButton
 var _map_view: MapView
 var _timeline: HBoxContainer
 var _timeline_scroll: ScrollContainer
@@ -326,6 +327,26 @@ func _build_feed_page() -> VBoxContainer:
 		b.custom_minimum_size.y = 32
 		b.add_theme_font_size_override("font_size", 14)
 		filters.add_child(b)
+	# Paysage : les idées d'actions tiennent dans un menu (le récit garde la place).
+	_ideas_menu = MenuButton.new()
+	_ideas_menu.text = "Idées d'actions…"
+	_ideas_menu.flat = false
+	_ideas_menu.theme_type_variation = "PrimaryButton"
+	_ideas_menu.custom_minimum_size.y = 32
+	_ideas_menu.add_theme_font_size_override("font_size", 14)
+	_ideas_menu.visible = false
+	var ideas := [["Examiner…", "J'examine "], ["Parler à…", "Je vais parler à "], ["Interagir avec…", "J'interagis avec "], ["Fouiller…", "Je fouille "], ["Se cacher", "Je me cache "], ["Action libre…", ""], ["Utiliser un objet (sac)", "@bag"]]
+	for spec in ideas:
+		_ideas_menu.get_popup().add_item(spec[0])
+	_ideas_menu.get_popup().index_pressed.connect(func(i):
+		if ideas[i][1] == "@bag":
+			_open_inventory("bag")
+		else:
+			_composer.start_action(ideas[i][1]))
+	var filler := Control.new()
+	filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	filters.add_child(filler)
+	filters.add_child(_ideas_menu)
 	_feed = FeedView.new("", false)
 	page.add_child(_feed)
 	# Actions contextuelles : des idées, jamais une liste fermée.
@@ -574,6 +595,8 @@ func _arrange(landscape: bool) -> void:
 		_turn_panel.custom_minimum_size.x = 0
 		_side.visible = false
 	_hud_buttons.alignment = BoxContainer.ALIGNMENT_CENTER if landscape else BoxContainer.ALIGNMENT_BEGIN
+	_quick_actions.visible = not landscape
+	_ideas_menu.visible = landscape
 	_timeline_scroll.custom_minimum_size.y = 56 if landscape else 66
 	_refresh_hud()
 	_refresh_turn_bar()
@@ -1641,8 +1664,10 @@ func _help_text(body: VBoxContainer) -> void:
 		["run", "Votre tour", "Quand le téléphone vibre et affiche « C'est votre tour ! », vous avez des points d'action (PA). Déplacez-vous en touchant une case dorée, attaquez, utilisez une capacité, puis « Terminer mon tour »."],
 		["sword", "Combattre", "Attaque rapide (1 PA) ou puissante (2 PA, plus de dégâts mais moins précise). Le jeu lance les dés et calcule tout : vous voyez les dégâts en rouge, les soins en vert."],
 		["star", "Capacités", "Vos capacités sont dans la barre du bas. Touchez-en une pour voir ce qu'elle fait, ce qu'elle coûte et pourquoi elle est indisponible. L'ultime se charge pendant les combats."],
-		["bag", "Sac, fiche, journal", "Le sac contient vos objets (touchez-en un pour l'équiper ou l'utiliser) et le coffre du groupe. La fiche montre votre personnage et vos montées de niveau. Le journal garde vos quêtes."],
+		["bag", "Sac, fiche, journal", "Le sac contient vos objets (touchez-en un pour l'équiper ou l'utiliser) et le coffre du groupe. La fiche (ou votre portrait) montre votre personnage et vos montées de niveau. Le journal garde vos quêtes. Tournez le téléphone pour jouer en paysage."],
 		["heart", "Points de vie", "À 0 PV, votre personnage est hors de combat (pas forcément mort : le MJ décide). Le repos et les soins font remonter les PV."],
+		["eye", "La carte et la vision", "Vous ne voyez qu'autour de votre personnage : plus votre Dextérité est haute, plus vous voyez loin. Les murs et forêts denses cachent ce qu'il y a derrière ; les lieux déjà visités restent dans la pénombre."],
+		["chat", "Discuter", "Le bouton « Discuter » de la barre du bas ouvre la conversation à tout moment, même en plein combat : parler ne coûte aucun point d'action."],
 	]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)

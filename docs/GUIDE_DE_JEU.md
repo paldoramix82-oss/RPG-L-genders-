@@ -21,7 +21,7 @@ Six caractéristiques sur une échelle de 1 à 10 (5 = moyen) :
 | Caractéristique | Effets |
 |---|---|
 | **Force** | dégâts des armes de corps à corps et des capacités physiques, épreuves de force |
-| **Dextérité** | toucher des armes fines et de tir, Défense, initiative, discrétion |
+| **Dextérité** | toucher des armes fines et de tir, Défense, initiative, discrétion, **vision** |
 | **Constitution** | PV (×2), résistance physique (÷4), certaines ressources (Vigueur) |
 | **Intelligence** | toucher et dégâts des sorts arcaniques, ressource des mages |
 | **Esprit** | mana de nombreuses classes, résistance magique (÷4), puissance des soins |
@@ -40,6 +40,15 @@ Formules (toutes les valeurs de base sont réglables par le MJ, *Créer › Règ
 | Initiative | d20 + Dextérité |
 | Critique | 20 naturel (ou la plage de l'arme, élargie par certaines classes) : dés de dégâts doublés |
 | Épreuve | d20 + caractéristique ≥ difficulté (10 facile, 15 moyen, 20 difficile) |
+| Vision | 3 + Dextérité ÷ 2 cases (+ bonus d'objets « Vision ») |
+
+### Vision et brouillard de guerre
+
+Chaque joueur ne voit la carte qu'autour de **son** personnage, jusqu'à sa vision (en cases, distance réelle). Les terrains **Mur, Forêt dense, Montagne et Toits** bloquent la ligne de vue (la case elle-même reste visible). Les cases déjà vues restent connues (assombries) : c'est l'**exploration**, mémorisée par l'hôte pour chaque joueur et chaque carte, et sauvegardée.
+
+C'est l'hôte qui filtre : un téléphone ne reçoit **que** les pions et les étiquettes qu'il voit (plus les étiquettes des zones explorées) ; le terrain est transmis mais masqué à l'affichage. Les chiffres de combat d'un pion invisible ne sont pas envoyés.
+
+Réglages du MJ : brouillard par carte (*Monde*), *Oublier l'exploration*, *Voir le brouillard des joueurs* (aperçu), et dans *Créer › Règles* : vision de base, « +1 case tous les N points de Dextérité », **vision partagée** (chaque joueur voit ce que voit tout le groupe).
 
 ## Créer son personnage (assistant en 5 étapes)
 
@@ -117,30 +126,40 @@ Les univers sont de simples fichiers JSON dans `data/universes/` : on peut en aj
 - **Bandeau du haut** : lieu, situation (phase, tour, à qui de jouer), objectif de la quête principale.
 - **Récit** : narration du MJ (encadrée), messages, résultats de combat en lignes colorées (rouge dégâts, vert soins, violet effets, or récompenses), jets de dés. Filtres *Tout / Récit et discussions / Combat*. Saisie : *Message* (groupe ou MJ en privé), *Action* (libre, avec des débuts de phrase proposés), *Dés*. Les jets demandés par le MJ ont un bouton **Lancer le dé**.
 - **Carte** : frise des tours (portraits, PV, effets), carte avec cases atteignables dorées et cibles entourées de rouge, chiffres flottants, panneau du tour (PA, attaques, défense, fin du tour) ou rappel de la phase et dés rapides.
-- **Barre du bas permanente** : portrait (ouvre la fiche, « + » doré quand une montée de niveau attend), PV, ressource, jauge d'ultime, or, capacités équipées (coût, recharge, charge de l'ultime), **Sac**, **Fiche**, **Journal**.
+- **Barre du bas permanente** : portrait (ouvre la fiche, « + » doré quand une montée de niveau attend), PV, ressource, jauge d'ultime, or, indicateur de tour (« À VOUS · 2 PA »), capacités équipées, **Sac**, **Fiche**, **Journal**, **Discuter** (pastille de non-lus).
+- **États des capacités** : disponible ; coût insuffisant (coût en rouge) ; en recharge (tours restants en grand) ; inutilisable (grisée, la raison s'affiche au toucher : pas votre tour, PA, mana, recharge, ultime pas chargé, aucun ennemi ou allié à portée, aucun allié blessé) ; sélectionnée en attente de cible (cadre doré, « CIBLE ? »). Le ciblage n'entoure que les pions **à portée**.
+- **Panneau du tour** : « À vous ! », points d'action restants, *Attaque rapide*, *Attaque puissante*, *Se défendre*, *Objet* (ouvre le sac), chacun avec son coût en PA (grisé si impossible), et *Fin du tour* compact. Pendant qu'une action attend la réponse de l'hôte, les boutons sont bloqués et l'indicateur de connexion affiche « Envoi… ».
+- **Discussion** : *Discuter* ouvre un panneau avec la conversation et la saisie par-dessus la carte ; parler ne coûte aucun PA et n'interrompt pas le combat. Les messages privés reçus déclenchent une notification.
+- **Notifications** (en haut, 3 au plus, se ferment d'un toucher) : PV récupérés, objet obtenu, or reçu, compétence apprise, effet subi, ultime disponible, action refusée (avec la raison). Elles reflètent l'état confirmé par l'hôte ; tout reste aussi dans le récit.
+- **Paysage** : en tournant le téléphone, la barre du bas devient une colonne à droite (bascule Récit / Carte, personnage, capacités, boutons), le panneau du tour passe à côté de la carte, et les idées d'actions tiennent dans un menu *Idées d'actions…*. Orientation automatique, ou bloquée en portrait / paysage dans *Journal › Réglages › Affichage*. Les zones système (encoche, barre de navigation) sont respectées.
 - **Panneaux superposés** (fermeture par la croix, l'extérieur ou le bouton retour) :
   - *Capacité* : description, coûts, portée, cible, effets, raison si indisponible, *Utiliser* ;
-  - *Fiche* : identité, niveau et XP, or, ressources, montée de niveau, effets en cours, caractéristiques (bonus en vert), valeurs de combat, bonus et malus, passif, capacités (équiper / retirer), équipement porté, histoire ;
-  - *Sac* : emplacements (arme, armure, 2 accessoires), cases d'objets colorées par rareté, détail avec aperçu (« Défense 12 → 16 »), *Équiper*, *Utiliser*, *Lire*, *Donner à…*, *Jeter* ; onglet *Coffre du groupe* ;
+  - *Fiche* : en-tête (portrait, nom, classe, niveau, XP, or, PV, ressource, ultime, effets), montée de niveau si elle attend, puis quatre onglets — *Personnage* (caractéristiques avec base + bonus, valeurs de combat dont la vision, bonus et malus, effets), *Capacités* (passif, équipées, connues, à débloquer avec leur niveau), *Équipement* (porté, contenu du sac), *Histoire* ;
+  - *Sac* : emplacements (arme, armure, 2 accessoires), cases d'objets colorées par rareté avec leur nom, filtres par catégorie (seulement celles présentes), détail avec comparaison (« Défense 12 → 16 (+4) » en vert, pertes en rouge), *Équiper*, *Utiliser* (confirmation seulement pour un objet rare ou mieux), *Lire*, *Donner à…*, *Jeter* (avec confirmation) ; onglet *Coffre du groupe* ;
   - *Journal* : quêtes (principales d'abord, objectifs, récompenses), groupe, codex, réglages (musique, connexion, aide).
 - Sur PC (fenêtre large), la carte et le récit s'affichent côte à côte.
 
 ## Côté MJ
 
-L'écran est organisé en quatre zones.
+L'écran est organisé en quatre zones, séparées par des **barres déplaçables** à la souris. Raccourcis : Ctrl + S sauvegarder, F1 carte, F2 récit, F5 tour suivant (combat), Ctrl + E événement rapide, Ctrl + Q nouvelle quête, Ctrl + N écrire, Échap fermer un panneau (bouton *Raccourcis* en haut).
 
 - **Gauche — joueurs** : adresse IP, joueurs (portrait, PV, ressource, niveau, or, effets, connexion), *Écrire*, *Jet*, *Fiche et outils*, *Déconnecter*, *Retirer*.
 - **Centre — Carte et Récit** : la carte interactive (pions animés, chiffres flottants) et le récit complet, avec les **actions en attente** en haut (résoudre, refuser, *Le joueur lance*).
+- **Bas — journal des actions** : une ligne par événement récent (combats, récompenses, phases, propositions d'action, jets, connexions), le détail au survol.
 - **Bas — saisie et événements** : *Narration* (mise en forme récit) ou message simple, au groupe ou en privé ; dés publics, secrets ou montrés à un joueur. **Événement rapide…** : épreuve de groupe (jet demandé à chacun, avec caractéristique et difficulté), dégâts ou soins de groupe, récompense de groupe (XP, or, objet au coffre), embuscade (monstres placés puis combat lancé), créer un objet, nouvelle quête.
 - **Droite — outils** :
   - **Combat** : choix de la phase, ordre des tours (▲ ▼ ×), au tour d'un monstre ses commandes (*Jouer automatiquement*, attaque rapide / puissante, se défendre, capacités) avec ciblage sur la carte, *Tour suivant*, fin de combat ; pion sélectionné (nom, PV, effets à appliquer, caché, note, couleur) ; coffre du groupe (donner, retirer).
-  - **Monde** : musique (14 morceaux, diffusion aux téléphones, combat automatique), cartes (montrer, créer, dupliquer, propriétés, supprimer), outils de dessin (déplacer, peindre 29 terrains, pions, étiquettes secrètes, gomme, départ).
+  - **Monde** : musique (14 morceaux, diffusion aux téléphones, combat automatique), cartes (montrer, créer, dupliquer, propriétés, supprimer, **brouillard de guerre**, *Voir le brouillard des joueurs*, *Oublier l'exploration*), outils de dessin (déplacer, peindre 29 terrains, pions, étiquettes secrètes, gomme, départ).
   - **Quêtes** : brouillons, en cours, terminées ; *Nouvelle quête* (principale / secondaire, donneur, description, objectifs, joueurs concernés ou tout le groupe, récompenses : XP, or, objets du catalogue ou créés sur mesure) ; *Donner aux joueurs*, objectifs à cocher, *Réussie : distribuer* (une seule fois), *Échouée*.
-  - **Créer** : le catalogue de la campagne — **objets** (catégorie, rareté, icône, arme, bonus, effets à l'utilisation, effets à l'impact, capacités accordées, livre de compétence), **capacités** (coûts, portée, cible, zone, jet, recharge, ultime, effets), **effets de statut** (bonus / malus, étourdi, immobilisé, bouclier, dégâts ou soins par tour…), **monstres** et boss (caractéristiques, PV, attaque, capacités, XP, table de butin), **classes** (bonus, PV, ressource, passif, capacités, ultime, capacités à apprendre, kit), **tables de butin** (chances, quantités, objets garantis, or) et **règles** (points de création, PA, coûts, formules, XP, emplacements…). Actions directes : *Donner à…*, *Au coffre du groupe*, *Placer* un monstre, *Tirer* une table de butin.
+  - **Créer** : le catalogue de la campagne — **objets** (catégorie, rareté, icône, arme, bonus, effets à l'utilisation, effets à l'impact, capacités accordées, livre de compétence), **capacités** (coûts, portée, cible, zone, jet, recharge, ultime, effets), **effets de statut** (bonus / malus, étourdi, immobilisé, bouclier, dégâts ou soins par tour…), **monstres** et boss (caractéristiques, PV, attaque, capacités, XP, table de butin), **classes** (bonus, PV, ressource, passif, capacités, ultime, capacités à apprendre, kit), **tables de butin** (chances, quantités, objets garantis, or) et **règles** (points de création, PA, coûts, formules, XP, emplacements…). Le bouton **Aperçu** montre la carte de l'objet, de la capacité, de l'effet, du monstre ou de la classe telle que les joueurs la verront, avant d'enregistrer. Actions directes : *Donner à…*, *Au coffre du groupe*, *Placer* un monstre, *Tirer* une table de butin.
   - **Fiches** : tous les personnages, *Nouveau PNJ*, *Packs de PNJ…* (convertis automatiquement), autoriser ou non les joueurs à modifier leur histoire.
   - **Codex** (avec les secrets MJ) et **Réseau** (état, adresses, journal des connexions).
 - **Fiche et outils d'un personnage** : ± PV, soigner, mettre hors de combat, ± ressource, charger l'ultime, donner XP ou or, ± caractéristiques, donner un objet (du catalogue ou créé sur le moment), apprendre / oublier une capacité, équiper / retirer, appliquer / retirer un effet, inventaire, modifier l'histoire et les valeurs (fiche libre), placer sur la carte.
 - **Journal du MJ** : chaque modification manuelle (PV, objets, effets, XP, règles…) est notée dans le récit, visible du MJ seul.
+
+## Musique
+
+Avant le début de la partie (menus, création du personnage, salon), le **thème principal** joue en fond, sur le PC comme sur les téléphones ; le bouton *Musique* de l'accueil le coupe (réglage gardé par l'appareil). Si le MJ lance un morceau, c'est le sien qu'on entend ; quand la partie commence, le thème s'arrête et c'est le MJ qui choisit la musique.
 
 ## Progression
 

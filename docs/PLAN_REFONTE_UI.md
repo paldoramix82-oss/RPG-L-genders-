@@ -60,4 +60,18 @@ renvoie ; aucun calcul de règles n'est dupliqué dans l'interface (elle appelle
 
 ## 3. Journal
 
-Voir la fin du document (rempli au fil des phases).
+| Phase | Réalisé | Vérifié |
+|---|---|---|
+| A — Ajouts | `vision.gd` (rayon, ligne de vue, exploration), vue de carte par joueur côté hôte, `fog` dans `EVT_MAP` / `EVT_TOKENS`, `EVT_FX` filtré ; réglages MJ (brouillard par carte, vision partagée, oubli, aperçu) ; `Music.set_menu` (thème principal avant la partie) ; orientation `sensor`, échelle sur le petit côté, réglage d'orientation ; disposition paysage. | `rules_test` : 12 vérifications de brouillard (vision 3 + DEX ÷ 2, loup proche visible / lointain caché, allié hors de vue, mur, étiquettes, exploration mémorisée, vision partagée, brouillard coupé, oubli, aperçu). `net_test` : le téléphone reçoit son brouillard. Captures paysage. |
+| B — Système visuel | `OrnateStyle`, palette noir bleuté, `Backdrop` avec vignette, `Notifier`, `ConfirmBox`, `GameUI.section` / `ornament`, accueil refait (portrait et paysage, bouton Musique). | Compilation des 63 scripts ; captures. |
+| C — Écran joueur | Bouton *Discuter* (panneau de discussion, non-lus, notification de message privé), indicateur de tour dans la barre, indicateur « Envoi… » (`outbox_changed`), notifications de jeu (PV, or, objets, compétences, effets, ultime), actions contextuelles (*Interagir*, *Action libre…*, *Utiliser un objet* ; menu *Idées d'actions…* en paysage), confirmation de départ intégrée. | Captures portrait 420 × 880 et paysage 900 × 420 ; pas de débordement horizontal après réglage des tailles. |
+| D — Menus joueur | Fiche en en-tête + 4 onglets, base + bonus, vision, capacités à débloquer ; inventaire filtrable, noms sous les cases, comparaison avec écart, confirmations utiles. | Captures fiche et inventaire. |
+| E — Combat | Ciblage limité à la portée, raisons « aucun ennemi / allié à portée », « aucun allié blessé », états de compétence (sélectionnée « CIBLE ? », coût insuffisant, recharge, ultime prêt), bouton *Objet*, *Fin du tour* compact, boutons bloqués pendant l'envoi, combattants hors de vue dans la frise. | Captures combat ; règles inchangées (les 80 vérifications précédentes passent toujours). |
+| F — MJ | Zones à séparateurs, zone basse saisie + journal des actions, carte « Pour rejoindre » compacte, cartes joueurs (classe, niveau, arme), raccourcis clavier, confirmations intégrées, brouillard dans *Monde*, bouton **Aperçu** dans les créateurs (carte telle que les joueurs la verront, après la même validation que l'enregistrement). | Captures 1440 × 900 et 1280 × 720. Une boucle de mise en page (texte à retour à la ligne dans une zone redimensionnable) a été trouvée et corrigée (lignes du journal sur une seule ligne). |
+| G — Tests | Compilation, `rules_test` (92 vérifications), `net_test` (3 scénarios, dont le brouillard). | **Non vérifié** : vrais téléphones Android (rotation réelle, encoche, clavier virtuel, vibrations, son), PC Windows. Voir `TEST_PHASE1.md`, sections F, I5 et J. |
+
+### Limites connues
+
+- Le terrain de toute la carte est transmis au téléphone (masqué à l'affichage) ; seuls les pions et étiquettes hors de vue ne sont pas envoyés.
+- Pas d'illustrations : portraits, icônes et blasons sont dessinés en code, remplaçables plus tard.
+- Factions : pas de système dédié ; le codex et les PNJ en tiennent lieu pour l'instant.

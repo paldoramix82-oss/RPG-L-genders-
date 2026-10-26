@@ -47,9 +47,48 @@ func _init(entry_kind: String, entry: Dictionary, content_data: Dictionary) -> v
 	add_child(actions)
 	actions.add_child(UIKit.button("Annuler", "", func(): cancelled.emit()))
 	actions.add_child(UIKit.spacer(false))
+	actions.add_child(UIKit.button("Aperçu", "", show_preview))
 	var save := UIKit.button("Enregistrer", "PrimaryButton", func(): saved.emit(kind, collect()))
 	save.custom_minimum_size.x = 180
 	actions.add_child(save)
+
+
+## Aperçu : la carte telle que les joueurs la verront, après validation par les
+## mêmes règles que l'enregistrement (Content.sanitize), dans une fenêtre.
+func show_preview() -> void:
+	var _preview := VBoxContainer.new()
+	_preview.add_theme_constant_override("separation", 8)
+	var entry := Content.sanitize(kind, collect(), content)
+	match kind:
+		"items":
+			_preview.add_child(GameUI.item_card(entry, content))
+			var use := Effects.describe_list(entry.get("use", []), content)
+			if use != "":
+				_preview.add_child(UIKit.label("À l'utilisation : " + use, "MutedLabel", true))
+		"abilities":
+			_preview.add_child(GameUI.ability_card(entry, content, "Mana"))
+		"statuses":
+			var row := HBoxContainer.new()
+			row.add_child(GameUI.icon_badge(String(entry.get("icon", "sparkle")), Color(String(entry.get("color", "#a07cc9"))), 34))
+			row.add_child(UIKit.label("%s — %s" % [entry.get("name", "?"), entry.get("description", "")], "", true))
+			_preview.add_child(row)
+		"classes":
+			_preview.add_child(UIKit.label(String(entry.get("name", "?")), "HeadingLabel", true))
+			if not (entry.get("passive", {}) as Dictionary).is_empty():
+				_preview.add_child(GameUI.passive_card(entry.passive, content))
+			for id in entry.get("abilities", []) + [entry.get("ultimate", "")]:
+				var a := Content.get_entry(content, "abilities", String(id))
+				if not a.is_empty():
+					_preview.add_child(GameUI.ability_card(a, content, String(entry.get("resource", {}).get("name", "Mana"))))
+		"monsters":
+			_preview.add_child(UIKit.label("%s%s — %d PV, arme %s, %d XP" % [entry.get("name", "?"), " (boss)" if entry.get("boss", false) else "", int(entry.get("hp", 0)), entry.get("weapon", {}).get("damage", "?"), int(entry.get("xp", 0))], "StrongLabel", true))
+			for id in entry.get("abilities", []):
+				var a := Content.get_entry(content, "abilities", String(id))
+				if not a.is_empty():
+					_preview.add_child(GameUI.ability_card(a, content, "Énergie"))
+		_:
+			_preview.add_child(UIKit.label(String(entry.get("name", "?")), "StrongLabel", true))
+	ConfirmBox.show_content(get_tree().current_scene, "Aperçu", _preview)
 
 
 func collect() -> Dictionary:

@@ -3,7 +3,7 @@ extends Node
 ## puis photographie l'écran ou le panneau demandé.
 ## Arguments : --shot=menu|join|setup|host|player  --tab=<vue ou panneau>
 ##             --phase=none|exploration|combat  --map=<modèle>  --out=<png>
-## Joueur : wizard1..wizard5, lobby, story, map, sheet, inventory, chest, journal, ability, help, levelup
+## Joueur : wizard1..wizard5, lobby, story, map, sheet, inventory, chest, journal, ability, help, levelup, chat
 ## Hôte : table, story, combat, world, quests, create, chars, char, item_editor, quest_editor, ambush
 
 const PORT := 17800
@@ -98,6 +98,9 @@ func _host() -> void:
 				screen._open_char_tools(String(player_ids[0]))
 		"item_editor":
 			screen._open_content_editor("items", Content.get_entry(server.content, "items", "croc_vampirique"))
+			await get_tree().process_frame
+			for ed in screen.find_children("*", "ContentEditor", true, false):
+				ed.show_preview()
 		"quest_editor":
 			screen._open_quest_editor(server.quests[0])
 		"ambush":
@@ -150,9 +153,6 @@ func _player() -> void:
 	c.roll("d20+2", Protocol.TO_ALL, "Escalade")
 	c.send_chat(Protocol.TO_MJ, "Je garde une flamme allumée dans ma main, discrètement.")
 	await get_tree().create_timer(4.5).timeout
-	if OS.get_cmdline_user_args().has("--debug-fog"):
-		var f: Variant = c.map.get("fog")
-		print("FOG ", typeof(f), " ", (f as Dictionary).keys() if f is Dictionary else [], " ", String(f.get("visible", "")).count("1") if f is Dictionary else -1, " ", c.map.get("w"), "x", c.map.get("h"))
 	match tab:
 		"story":
 			screen._show_view("story")
@@ -168,6 +168,9 @@ func _player() -> void:
 			screen._open_journal("quests")
 		"help":
 			screen._open_help()
+		"chat":
+			screen._show_view("map")
+			screen._open_chat()
 		"ability":
 			var abilities := Rules.usable_abilities(c.my_character(), c.content)
 			if not abilities.is_empty():

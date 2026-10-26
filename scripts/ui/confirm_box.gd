@@ -17,7 +17,15 @@ static func ask(parent: Node, title: String, text: String, ok_text: String, on_o
 	return box
 
 
-func _build(title: String, text: String, ok_text: String, cancel_text: String, danger: bool) -> void:
+## Fenêtre d'information avec un contenu libre (aperçu…) et un seul bouton.
+static func show_content(parent: Node, title: String, content: Control, close_text: String = "Fermer") -> ConfirmBox:
+	var box := ConfirmBox.new()
+	box._build(title, "", close_text, "", false, content)
+	parent.add_child(box)
+	return box
+
+
+func _build(title: String, text: String, ok_text: String, cancel_text: String, danger: bool, content: Control = null) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	z_index = 60
@@ -44,12 +52,16 @@ func _build(title: String, text: String, ok_text: String, cancel_text: String, d
 		var l := UIKit.label(text, "", true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(l)
+	if content != null:
+		content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_child(content)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	col.add_child(row)
-	var no := UIKit.button(cancel_text, "", _answer.bind(false))
-	no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(no)
+	if cancel_text != "":
+		var no := UIKit.button(cancel_text, "", _answer.bind(false))
+		no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(no)
 	var yes := UIKit.button(ok_text, "DangerButton" if danger else "PrimaryButton", _answer.bind(true))
 	yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(yes)

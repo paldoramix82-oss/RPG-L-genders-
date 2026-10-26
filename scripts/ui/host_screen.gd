@@ -71,6 +71,9 @@ var _music_select: OptionButton
 var _music_status: Label
 var _tray: DiceTray
 var _tray_waiting := false
+var _journal_list: VBoxContainer
+var _events_menu: MenuButton
+var _notifier: Notifier
 
 
 func _ready() -> void:
@@ -283,30 +286,42 @@ func _build_dashboard() -> void:
 		story.add_child(_build_bottom_bar())
 		_tabs.add_page("story", "Récit", story)
 	else:
-		var body := HBoxContainer.new()
+		# Quatre zones, séparateurs déplaçables : joueurs | scène (carte / récit,
+		# et zone basse saisie + journal) | outils du MJ.
+		var body := HSplitContainer.new()
 		body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		body.add_theme_constant_override("separation", 0)
 		outer.add_child(body)
 		var left_margin := MarginContainer.new()
 		for side in ["left", "top", "bottom"]:
 			left_margin.add_theme_constant_override("margin_" + side, 10)
 		body.add_child(left_margin)
 		var left := VBoxContainer.new()
-		left.custom_minimum_size.x = 300
+		left.custom_minimum_size.x = 250
 		left_margin.add_child(left)
 		_build_players_column(left)
-		var center := VBoxContainer.new()
+		var rest := HSplitContainer.new()
+		rest.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		body.add_child(rest)
+		var center := VSplitContainer.new()
 		center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		center.add_theme_constant_override("separation", 0)
-		body.add_child(center)
+		rest.add_child(center)
 		_tabs = TabbedPages.new(false, 8)
+		_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_tabs.custom_minimum_size.y = 260
 		center.add_child(_tabs)
 		_tabs.add_page("table", "Carte", _build_map_center())
 		_tabs.add_page("story", "Récit", _build_story())
-		center.add_child(_build_bottom_bar())
+		var low := HSplitContainer.new()
+		low.custom_minimum_size.y = 150
+		center.add_child(low)
+		var bar := _build_bottom_bar()
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.size_flags_stretch_ratio = 2.0
+		low.add_child(bar)
+		low.add_child(_build_journal())
 		var right := VBoxContainer.new()
-		right.custom_minimum_size.x = 400
-		body.add_child(right)
+		right.custom_minimum_size.x = 360
+		rest.add_child(right)
 		_tools_tabs = TabbedPages.new(false, 8, true)
 		right.add_child(_tools_tabs)
 	_tools_tabs.add_page("combat", "Combat", _build_combat_tools())
@@ -363,6 +378,10 @@ func _build_dashboard() -> void:
 		_tray.queue_free()
 	_tray = DiceTray.new()
 	add_child(_tray)
+	if _notifier:
+		_notifier.queue_free()
+	_notifier = Notifier.new()
+	add_child(_notifier)
 	if not Music.changed.is_connected(_refresh_music_status):
 		Music.changed.connect(_refresh_music_status)
 	_refresh_music_status()
@@ -414,6 +433,18 @@ func _build_top_bar() -> Control:
 	_save_label = UIKit.label("", "MutedLabel")
 	_save_label.visible = not _narrow
 	row.add_child(_save_label)
+	if not _narrow:
+		row.add_child(UIKit.button("Raccourcis", "NavButton", func():
+			var box := VBoxContainer.new()
+			for s in SHORTCUTS:
+				var line := HBoxContainer.new()
+				var key := UIKit.label(s[0], "StrongLabel")
+				key.custom_minimum_size.x = 120
+				key.add_theme_color_override("font_color", Palette.GOLD)
+				line.add_child(key)
+				line.add_child(UIKit.label(s[1]))
+				box.add_child(line)
+			_show_info("Raccourcis clavier", box)))
 	row.add_child(UIKit.button("Sauver", "", func(): Net.server.save()))
 	row.add_child(UIKit.button("Terminer" if _narrow else "Terminer la session", "DangerButton", _confirm_end))
 	return bar
@@ -423,24 +454,21 @@ func _build_top_bar() -> Control:
 
 func _build_players_column(parent: Node) -> void:
 	var server := Net.server
-	var card := UIKit.card(parent, "Pour rejoindre", "HighlightPanel")
+	var card := GameUI.section(parent, "Pour rejoindre", "castle", "HighlightPanel")
 	var ips := NetUtils.get_lan_ipv4_addresses()
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 18)
-	card.add_child(grid)
-	grid.add_child(UIKit.label("Adresse IP", "MutedLabel"))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	card.add_child(row)
 	var ip_label := UIKit.label(ips[0] if not ips.is_empty() else "Pas de Wi-Fi", "CodeLabel")
-	ip_label.add_theme_font_size_override("font_size", 30)
+	ip_label.add_theme_font_size_override("font_size", 26)
 	ip_label.add_theme_color_override("font_color", Palette.GOLD)
-	grid.add_child(ip_label)
-	grid.add_child(UIKit.label("Port", "MutedLabel"))
-	var port := UIKit.label(str(server.session.port), "CodeLabel")
-	port.add_theme_font_size_override("font_size", 22)
-	grid.add_child(port)
+	row.add_child(ip_label)
+	var port := UIKit.label("port %d" % int(server.session.port), "MutedLabel")
+	port.size_flags_vertical = Control.SIZE_SHRINK_END
+	row.add_child(port)
 	if ips.size() > 1:
 		card.add_child(UIKit.label("Autres adresses : " + ", ".join(ips.slice(1)), "MutedLabel", true))
-	var players_card := UIKit.card(parent, "Joueurs")
+	var players_card := GameUI.section(parent, "Joueurs", "person")
 	players_card.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_players_list = UIKit.vscroll(players_card)
 
@@ -510,7 +538,11 @@ func _player_row(p: Dictionary) -> Control:
 			var res := ResourceBar.new(String(sheet.get("res_name", "")), Palette.MANA, 14)
 			res.set_values(int(sheet.get("res", 0)), int(sheet.res_max), false)
 			bars.add_child(res)
-		bars.add_child(UIKit.label("Niv. %d · %d or" % [int(sheet.get("level", 1)), int(sheet.get("gold", 0))], "MutedLabel"))
+		var cls := Rules.get_class_def(Net.server.content, String(sheet.get("class_id", "")))
+		var weapon: Dictionary = Rules.weapons(sheet)[0]
+		var line := UIKit.label("%s · niv. %d · %d or · %s" % [cls.get("name", sheet.get("concept", "Libre")), int(sheet.get("level", 1)), int(sheet.get("gold", 0)), weapon.get("name", "")], "MutedLabel", true)
+		line.add_theme_font_size_override("font_size", 14)
+		bars.add_child(line)
 		if not (sheet.get("effects", []) as Array).is_empty():
 			body.add_child(GameUI.status_row(sheet.effects, 18))
 	var info := UIKit.label("", "MutedLabel", true)
@@ -1605,6 +1637,8 @@ func _build_bottom_bar() -> Control:
 	narr.toggled.connect(func(on): _narrate_mode = on)
 	quick.add_child(narr)
 	var events := MenuButton.new()
+	_events_menu = events
+	events.tooltip_text = "Ctrl + E"
 	events.text = "Événement rapide…"
 	events.flat = false
 	events.theme_type_variation = "PrimaryButton"
@@ -1779,6 +1813,7 @@ func _refresh_composer_targets() -> void:
 
 func _on_message_added(m: Dictionary) -> void:
 	_feed.add_message(m)
+	_journal_message(m)
 	if _tray_waiting and m.get("kind", "") == Protocol.KIND_ROLL and m.get("from", "") == Protocol.MJ_ID:
 		_tray_waiting = false
 		_tray.finish(m.get("roll", {}), String(m.get("text", "")))
@@ -1906,7 +1941,89 @@ func _build_network() -> Control:
 	return page
 
 
+## Zone basse, à droite : journal des actions récentes (combat, système,
+## récompenses, connexions), une ligne chacune, la plus récente en bas.
+func _build_journal() -> Control:
+	var body := GameUI.section(null, "Journal des actions", "hourglass", "InsetPanel")
+	var panel := body.get_parent() as Control
+	panel.custom_minimum_size.x = 190
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_journal_list = UIKit.vscroll(body)
+	_journal_list.add_theme_constant_override("separation", 2)
+	UIKit.follow_bottom(_journal_list)
+	for m in Net.server.messages.slice(maxi(0, Net.server.messages.size() - 40)):
+		_journal_message(m)
+	return panel
+
+
+func _journal_add(text: String, color: Color) -> void:
+	if _journal_list == null or text.strip_edges() == "":
+		return
+	# Une ligne par entrée (pas de retour à la ligne : la zone se redimensionne).
+	var l := UIKit.label("%s  %s" % [Protocol.format_time(Protocol.now()), text], "MutedLabel")
+	l.clip_text = true
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	l.tooltip_text = text
+	l.mouse_filter = Control.MOUSE_FILTER_PASS
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", color)
+	_journal_list.add_child(l)
+	if _journal_list.get_child_count() > 200:
+		_journal_list.get_child(0).queue_free()
+
+
+func _journal_message(m: Dictionary) -> void:
+	var kind := String(m.get("kind", ""))
+	var first := String(m.get("text", "")).get_slice("\n", 0)
+	match kind:
+		Protocol.KIND_COMBAT:
+			_journal_add("Combat : " + first, Palette.HP.lightened(0.3))
+		Protocol.KIND_SYSTEM:
+			_journal_add(first, Palette.MUTED)
+		Protocol.KIND_REWARD:
+			_journal_add("Récompense : " + first, Palette.ULT)
+		Protocol.KIND_ACTION:
+			_journal_add("%s propose : %s" % [m.get("from_name", "?"), first], Palette.GOLD)
+		Protocol.KIND_ROLL:
+			var r: Dictionary = m.get("roll", {})
+			_journal_add("%s lance %s → %s" % [m.get("from_name", "?"), r.get("expr", "?"), r.get("total", "?")], Palette.VIOLET.lightened(0.4))
+
+
+## Raccourcis clavier du MJ (PC).
+const SHORTCUTS := [
+	["Ctrl + S", "Sauvegarder"], ["F1 / F2", "Carte / Récit"], ["F5", "Tour suivant (combat)"],
+	["Ctrl + E", "Événement rapide"], ["Ctrl + Q", "Nouvelle quête"], ["Ctrl + N", "Écrire au groupe"], ["Échap", "Fermer un panneau"],
+]
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if Net.server == null or _tabs == null or not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	var k := event as InputEventKey
+	var handled := true
+	if k.ctrl_pressed and k.keycode == KEY_S:
+		Net.server.save()
+		_notifier.push("Campagne sauvegardée.", "success")
+	elif k.keycode == KEY_F1:
+		_show("table")
+	elif k.keycode == KEY_F2:
+		_show("story")
+	elif k.keycode == KEY_F5 and Net.server.phase.get("type", "") == "combat":
+		Net.server.mj_next_turn()
+	elif k.ctrl_pressed and k.keycode == KEY_E and _events_menu != null:
+		_events_menu.show_popup()
+	elif k.ctrl_pressed and k.keycode == KEY_Q:
+		_open_quest_editor({})
+	elif k.ctrl_pressed and k.keycode == KEY_N:
+		_composer.focus_text()
+	else:
+		handled = false
+	if handled:
+		get_viewport().set_input_as_handled()
+
+
 func _add_log(entry: Dictionary) -> void:
+	_journal_add(String(entry.get("text", "")), {"ok": Palette.OK, "warn": Palette.WARN, "ask": Palette.GOLD}.get(entry.get("kind", ""), Palette.MUTED))
 	if _log_list == null:
 		return
 	var color := {"ok": Palette.OK, "warn": Palette.WARN, "ask": Palette.GOLD}.get(entry.kind, Palette.MUTED) as Color
@@ -1928,16 +2045,7 @@ func _confirm_end() -> void:
 
 
 func _confirm(text: String, on_ok: Callable) -> void:
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "Confirmation"
-	dialog.dialog_text = text
-	dialog.dialog_autowrap = true
-	dialog.ok_button_text = "Confirmer"
-	dialog.cancel_button_text = "Annuler"
-	dialog.confirmed.connect(on_ok)
-	dialog.visibility_changed.connect(func(): if not dialog.visible: dialog.queue_free())
-	add_child(dialog)
-	dialog.popup_centered(Vector2i(420, 0))
+	ConfirmBox.ask(self, "Confirmation", text, "Confirmer", on_ok, true)
 
 
 func _dialog(title: String, content: Control, on_ok: Callable) -> void:

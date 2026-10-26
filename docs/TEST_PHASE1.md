@@ -77,6 +77,19 @@ Cocher chaque ligne et noter les remarques.
 - [ ] I2. Créer › Monstres › Placer, puis Combat : le monstre joue avec ses capacités.
 - [ ] I3. Événement rapide › Embuscade : monstres placés et combat lancé.
 - [ ] I4. Créer › Règles : passer à 3 PA par tour → effectif au tour suivant.
+- [ ] I5. Tableau du MJ : déplacer les séparateurs entre les zones ; le journal des actions (en bas) se remplit pendant un combat ; raccourcis Ctrl + S, F1 / F2, F5, Ctrl + E.
+
+### J. Refonte visuelle, paysage, musique, brouillard
+- [ ] J1. Musique : le thème principal joue sur l'accueil, l'écran « Rejoindre » et le salon, sur le PC et les téléphones ; le bouton *Musique* de l'accueil le coupe ; il s'arrête quand la partie commence (ou cède la place au morceau du MJ).
+- [ ] J2. Paysage : tourner le téléphone pendant la partie → colonne personnage à droite, panneau du tour à côté de la carte ; retour en portrait sans rien perdre (récit, panneau ouvert). *Journal › Réglages › Affichage* bloque l'orientation.
+- [ ] J3. Encoche et barre de navigation : rien de caché sous elles, en portrait comme en paysage.
+- [ ] J4. Clavier virtuel : en écrivant un message (portrait et paysage), le champ reste visible.
+- [ ] J5. Brouillard : un joueur ne voit que les cases autour de lui ; un monstre derrière un mur ou une forêt dense n'apparaît pas ; en s'approchant, il apparaît ; les zones déjà vues restent assombries ; deux joueurs éloignés ne se voient pas (sauf *vision partagée*).
+- [ ] J6. MJ : *Voir le brouillard des joueurs*, *Oublier l'exploration*, brouillard coupé sur une carte → tout redevient visible.
+- [ ] J7. Bouton *Discuter* pendant un combat : messages échangés sans dépenser de PA ; pastille de non-lus quand on est sur la carte.
+- [ ] J8. Capacité hors de portée : grisée, « Aucun ennemi à portée » au toucher ; seule une cible à portée est entourée de rouge.
+- [ ] J9. Notifications : soin reçu, objet obtenu, ultime disponible, action refusée — courtes, en haut, sans bloquer.
+- [ ] J10. Inventaire : filtres par catégorie ; utiliser une potion commune sans confirmation, un objet rare avec confirmation ; jeter demande confirmation.
 
 ## Rapport
 

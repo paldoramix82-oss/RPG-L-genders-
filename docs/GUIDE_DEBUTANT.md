@@ -102,16 +102,24 @@ Vous avez **15 points** à répartir avec les boutons **−** et **+** (jamais m
 ├───────────────────────────────┤
 │ Portrait  PV ████████ 40/40   │  ← toujours visible
 │           Mana ██████ 26/26   │
-│ [cap1][cap2][cap3][ULT] Sac Fiche Journal │
+│ [cap1][cap2][cap3][ULT] Sac Fiche Journal Discuter │
 └───────────────────────────────┘
 ```
 
+**Téléphone tourné (paysage)** : la carte ou le récit prend la gauche, votre personnage passe dans une colonne à droite, et pendant votre tour les actions s'affichent à côté de la carte. Le jeu suit l'orientation du téléphone ; vous pouvez la bloquer dans *Journal › Réglages › Affichage*.
+
 - **En haut** : le nom du lieu, la situation (« Combat · tour 2 · à vous de jouer ! ») et votre **objectif** de quête. Touchez l'objectif pour ouvrir le journal.
 - **Au centre** : le **Récit** (l'histoire racontée par le MJ, les messages, les résultats) ou la **Carte** (le plateau avec les pions, comme un Monopoly).
-- **En bas, toujours visible** : votre portrait, vos **PV** (rouge), votre **mana** ou énergie (bleu), la jauge d'**ultime** (or), vos **capacités** et trois boutons :
+- **En bas, toujours visible** : votre portrait, vos **PV** (rouge), votre **mana** ou énergie (bleu), la jauge d'**ultime** (or), vos **capacités**, « À VOUS · 2 PA » pendant votre tour de combat, et quatre boutons :
   - **Sac** : vos objets et le coffre du groupe ;
-  - **Fiche** : tout votre personnage (et vos montées de niveau) ;
-  - **Journal** : vos quêtes, le groupe, l'encyclopédie du monde, les réglages.
+  - **Fiche** : tout votre personnage (et vos montées de niveau), en quatre onglets ;
+  - **Journal** : vos quêtes, le groupe, l'encyclopédie du monde, les réglages ;
+  - **Discuter** : la conversation, à tout moment, même en plein combat (parler ne coûte rien). Une pastille dorée compte les messages non lus.
+- **Les capacités** changent d'aspect : grisées si elles ne sont pas utilisables (le chiffre du coût passe en rouge s'il manque du mana, un grand chiffre indique les tours de recharge), encadrées d'or avec « CIBLE ? » quand vous choisissez une cible. Touchez-en une pour lire **pourquoi** elle est indisponible (« Aucun ennemi à portée : rapprochez-vous »).
+- **Les notifications** en haut de l'écran disent ce qui vient de vous arriver (« Vous récupérez 12 PV », « Objet obtenu : … », « Votre ultime est disponible ! »). Elles disparaissent seules ; tout reste dans le récit.
+
+### La carte et le brouillard
+Vous ne voyez pas toute la carte : seulement **autour de votre personnage**. Plus votre **Dextérité** est haute, plus vous voyez loin (3 cases + Dextérité ÷ 2, donc 5 cases avec une Dextérité de 5). Les murs, forêts denses, montagnes et toits **cachent** ce qu'il y a derrière. Les endroits déjà visités restent dans la pénombre : vous vous souvenez du terrain, mais vous ne voyez plus qui s'y trouve. Dans la frise des tours, un combattant « Hors de vue » est quelque part dans le noir…
 
 Les panneaux s'ouvrent par-dessus le jeu : touchez la croix ou l'extérieur pour les fermer.
 
@@ -194,10 +202,15 @@ Certains coups provoquent des **effets** (petites icônes au-dessus des pions et
 Vous n'avez pas besoin d'être un conteur professionnel. Voici une recette pour une première soirée réussie.
 
 ### Votre écran
-- **À gauche** : comment rejoindre (adresse IP) et les joueurs, avec leurs PV et leur mana. *Fiche et outils* ouvre tout ce que vous pouvez faire sur un personnage.
-- **Au centre** : la **Carte** et le **Récit**.
+Les séparations entre les zones se **déplacent à la souris** : agrandissez la carte, le récit ou les outils selon le moment.
+- **À gauche** : comment rejoindre (adresse IP) et les joueurs, avec leurs PV, leur mana, classe, niveau, arme et effets. *Fiche et outils* ouvre tout ce que vous pouvez faire sur un personnage.
+- **Au centre** : la **Carte** et le **Récit** ; en dessous, votre saisie et le **journal des actions** (combats, récompenses, connexions, une ligne chacun).
 - **À droite** : les outils — **Combat** (phases, tours, monstres), **Monde** (cartes, musique, dessin), **Quêtes**, **Créer** (objets, capacités, effets, monstres, classes, butin, règles), **Fiches**, **Codex**, **Réseau**.
 - **En bas** : votre saisie. Avec **Narration** coché, vos textes s'affichent comme un récit ; décochez pour un simple message. Le menu **Événement rapide…** propose : épreuve de groupe, dégâts ou soins de groupe, récompense de groupe, embuscade, créer un objet, nouvelle quête.
+
+**Raccourcis clavier** : Ctrl + S sauvegarder · F1 carte · F2 récit · F5 tour suivant · Ctrl + E événement rapide · Ctrl + Q nouvelle quête · Ctrl + N écrire · Échap fermer un panneau.
+
+**Brouillard de guerre** : chaque carte l'active par défaut. Dans *Monde*, vous pouvez le couper (une ville que tout le monde connaît), faire **oublier l'exploration**, ou cocher **Voir le brouillard des joueurs** pour savoir ce qu'ils voient. Dans *Créer › Règles* : vision de base, cases par point de Dextérité, et **vision partagée** (chacun voit ce que voit le groupe).
 
 ### Avant de commencer (10 minutes)
 - Univers **Fantasy classique** : la carte de Valombre, ses habitants et ses secrets sont prêts.

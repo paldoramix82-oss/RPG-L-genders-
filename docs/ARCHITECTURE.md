@@ -11,9 +11,10 @@ scenes/                  Une scène par écran (racine Control + script)
 scripts/
   autoload/
     app.gd               App   : réglages locaux, profil, identifiant d'appareil, navigation
-    style.gd             Style : thème visuel commun, mise à l'échelle sur téléphone
+    style.gd             Style : thème visuel commun, mise à l'échelle sur téléphone (portrait
+                         et paysage), orientation
     net.gd               Net   : transport ENet, authentification, reconnexion, 2 RPC
-    music.gd             Music : lecture avec fondu enchaîné, volume local
+    music.gd             Music : lecture avec fondu enchaîné, volume local, thème des menus
   game/
     content.gd           Catalogue de campagne : règles, classes, capacités, statuts, objets,
                          butin, monstres ; validation des créations du MJ ; vue joueur
@@ -22,6 +23,7 @@ scripts/
                          ultime, victoire et butin, jeu automatique des monstres
     effects.gd           Description en français des effets et capacités
     inventory.gd         Inventaire : instances d'objets, équipement, aperçu, tables de butin
+    vision.gd            Brouillard de guerre : rayon de vision, ligne de vue, exploration
     migrate.gd           Conversion des anciennes fiches / sauvegardes
     phases.gd            Phases de jeu et leurs règles
     character_data.gd    Fiche de personnage : valeurs par défaut, validation (récit / complète), vue publique
@@ -37,10 +39,11 @@ scripts/
     session_client.gd    Vue locale d'un joueur + file d'envoi avec accusés de réception
     lan_discovery.gd     Annonce / écoute des parties sur le Wi-Fi (facultatif)
     net_utils.gd         Adresses IP locales
-  ui/                    Écrans + composants : MapView (carte, pions, chiffres flottants),
-                         FeedView (récit), Composer, CreationWizard, CharacterSheet,
-                         InventoryView, OverlayPanel, ResourceBar, Portrait, Icons, GameUI,
-                         CodexView, TabbedPages, UIKit, Palette
+  ui/                    Écrans + composants : MapView (carte, pions, brouillard, chiffres
+                         flottants), FeedView (récit), Composer, CreationWizard,
+                         CharacterSheet, InventoryView, OverlayPanel, ConfirmBox, Notifier,
+                         OrnateStyle (habillage), ResourceBar, Portrait, Icons, GameUI,
+                         CodexView, TabbedPages, UIKit, Palette, Backdrop
     host/                Outils du MJ : CharacterTools, ContentPanel / ContentEditor /
                          EffectList (créateurs), QuestPanel / QuestEditor
 data/
@@ -119,11 +122,17 @@ L'état de l'hôte est fait de dictionnaires simples, sérialisés en JSON dans 
 
 ## Interface
 
-- Thème construit en code (`Style`) : anthracite, or discret, violet désaturé, blanc cassé ; titres en Cinzel, texte en Alegreya Sans.
-- PC : tableau de bord en trois colonnes (connexion & joueurs / messages / réseau & journal).
-- Android : portrait, ~400 unités de large quelle que soit la résolution (mise à l'échelle selon la densité de l'écran), barre de navigation basse, boutons ≥ 48 unités, espace réservé au clavier virtuel.
+- Thème construit en code (`Style`) : noir bleuté, or doux, violet désaturé, blanc cassé ; titres en Cinzel, texte en Alegreya Sans. Panneaux et boutons dessinés par `OrnateStyle` (sous-classe de `StyleBox` : coins biseautés, dégradé, liseré, équerres dorées) ; variations `CardPanel`, `InsetPanel`, `HighlightPanel`, `MagicPanel`, `DangerPanel`, `PrimaryButton`, `DangerButton`, `NavButton`.
+- Composants partagés : `ResourceBar` (jauges animées), `Portrait`, `Icons`, `GameUI` (cartes de capacité / passif / objet, cases de caractéristique avec base + bonus, rangées d'effets, titres de section), `OverlayPanel`, `ConfirmBox` (confirmation intégrée), `Notifier` (notifications typées, empilées, non bloquantes).
+- L'interface n'applique jamais de règle : elle envoie une demande, affiche l'état confirmé par l'hôte, et appelle `Rules` / `Effects` / `Inventory.preview` pour décrire ou comparer. Les notifications du joueur naissent de la différence entre deux états confirmés de sa fiche. `SessionClient.outbox_changed` alimente l'indicateur « Envoi… ».
+- PC (MJ) : quatre zones à séparateurs déplaçables (`HSplitContainer` / `VSplitContainer`) — joueurs | carte & récit, avec en bas la saisie et le journal des actions | outils ; raccourcis clavier (`_unhandled_key_input`).
+- Android : le petit côté de l'écran fait ~400 unités quelle que soit la résolution ; orientation automatique (`window/handheld/orientation = sensor`, réglable par le joueur). Portrait : barre du bas, actions de tour sous la carte. Paysage : les nœuds sont déplacés (pas reconstruits) vers une colonne de droite, le panneau de tour passe à côté de la carte. Marges des zones système (`get_display_safe_area`), espace réservé au clavier virtuel, boutons ≥ 40–48 unités.
 - Les textes des joueurs sont affichés dans des `Label` (aucun balisage interprété).
-- Carte : le terrain est dessiné une seule fois dans une texture (`TerrainPainter` dans un `SubViewport`, 2048 px maximum pour rester compatible avec tous les téléphones) ; seuls les pions, étiquettes et sélections sont redessinés.
+- Carte : le terrain est dessiné une seule fois dans une texture (`TerrainPainter` dans un `SubViewport`, 2048 px maximum pour rester compatible avec tous les téléphones) ; seuls les pions, étiquettes et sélections sont redessinés. Le brouillard est une image d'un pixel par case, étirée et lissée sur le plateau.
+
+## Brouillard de guerre
+
+`Vision` calcule, pour chaque pion de joueur, les cases à moins de « vision » cases (`Rules.derived().vision` = base + Dextérité ÷ diviseur + bonus `vision`) dont la ligne de vue (Bresenham) ne traverse pas de terrain opaque. `SessionServer._map_view(player_id)` construit la carte envoyée à **ce** joueur : pions limités aux cases visibles (plus les siens), étiquettes limitées aux cases explorées, et `fog = {explored, visible}` (chaînes de « 0 »/« 1 »). L'exploration est stockée dans `map.explored[player_id]` et donc sauvegardée avec la carte. `EVT_TOKENS` transporte aussi `fog` et `labels` quand le brouillard est actif ; les retours visuels (`EVT_FX`) sont filtrés de la même façon. Désactivable par carte (`map.fog_of_war`), vision partagée par règle (`shared_vision`).
 - Dés : `DiceTray` anime le lancer pendant que l'hôte tire le résultat, puis affiche les vraies valeurs.
 
 ## Règles et combat

@@ -22,6 +22,8 @@ Moteur : **Godot 4.4** (GDScript), rendu *Compatibility* (OpenGL) pour fonctionn
 - **Actions libres** déclarées par les joueurs et résolues par le MJ, **dés** (d4 à d100, formules libres, jets publics ou secrets, calculés par l'hôte), messages publics et privés.
 - **Secrets protégés** : pions cachés, étiquettes secrètes, codex MJ, jets secrets, secrets des fiches ne sont jamais envoyés aux joueurs non autorisés.
 - **Sauvegarde automatique** et reprise de campagne ; reconnexion automatique des joueurs.
+- **Brouillard de guerre** : chacun ne voit la carte qu'autour de son personnage, selon sa vision (Dextérité) ; murs et forêts cachent ce qu'il y a derrière ; l'exploration est mémorisée.
+- **Téléphone en portrait ou en paysage**, musique dans les menus avant la partie.
 - **Interface fantasy sombre** pensée pour le téléphone : PV, mana et capacités toujours visibles, panneaux superposés, frise des tours, chiffres flottants, portraits et icônes ; tableau du MJ en quatre zones sur PC. Aide intégrée pour les débutants.
 
 Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUIDE_DEBUTANT.md). Mode d'emploi complet : [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md).
@@ -31,9 +33,9 @@ Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUI
 | Élément | État |
 |---|---|
 | Réseau local (hôte autoritaire, validation, reconnexion, confidentialité) | ✅ testé automatiquement |
-| Règles, combat, progression, butin, quêtes, conversion des sauvegardes | ✅ testé automatiquement (`tests/rules_test.tscn`, 80 vérifications) |
-| Parties en réseau (3 scénarios multi-processus) | ✅ 80 vérifications (`tests/run_net_test.sh`) |
-| Interfaces joueur (téléphone) et MJ (PC) | ✅ vérifiées par captures d'écran ; à essayer en vrai |
+| Règles, combat, progression, butin, quêtes, brouillard de guerre, conversion des sauvegardes | ✅ testé automatiquement (`tests/rules_test.tscn`, 92 vérifications) |
+| Parties en réseau (3 scénarios multi-processus) | ✅ 81 vérifications (`tests/run_net_test.sh`) |
+| Interfaces joueur (téléphone portrait et paysage) et MJ (PC) | ✅ vérifiées par captures d'écran ; à essayer sur de vrais appareils ([plan de la refonte visuelle](docs/PLAN_REFONTE_UI.md)) |
 | **Essai sur vrais appareils (Windows + Android)** | ⏳ à faire : [docs/TEST_PHASE1.md](docs/TEST_PHASE1.md) |
 
 ## Démarrage rapide (développement)
