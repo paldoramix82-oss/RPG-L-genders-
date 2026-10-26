@@ -1,8 +1,10 @@
 class_name Icons
 extends Control
-## Icônes vectorielles du jeu (objets, capacités, effets), dessinées en code :
-## aucune image externe, nettes à toutes les tailles. Les coordonnées sont dans
-## un carré unité centré (−0,5 … 0,5).
+## Icônes du jeu (objets, capacités, effets). Un sprite pixel art est utilisé
+## quand il existe (objets en couleurs, symboles teintés de la couleur de
+## l'élément, voir Sprites) ; sinon l'icône est dessinée en vectoriel. Avec un
+## fond, l'icône est posée sur une tuile carrée éclairée de sa couleur.
+## Coordonnées vectorielles : carré unité centré (−0,5 … 0,5).
 ##
 ## Utilisation : Icons.new("sword", couleur, 40) comme contrôle, ou
 ## Icons.paint(canvas, "sword", rect, couleur) dans un _draw().
@@ -19,6 +21,7 @@ func _init(icon_name: String = "star", icon_color: Color = Palette.GOLD, px: flo
 	color = icon_color
 	custom_minimum_size = Vector2(px, px)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 func set_icon(icon_name: String, icon_color: Color = color) -> void:
@@ -30,14 +33,40 @@ func set_icon(icon_name: String, icon_color: Color = color) -> void:
 func _draw() -> void:
 	var s := minf(size.x, size.y)
 	var r := Rect2((size - Vector2(s, s)) * 0.5, Vector2(s, s))
+	var pixel := Sprites.item(icon) != null or Sprites.glyph(icon) != null
 	if backing.a > 0:
-		draw_circle(r.get_center(), s * 0.5, backing)
-	if frame.a > 0:
+		if pixel:
+			_tile(r, s)
+		else:
+			draw_circle(r.get_center(), s * 0.5, backing)
+	if frame.a > 0 and not pixel:
 		draw_arc(r.get_center(), s * 0.5 - 1, 0, TAU, 32, frame, 1.5, true)
 	paint(self, icon, r.grow(-s * 0.12) if backing.a > 0 else r, color)
 
 
+## Tuile de capacité : fond sombre, lueur de la couleur de l'élément, cadre biseauté.
+func _tile(r: Rect2, s: float) -> void:
+	r = Rect2(r.position.round(), r.size.round())
+	draw_rect(r, backing)
+	var c := r.get_center()
+	for i in 6:
+		draw_circle(c, s * 0.5 * (1.0 - i * 0.13), Color(color, 0.07))
+	draw_colored_polygon(PackedVector2Array([r.position, r.position + Vector2(r.size.x, 0), r.position + Vector2(0, r.size.y)]), Color(1, 1, 1, 0.05))
+	var fc := frame if frame.a > 0 else color.darkened(0.2)
+	draw_rect(r.grow(-1), fc, false, 2.0)
+	draw_rect(r.grow(-3), Color(0, 0, 0, 0.45), false, 1.0)
+	draw_line(r.position + Vector2(3, 3), r.position + Vector2(r.size.x - 3, 3), Color(color.lightened(0.45), 0.55), 1.0)
+
+
 static func paint(ci: CanvasItem, name: String, rect: Rect2, col: Color) -> void:
+	var sprite := Sprites.item(name)
+	if sprite != null:
+		Sprites.draw_centered(ci, sprite, rect)
+		return
+	sprite = Sprites.glyph(name)
+	if sprite != null:
+		Sprites.draw_centered(ci, sprite, rect, col.lightened(0.15))
+		return
 	var c := rect.get_center()
 	var s := minf(rect.size.x, rect.size.y)
 	var w := maxf(1.5, s * 0.08)

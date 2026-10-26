@@ -1470,9 +1470,9 @@ func mj_snapshot(map_id: String) -> void:
 	if map.is_empty():
 		return
 	var stack: Array = _undo.get(map_id, [])
-	if not stack.is_empty() and String(stack[-1]) == String(map.cells):
+	if not stack.is_empty() and String(stack[-1].cells) == String(map.cells) and stack[-1].decor == map.get("decor", {}):
 		return
-	stack.append(String(map.cells))
+	stack.append({"cells": String(map.cells), "decor": (map.get("decor", {}) as Dictionary).duplicate()})
 	if stack.size() > 20:
 		stack.pop_front()
 	_undo[map_id] = stack
@@ -1483,10 +1483,12 @@ func mj_undo(map_id: String) -> bool:
 	var stack: Array = _undo.get(map_id, [])
 	if map.is_empty() or stack.is_empty():
 		return false
-	var cells := String(stack.pop_back())
+	var snap: Dictionary = stack.pop_back()
+	var cells := String(snap.cells)
 	if cells.length() != int(map.w) * int(map.h):
 		return false
 	map.cells = cells
+	map["decor"] = (snap.get("decor", {}) as Dictionary).duplicate()
 	map_changed(map_id)
 	return true
 
@@ -1554,6 +1556,7 @@ func mj_generate_map(kind: String, size_key: String, map_name: String = "", seed
 	# Bâtiments prêts et leurs habitants (village, ville, lieux des grandes cartes).
 	for b in gen.get("buildings", []):
 		mj_place_prefab(map.id, String(b.id), int(b.x), int(b.y), true, true)
+	_refresh_sprites(map)
 	_unsaved = true
 	maps_changed.emit()
 	return map
@@ -1622,8 +1625,34 @@ func mj_toggle_label_hidden_at(map_id: String, x: int, y: int) -> void:
 
 ## À appeler après toute modification d'une carte par le MJ. tokens_only : seuls
 ## les pions ont changé (envoi plus léger que la carte complète).
+## Sprite pixel art de chaque pion (« groupe/nom », voir Sprites) : classe du
+## personnage, métier du PNJ, espèce du monstre, coffre ou objet à ramasser.
+func _refresh_sprites(map: Dictionary) -> void:
+	for t in map.get("tokens", []):
+		var sprite := "units/pnj"
+		var cid := String(t.get("char_id", "")) if String(t.get("char_id", "")) != "" else String(t.get("owner", ""))
+		var sheet: Dictionary = characters.get(cid, {})
+		match String(t.get("kind", "")):
+			"pc":
+				sprite = "units/" + (String(sheet.get("class_id", "")) if String(sheet.get("class_id", "")) != "" else "heros")
+			"monster":
+				sprite = "units/" + (String(sheet.get("monster_id", "")) if String(sheet.get("monster_id", "")) != "" else "monstre")
+			"npc":
+				if String(t.get("role", "")) != "":
+					sprite = "units/" + String(t.role)
+				elif String(sheet.get("class_id", "")) != "":
+					sprite = "units/" + String(sheet.class_id)
+			"object":
+				sprite = "items/chest"
+				if t.get("pickup", false) and not (t.get("chest_items", []) as Array).is_empty():
+					var def := Content.get_entry(content, "items", String(t.chest_items[0].get("item", "")))
+					sprite = "items/" + String(def.get("icon", "bag"))
+		t.sprite = sprite
+
+
 func map_changed(map_id: String, tokens_only: bool = false) -> void:
 	_unsaved = true
+	_refresh_sprites(maps.get(map_id, {}))
 	if map_id == active_map:
 		_mark("tokens" if tokens_only else "map")
 	maps_changed.emit()
@@ -3285,6 +3314,8 @@ func flush() -> void:
 		return
 	var dirty := _dirty
 	_dirty = {}
+	if dirty.has("map") or dirty.has("tokens"):
+		_refresh_sprites(maps.get(active_map, {}))
 	if dirty.has("characters"):
 		_broadcast_characters()
 	if dirty.has("map"):

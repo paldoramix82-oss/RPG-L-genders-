@@ -1116,9 +1116,11 @@ func _prefab_button(id: String) -> Control:
 				var ch := String(rows[j])[i]
 				if ch == " ":
 					continue
-				var code: String = String(def.get("floor", "d")) if ch in ["+", "@", "$", "M"] else ch
+				var code := Prefabs.cell_code(ch, String(def.get("floor", "d")))
 				var col := MapData.terrain_color(code)
-				if ch == "#":
+				if Prefabs.DECOR.has(ch):
+					col = Color("b07a44")
+				elif ch == "#":
 					col = Color("8a8378")
 				elif ch == "@":
 					col = Palette.GOLD

@@ -237,6 +237,14 @@ L'écran est organisé en quatre zones, séparées par des **barres déplaçable
 
 **Quêtes secondaires prêtes** : 25 quêtes (loups, brigands, chef des bandits, gobelins, araignées, ours, squelettes, ombres, golem, cultistes, cave infestée, herbes de lune, champignons, minerai, outils volés, récolte, cristaux, gemmes, relique, peaux, antidote, colis, lettre, patrouille, compagnon perdu), chacune liée aux métiers qui peuvent la confier. **Un habitant salue et propose une quête dès qu'on lui parle** (toucher le PNJ à 2 cases au plus suffit) ; une fois finie, il en propose une autre. À l'acceptation, la quête **s'installe toute seule** : monstres à vaincre placés plus loin, objets à ramasser sur la carte, lieu à atteindre marqué, colis ou lettre remis au joueur. Les objectifs se cochent seuls ; on termine en **revenant voir** le PNJ (qui reprend les objets demandés) et les récompenses tombent. Les PNJ des aventures prêtes ont aussi un métier. Outils de retouche : **Peindre** (pinceau réglable), **Remplir** (toute une zone d'un même terrain), **Rectangle**, **Pièce** (sol + murs autour, en deux touches), et **Annuler la dernière retouche** (Ctrl + Z, 20 étapes).
 
+## Graphismes
+
+Le jeu est en **pixel art** (sprites originaux générés par `tools/make_sprites.py`) :
+- **Icônes** : chaque objet a son dessin (épée, arc, potion, herbe, relique…) ; les capacités et effets sont des symboles (feu, glace, foudre, cœur…) posés sur une **tuile carrée qui s'éclaire de la couleur de leur élément**.
+- **Carte** : arbres variés (chênes, pins, arbres fruitiers, en fleurs, d'automne, sapins enneigés), buissons, rochers, fleurs, roseaux, nénuphars, cristaux. Les **bâtiments prêts** sont meublés (tables, tonneaux, caisses, lits, étagères, enclume et forge, autel et piliers, chaudron, bottes de foin, tapis), la place du marché a ses **étals colorés**, le campement ses **tentes** et son feu, le puits et les tombes sont dessinés. Repeindre une case enlève son meuble ; *Annuler* le remet.
+- **Pions** : un petit personnage selon la **classe** du héros, le **métier** du PNJ (aubergiste avec sa chope, forgeron et son marteau, garde et sa lance…) ou l'**espèce** du monstre (loup, gobelin, squelette, araignée, ours, golem, dragon…), debout sur un socle de la couleur du pion. Coffres et objets à ramasser ont leur sprite.
+- La case de la carte mesure 16 ou 32 pixels, pour des pixels nets à toutes les tailles de carte.
+
 ## Musique
 
 Avant le début de la partie (menus, création du personnage, salon), le **thème principal** joue en fond, sur le PC comme sur les téléphones ; le bouton *Musique* de l'accueil le coupe (réglage gardé par l'appareil). Si le MJ lance un morceau, c'est le sien qu'on entend ; quand la partie commence, le thème s'arrête et c'est le MJ qui choisit la musique.

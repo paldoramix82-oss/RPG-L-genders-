@@ -787,6 +787,26 @@ func _test_town() -> void:
 					_expect(npcs.size() >= (4 if size == "grande" else 8), "%s %s (graine %d) : %d habitants" % [kind, size, seed_value, npcs.size()])
 				_expect(stuck.is_empty(), "%s %s (graine %d) : chaque habitant est accessible à pied (%d coincés)" % [kind, size, seed_value, stuck.size()])
 	_expect(MapGen.SIZES.immense.x >= 100, "taille immense disponible (100 × 68)")
+	# Décor pixel art : posé par les bâtiments, effacé en repeignant, rétabli par « Annuler ».
+	var dm := s.mj_create_map("Décor", 30, 20)
+	var dmap: Dictionary = s.maps[dm.id]
+	s.mj_place_prefab(dm.id, "auberge", 10, 8, false)
+	var tables := (dmap.get("decor", {}) as Dictionary).values().filter(func(v): return v == "table")
+	_expect(not tables.is_empty(), "auberge : tables posées dans le décor (%d)" % tables.size())
+	var key: String = (dmap.decor as Dictionary).keys()[0]
+	var kx := int(key.get_slice(",", 0))
+	var ky := int(key.get_slice(",", 1))
+	s.mj_snapshot(dm.id)
+	MapData.set_cell(dmap, kx, ky, ".")
+	_expect(MapData.decor_at(dmap, kx, ky) == "", "repeindre une case enlève son décor")
+	s.mj_undo(dm.id)
+	_expect(MapData.decor_at(dmap, kx, ky) != "", "« Annuler » rétablit le décor")
+	_expect(MapData.view_for_player(dmap).get("decor", {}).size() == dmap.decor.size(), "le décor est envoyé aux joueurs")
+	s._refresh_sprites(s.maps[s.active_map])
+	var sprites := (s.maps[s.active_map].tokens as Array).map(func(t): return String(t.get("sprite", "")))
+	_expect(sprites.has("units/guerrier") and sprites.any(func(x): return x.begins_with("units/") and x != "units/guerrier"), "pions : personnage de classe et habitants dessinés en pixel art")
+	for sp in sprites:
+		_expect(ResourceLoader.exists("res://assets/sprites/%s.png" % sp), "sprite présent : %s" % sp)
 
 
 ## Cases atteignables à pied depuis une case (8 directions, comme les déplacements).

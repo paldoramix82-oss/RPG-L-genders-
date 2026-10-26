@@ -66,6 +66,7 @@ var _terrain_vp: SubViewport
 var _painter: TerrainPainter
 var _baked_cells := ""
 var _baked_size := Vector2i.ZERO
+var _baked_decor := 0
 var _fog_tex: ImageTexture
 var _fog_key := ""
 var _dice_hud: DiceHud
@@ -76,7 +77,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	focus_mode = Control.FOCUS_NONE
 	_font = get_theme_font("font", "StrongLabel")
-	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	# Pixel art : le terrain et les sprites restent nets quand on zoome.
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_terrain_vp = SubViewport.new()
 	_terrain_vp.transparent_bg = true
 	_terrain_vp.disable_3d = true
@@ -283,7 +285,7 @@ func _draw() -> void:
 		var msg := "Aucune carte affichée pour l'instant."
 		draw_string(_font, Vector2(16, size.y * 0.5), msg, HORIZONTAL_ALIGNMENT_CENTER, size.x - 32, 18, Palette.MUTED)
 		return
-	if String(map.cells) != _baked_cells or int(map.w) != _baked_size.x or int(map.h) != _baked_size.y:
+	if String(map.cells) != _baked_cells or int(map.w) != _baked_size.x or int(map.h) != _baked_size.y or hash(map.get("decor", {})) != _baked_decor:
 		_bake()
 	var cs := CELL * zoom
 	var w := int(map.w)
@@ -411,6 +413,7 @@ func _draw_fog(board: Rect2) -> void:
 func _bake() -> void:
 	_baked_cells = String(map.cells)
 	_baked_size = Vector2i(int(map.w), int(map.h))
+	_baked_decor = hash(map.get("decor", {}))
 	_painter.setup(map)
 	_terrain_vp.size = Vector2i(_painter.size)
 	_terrain_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -462,7 +465,26 @@ func _draw_token(t: Dictionary, cell_pos: Vector2, cs: float, alpha: float) -> v
 	_ellipse(base + Vector2(r * 0.12, r * 0.08), Vector2(r * 0.85, r * 0.3), Color(0, 0, 0, 0.45 * alpha))
 	var light := color.lightened(0.35)
 	var dark := color.darkened(0.35)
+	# Pion en pixel art (personnage, monstre, coffre) quand le sprite existe.
+	var sp := String(t.get("sprite", ""))
+	if sp == "" and kind == "npc" and String(t.get("role", "")) != "":
+		sp = "units/" + String(t.role)
+	elif sp == "" and kind == "object" and t.has("loot"):
+		sp = "items/chest"
+	var tex: Texture2D = Sprites.tex(sp.get_slice("/", 0), sp.get_slice("/", 1)) if sp.contains("/") else null
+	if tex == null and kind != "object":
+		tex = Sprites.tex("units", "monstre" if kind == "monster" else ("heros" if kind == "pc" else "pnj"))
+	if tex != null:
+		if kind != "object":
+			_ellipse(base, Vector2(r * 0.78, r * 0.3), Color(ring, 0.9 * alpha))
+			_ellipse(base, Vector2(r * 0.66, r * 0.24), color)
+		var side := cs * (0.98 if kind != "object" else 0.8)
+		var rect := Rect2(Vector2(center.x - side * 0.5, base.y + r * 0.12 - side), Vector2(side, side))
+		draw_texture_rect(tex, rect, false, Color(1, 1, 1, alpha))
+		kind = "sprite"
 	match kind:
+		"sprite":
+			pass
 		"object":
 			var box := Rect2(center - Vector2(r * 0.75, r * 0.35), Vector2(r * 1.5, r * 0.95))
 			draw_rect(box, color)
@@ -498,7 +520,7 @@ func _draw_token(t: Dictionary, cell_pos: Vector2, cs: float, alpha: float) -> v
 	# Initiales sur une petite plaque
 	var initials := CharacterData.initials_of(String(t.get("name", "?")))
 	var fs := maxi(7, int(r * 0.5))
-	if cs >= 16:
+	if cs >= 16 and kind != "sprite":
 		var tw := _font.get_string_size(initials, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var plate := Rect2(base + Vector2(-tw * 0.5 - 3, -fs * 0.55), Vector2(tw + 6, fs + 2))
 		draw_rect(plate, Color(0.08, 0.07, 0.1, 0.75 * alpha))

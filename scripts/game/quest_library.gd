@@ -62,13 +62,13 @@ const ROLES := {
 
 ## Objets propres aux quêtes (ajoutés au catalogue de la campagne si besoin).
 const ITEMS := {
-	"herbe_lune": {"id": "herbe_lune", "name": "Herbe de lune", "icon": "drop", "category": "quete", "rarity": "commun", "description": "Une herbe argentée qui ne pousse qu'à l'ombre.", "value": 2, "slot": "", "stackable": true, "unique": false},
-	"champignon_lueur": {"id": "champignon_lueur", "name": "Champignon luisant", "icon": "food", "category": "quete", "rarity": "commun", "description": "Il brille faiblement dans le noir.", "value": 2, "slot": "", "stackable": true, "unique": false},
+	"herbe_lune": {"id": "herbe_lune", "name": "Herbe de lune", "icon": "herb", "category": "quete", "rarity": "commun", "description": "Une herbe argentée qui ne pousse qu'à l'ombre.", "value": 2, "slot": "", "stackable": true, "unique": false},
+	"champignon_lueur": {"id": "champignon_lueur", "name": "Champignon luisant", "icon": "mushroom", "category": "quete", "rarity": "commun", "description": "Il brille faiblement dans le noir.", "value": 2, "slot": "", "stackable": true, "unique": false},
 	"colis_scelle": {"id": "colis_scelle", "name": "Colis scellé", "icon": "bag", "category": "quete", "rarity": "commun", "description": "Un paquet ficelé, plus lourd qu'il n'en a l'air.", "value": 0, "slot": "", "stackable": false, "unique": false},
-	"relique_sainte": {"id": "relique_sainte", "name": "Relique sainte", "icon": "sun", "category": "quete", "rarity": "rare", "description": "Un reliquaire d'argent, tiède au toucher.", "value": 0, "slot": "", "stackable": false, "unique": false},
-	"outils_forge": {"id": "outils_forge", "name": "Outils de forge", "icon": "hammer", "category": "quete", "rarity": "commun", "description": "Pinces, marteaux et burins, gravés au nom du forgeron.", "value": 0, "slot": "", "stackable": false, "unique": false},
-	"sac_grain": {"id": "sac_grain", "name": "Sac de grain", "icon": "bag", "category": "quete", "rarity": "commun", "description": "Lourd et poussiéreux.", "value": 1, "slot": "", "stackable": true, "unique": false},
-	"eclat_cristal": {"id": "eclat_cristal", "name": "Éclat de cristal", "icon": "spiral", "category": "quete", "rarity": "peu_commun", "description": "Il vibre doucement près de la magie.", "value": 5, "slot": "", "stackable": true, "unique": false},
+	"relique_sainte": {"id": "relique_sainte", "name": "Relique sainte", "icon": "relic", "category": "quete", "rarity": "rare", "description": "Un reliquaire d'argent, tiède au toucher.", "value": 0, "slot": "", "stackable": false, "unique": false},
+	"outils_forge": {"id": "outils_forge", "name": "Outils de forge", "icon": "tools", "category": "quete", "rarity": "commun", "description": "Pinces, marteaux et burins, gravés au nom du forgeron.", "value": 0, "slot": "", "stackable": false, "unique": false},
+	"sac_grain": {"id": "sac_grain", "name": "Sac de grain", "icon": "grain", "category": "quete", "rarity": "commun", "description": "Lourd et poussiéreux.", "value": 1, "slot": "", "stackable": true, "unique": false},
+	"eclat_cristal": {"id": "eclat_cristal", "name": "Éclat de cristal", "icon": "crystal", "category": "quete", "rarity": "peu_commun", "description": "Il vibre doucement près de la magie.", "value": 5, "slot": "", "stackable": true, "unique": false},
 }
 
 ## Modèles de quêtes. objectives : kind kill/item/talk/reach (+ target, count).

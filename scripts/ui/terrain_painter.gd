@@ -2,6 +2,8 @@ class_name TerrainPainter
 extends Control
 ## Dessine tout le terrain d'une carte une seule fois, dans une texture (SubViewport) :
 ## dégradés entre terrains, rivages, arbres, montagnes, toits, murs, détails.
+## Arbres, rochers, fleurs, mobilier et décors sont des sprites pixel art
+## (voir Sprites), dessinés à une échelle entière : la case fait 16 ou 32 px.
 ## MapView affiche ensuite cette texture : rapide même pour les grandes cartes.
 
 ## Taille de la texture limitée à 2048 px : garanti sur tous les téléphones (OpenGL ES 3).
@@ -23,7 +25,8 @@ func setup(new_map: Dictionary) -> void:
 	_cells = map.cells
 	_w = int(map.w)
 	_h = int(map.h)
-	S = clampf(floorf(MAX_TEXTURE / maxi(_w, _h)), 12.0, 40.0)
+	S = 32.0 if maxi(_w, _h) * 32 <= MAX_TEXTURE else 16.0
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	size = Vector2(_w, _h) * S
 	queue_redraw()
 
@@ -120,15 +123,18 @@ func _detail(x: int, y: int, code: String) -> void:
 	var n := _n(x, y, 7)
 	match code:
 		".":
-			if n < 0.3:
-				_tuft(p + Vector2(_n(x, y, 1), _n(x, y, 2)) * S * 0.8 + Vector2(2, 4), base)
-			elif n > 0.93:
-				draw_circle(p + Vector2(_n(x, y, 3), _n(x, y, 4)) * S, 1.6, [Color("e8d27a"), Color("d98ca8"), Color("f2f0e6")][int(n * 100) % 3])
+			if n < 0.1:
+				_spr("nature", "grass_%d" % (int(n * 100) % 2), x, y)
+			elif n > 0.975:
+				_spr("nature", "bush_%d" % (int(n * 1000) % 2), x, y, true)
+			elif n > 0.95:
+				_spr("nature", "flowers_%d" % (int(n * 1000) % 3), x, y)
+			elif n > 0.94:
+				_spr("nature", "rock_0", x, y, true)
 		"y":
-			for i in 5:
-				var fp := p + Vector2(_n(x, y, 10 + i), _n(x, y, 20 + i)) * S
-				draw_circle(fp, 1.7, [Color("f0d36a"), Color("e58fb0"), Color("f4f1e8"), Color("a99ae0")][i % 4])
-			_tuft(p + Vector2(S * 0.3, S * 0.6), base)
+			_spr("nature", "flowers_%d" % (int(n * 1000) % 3), x, y)
+			if n > 0.8:
+				_spr("nature", "grass_1", x, y)
 		"z":
 			for i in 4:
 				var yy := p.y + S * (0.15 + i * 0.25)
@@ -136,23 +142,14 @@ func _detail(x: int, y: int, code: String) -> void:
 			if n > 0.7:
 				draw_line(p + Vector2(S * 0.5, S * 0.2), p + Vector2(S * 0.5, S * 0.5), Color("c9b56a"), 1.0)
 		"f", "F":
-			var count := 2 if code == "f" else 3
-			for i in count:
-				var tp := p + Vector2(_n(x, y, 30 + i) * 0.6 + 0.2, _n(x, y, 40 + i) * 0.6 + 0.2) * S
-				var r := S * (0.3 if code == "f" else 0.36) * (0.85 + _n(x, y, 50 + i) * 0.35)
-				_tree(tp, r, base, code == "F")
+			_forest_cell(x, y, code, n)
 		"m":
 			_mountain(c + Vector2(0, S * 0.1), S * (0.62 + n * 0.2), base)
 		"h":
 			draw_circle(c + Vector2(0, S * 0.22), S * 0.42, Color(base.darkened(0.12), 0.6))
 			draw_arc(c + Vector2(0, S * 0.3), S * 0.4, PI * 1.05, PI * 1.95, 12, base.lightened(0.18), 2.0, true)
 		"q":
-			for i in 3:
-				var rp := p + Vector2(_n(x, y, 60 + i) * 0.6 + 0.2, _n(x, y, 70 + i) * 0.6 + 0.2) * S
-				var rr := S * (0.12 + _n(x, y, 80 + i) * 0.1)
-				draw_circle(rp + Vector2(1, 2), rr, Color(0, 0, 0, 0.3))
-				draw_circle(rp, rr, base.lightened(0.05))
-				draw_circle(rp - Vector2(rr, rr) * 0.3, rr * 0.45, base.lightened(0.25))
+			_spr("nature", ["rock_0", "rock_1", "rock_big", "rock_moss"][int(n * 1000) % 4], x, y, true)
 		"b", "R":
 			_roof(x, y, p, base)
 		"#":
@@ -194,12 +191,20 @@ func _detail(x: int, y: int, code: String) -> void:
 			draw_arc(Vector2(xx + S * 0.15, yy), S * 0.15, PI * 1.15, PI * 1.85, 6, wc, 1.2, true)
 			if n > 0.85:
 				draw_circle(p + Vector2(_n(x, y, 5), _n(x, y, 6)) * S, 1.0, Color(1, 1, 1, 0.35))
+			if code == "w" and n < 0.04:
+				_spr("nature", "lily", x, y)
 		"g":
 			draw_line(p + Vector2(S * _n(x, y, 1), 0), p + Vector2(S * _n(x, y, 2), S), Color(1, 1, 1, 0.35), 1.0)
 		"n":
 			if n > 0.6:
 				draw_circle(p + Vector2(_n(x, y, 1), _n(x, y, 2)) * S, S * 0.12, Color(0.75, 0.8, 0.88, 0.5))
+			if n < 0.1:
+				_spr("nature", "pine_snow", x, y, true)
+			elif n > 0.95:
+				_spr("nature", "rock_snow", x, y, true)
 		"s":
+			if n > 0.96:
+				_spr("nature", "rock_sand", x, y, true)
 			draw_arc(c + Vector2(0, S * (n - 0.5) * 0.4), S * 0.35, PI * 1.2, PI * 1.8, 8, base.darkened(0.12), 1.0, true)
 		"c":
 			for i in 3:
@@ -210,6 +215,8 @@ func _detail(x: int, y: int, code: String) -> void:
 			draw_circle(p + Vector2(_n(x, y, 3), _n(x, y, 4)) * S, S * 0.12, Color("ffd76a", 0.9))
 			draw_line(p + Vector2(0, S * n), p + Vector2(S, S * _n(x, y, 9)), Color("5a1e12", 0.6), 1.5)
 		"k":
+			if n > 0.55:
+				_spr("nature", "reeds", x, y)
 			draw_circle(p + Vector2(_n(x, y, 1) * 0.6 + 0.2, _n(x, y, 2) * 0.6 + 0.2) * S, S * 0.16, Color("2f4a52", 0.7))
 			for i in 3:
 				var rx := p.x + S * (0.2 + i * 0.28)
@@ -218,12 +225,18 @@ func _detail(x: int, y: int, code: String) -> void:
 			for i in 3:
 				var sp := p + Vector2(_n(x, y, 20 + i), _n(x, y, 30 + i)) * S
 				draw_rect(Rect2(sp, Vector2(3, 2)), base.darkened(0.35) if i % 2 else base.lightened(0.15))
+			if n > 0.93:
+				_spr("nature", "rock_1" if code == "x" else "mushrooms", x, y, code == "x")
 		"a":
-			_crystal(c, base)
+			_spr("props", "crystal_cluster", x, y, true)
 		"t":
-			draw_rect(Rect2(p + Vector2(S * 0.15, S * 0.25), Vector2(S * 0.7, S * 0.55)), Color(0, 0, 0, 0.3))
-			draw_rect(Rect2(p + Vector2(S * 0.12, S * 0.18), Vector2(S * 0.7, S * 0.5)), Color("7a5634"))
-			draw_rect(Rect2(p + Vector2(S * 0.12, S * 0.18), Vector2(S * 0.7, S * 0.08)), Color("9a7044"))
+			if MapData.decor_at(map, x, y) == "":
+				_spr("props", ["table", "barrel", "crate", "shelf", "chair", "sacks"][int(n * 1000) % 6], x, y, true)
+	# Décor posé par les bâtiments prêts (meubles, étals, tentes, puits…).
+	var decor := MapData.decor_at(map, x, y)
+	if decor != "" and decor != "-":
+		var wide := decor.begins_with("stall_")
+		_spr("props", decor, x, y, true, wide)
 
 
 func _tuft(at: Vector2, base: Color) -> void:
@@ -287,3 +300,43 @@ func _crystal(at: Vector2, base: Color) -> void:
 		var pts := PackedVector2Array([Vector2(bx - w, bottom), Vector2(bx - w * 0.8, bottom - h * 0.7), Vector2(bx, bottom - h), Vector2(bx + w * 0.8, bottom - h * 0.7), Vector2(bx + w, bottom)])
 		draw_colored_polygon(pts, Color("9d8cdc"))
 		draw_colored_polygon(PackedVector2Array([Vector2(bx - w * 0.8, bottom - h * 0.7), Vector2(bx, bottom - h), Vector2(bx, bottom)]), Color("cfc4fa"))
+
+
+## Sprite posé sur une case : centré en bas de la case (débordant vers le haut s'il
+## est plus grand), ou à partir du bord gauche (« wide », sur deux cases).
+func _spr(group: String, name: String, x: int, y: int, shadow: bool = false, wide: bool = false) -> void:
+	var t := Sprites.tex(group, name)
+	if t == null:
+		return
+	var k := S / 16.0
+	var sz := Vector2(t.get_width(), t.get_height()) * k
+	var bottom := (y + 1) * S
+	var left := x * S if wide else x * S + S * 0.5 - sz.x * 0.5
+	if shadow:
+		var cx := left + sz.x * 0.5
+		var rw := minf(sz.x * 0.36, S * (0.9 if wide or sz.x > S else 0.4))
+		var pts := PackedVector2Array()
+		for i in 12:
+			var a := TAU * i / 12.0
+			pts.append(Vector2(cx + cos(a) * rw, bottom - S * 0.14 + sin(a) * rw * 0.32))
+		draw_colored_polygon(pts, Color(0, 0, 0, 0.22))
+	draw_texture_rect(t, Rect2(Vector2(left, bottom - sz.y), sz), false)
+
+
+## Forêt : un arbre par case (plus ou moins dense), variantes selon la position.
+func _forest_cell(x: int, y: int, code: String, n: float) -> void:
+	if code == "f" and n < 0.35:
+		if n < 0.18:
+			_spr("nature", ["bush_0", "bush_1", "bush_berry"][int(n * 1000) % 3], x, y, true)
+		return
+	var pick := int(_n(x, y, 77) * 100)
+	var name := "tree_%d" % (pick % 3)
+	if code == "F":
+		name = ["tree_dark", "pine_0", "pine_1", "tree_0", "tree_dark"][pick % 5]
+	elif pick < 6:
+		name = "tree_fruit"
+	elif pick < 10:
+		name = "tree_autumn"
+	elif pick < 12:
+		name = "tree_blossom"
+	_spr("nature", name, x, y, true)

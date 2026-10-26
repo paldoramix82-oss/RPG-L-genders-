@@ -3526,7 +3526,7 @@
   "torche": {
    "id": "torche",
    "name": "Torche",
-   "icon": "fire",
+   "icon": "torch",
    "category": "accessoire",
    "rarity": "commun",
    "description": "Éclaire autour de vous : +2 cases de vision (accessoire).",
@@ -3541,7 +3541,7 @@
   "lanterne": {
    "id": "lanterne",
    "name": "Lanterne sourde",
-   "icon": "sun",
+   "icon": "torch",
    "category": "accessoire",
    "rarity": "peu_commun",
    "description": "Lumière stable : +3 cases de vision (accessoire).",
@@ -3556,7 +3556,7 @@
   "corde": {
    "id": "corde",
    "name": "Corde (15 m)",
-   "icon": "chain",
+   "icon": "rope",
    "category": "outil",
    "rarity": "commun",
    "description": "Pour grimper, attacher, descendre dans un puits… Le MJ décide de ce qu'elle permet.",
@@ -3592,7 +3592,7 @@
   "trousse_soins": {
    "id": "trousse_soins",
    "name": "Trousse de soins",
-   "icon": "cross",
+   "icon": "bag",
    "category": "consommable",
    "rarity": "commun",
    "description": "Bandages et onguents : rend 1d4 + 3 PV.",
@@ -3873,7 +3873,7 @@
   "lettre_scellee": {
    "id": "lettre_scellee",
    "name": "Lettre scellée",
-   "icon": "scroll",
+   "icon": "letter",
    "category": "quete",
    "rarity": "peu_commun",
    "description": "Le sceau n'est pas brisé.",

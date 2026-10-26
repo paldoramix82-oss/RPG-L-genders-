@@ -30,6 +30,7 @@ Moteur : **Godot 4.4** (GDScript), rendu *Compatibility* (OpenGL) pour fonctionn
 - **Jeu automatisé, chacun son aventure** : les monstres attaquent quand on entre dans leur périmètre, les **combats sont locaux** (seuls les héros présents y passent, les autres continuent d'explorer), les monstres jouent seuls, on peut **attaquer** ou **fuir** ; les PNJ **proposent leurs quêtes**, les objectifs (vaincre, atteindre, obtenir, parler) se cochent et la quête se termine toute seule. Le MJ garde la main (*Combats en cours*).
 - **Épreuves automatiques** : une action (fouiller, escalader, crocheter, convaincre, intimider, soigner, se cacher…) lance d20 + caractéristique contre une difficulté ; résultat affiché avec le dé et **conséquences appliquées** (objets, dégâts, monstres repérés, coffre ouvert, monstre en fuite…). Le MJ tranche le reste en un clic.
 - **Construire en un clic** : villes et villages générés **construits et habités**, 18 **bâtiments prêts** à poser, 12 métiers de PNJ, cartes jusqu'à 100 × 68 ; **25 quêtes secondaires prêtes** proposées par les PNJ dès qu'on leur parle, qui installent seules leurs monstres, objets à ramasser et lieux.
+- **Pixel art** : 187 sprites originaux — armes, armures, potions, objets de quête, symboles d'éléments sur des tuiles colorées, arbres (chênes, pins, arbres en fleurs, enneigés…), buissons, rochers, fleurs, mobilier (tables, lits, étagères, enclume, autel, tombes, puits), étals de marché et tentes, et des petits personnages pour chaque classe, métier et monstre.
 - **Interface fantasy sombre** pensée pour le téléphone : PV, mana et capacités toujours visibles, panneaux superposés, frise des tours, chiffres flottants, portraits et icônes ; tableau du MJ en quatre zones sur PC. Aide intégrée pour les débutants.
 
 Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUIDE_DEBUTANT.md). Mode d'emploi complet : [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md).
@@ -90,3 +91,4 @@ Lance des hôtes et des joueurs dans des processus Godot séparés qui communiqu
 
 Polices : Cinzel et Alegreya Sans, sous licence SIL Open Font License (voir `assets/fonts/`).
 Musiques : composées et synthétisées pour ce projet par `tools/compose_music.py`.
+Sprites pixel art (objets, symboles, arbres, décors, personnages, monstres) : dessinés pour ce projet par `tools/make_sprites.py` (`assets/sprites/`). Des planches de référence ont servi d'inspiration de style ; aucune image n'en est reprise.

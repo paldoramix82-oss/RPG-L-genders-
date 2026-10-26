@@ -127,6 +127,18 @@ func _host() -> void:
 			screen._open_quest_editor(server.quests[-1] if phase == "libre_npc" else server.quests[0])
 		"ambush":
 			screen._event_ambush()
+		"zoom", "zoom_village":
+			if tab == "zoom_village":
+				var m := server.mj_generate_map("village", "grande", "", 7)
+				screen._edit_map = m.id
+				screen._refresh_map_select()
+				screen._load_edit_map()
+			screen._show("table")
+			await get_tree().create_timer(0.5).timeout
+			var mv: Control = screen._map_view
+			var target := Vector2(px, py) if tab == "zoom" else Vector2(24, 12)
+			mv.zoom_at(mv.size * 0.5, 3.5)
+			mv.offset += mv.size * 0.5 - (mv.offset + (target + Vector2(0.5, 0.5)) * mv.CELL * mv.zoom)
 		"adventure":
 			server.mj_load_adventure("test_magie")
 			screen._show_tools("adventure")

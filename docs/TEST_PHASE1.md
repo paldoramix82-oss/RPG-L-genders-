@@ -116,6 +116,13 @@ Cocher chaque ligne et noter les remarques.
 - [ ] M5. MJ : *Générer…* une ville *Très grande* : bâtiments, noms, habitants ; poser une *Auberge* d'un toucher, puis *Annuler*.
 - [ ] M6. Joueur : toucher un habitant à côté de soi : salutation et quête proposée ; *Accepter* : cibles sur la carte ; terminer et revenir le voir : récompenses, puis nouvelle quête proposée.
 
+### N. Pixel art
+- [ ] N1. Sac, fiche, butin : objets dessinés en pixel art, nets sur le téléphone.
+- [ ] N2. Capacités : symboles sur tuiles colorées selon l'élément.
+- [ ] N3. Carte : forêts, rochers, fleurs ; dans un village généré, meubles dans les maisons, étals au marché.
+- [ ] N4. Pions : petit personnage selon la classe ; PNJ selon le métier ; monstres reconnaissables.
+- [ ] N5. Zoom avant / arrière sur téléphone : pixels nets, pas de ralentissement sur une carte immense.
+
 ## Rapport
 
 Merci d'indiquer, pour chaque ligne en échec : modèle de téléphone, version d'Android, type de réseau (box / partage de connexion de quel téléphone), et le message affiché. Ces informations permettent de corriger avant la phase 2.

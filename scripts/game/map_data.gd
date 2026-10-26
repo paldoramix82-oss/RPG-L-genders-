@@ -114,7 +114,27 @@ static func set_cell(map: Dictionary, x: int, y: int, code: String) -> bool:
 	var i := y * int(map.w) + x
 	var cells: String = map.cells
 	map.cells = cells.substr(0, i) + code + cells.substr(i + 1)
+	# Le décor (meuble, étal, tente…) ne survit pas à un changement de terrain.
+	if map.get("decor") is Dictionary:
+		(map.decor as Dictionary).erase("%d,%d" % [x, y])
 	return true
+
+
+## Décor dessiné sur une case (sprite de assets/sprites/props) ; "" l'enlève.
+static func set_decor(map: Dictionary, x: int, y: int, id: String) -> void:
+	if not in_bounds(map, x, y):
+		return
+	if not map.get("decor") is Dictionary:
+		map["decor"] = {}
+	var key := "%d,%d" % [x, y]
+	if id == "":
+		(map.decor as Dictionary).erase(key)
+	else:
+		map.decor[key] = id.substr(0, 24)
+
+
+static func decor_at(map: Dictionary, x: int, y: int) -> String:
+	return String(map.get("decor", {}).get("%d,%d" % [x, y], "")) if map.get("decor") is Dictionary else ""
 
 
 static func passable(map: Dictionary, x: int, y: int) -> bool:
@@ -229,6 +249,7 @@ static func view_for_player(map: Dictionary) -> Dictionary:
 	var view := {
 		"id": map.id, "name": map.name, "description": map.get("description", ""),
 		"w": map.w, "h": map.h, "cells": map.cells, "players_can_move": map.get("players_can_move", true),
+		"decor": map.get("decor", {}),
 		"labels": [], "tokens": [],
 	}
 	for l in map.labels:
