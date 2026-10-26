@@ -221,8 +221,13 @@ func _rules() -> void:
 	swap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	swap.button_pressed = bool(rules.get("swap_in_combat", false))
 	card.add_child(swap)
+	var shared := CheckBox.new()
+	shared.text = "Vision partagée : chaque joueur voit ce que voit tout le groupe (sinon, seulement autour de son personnage)"
+	shared.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	shared.button_pressed = bool(rules.get("shared_vision", false))
+	card.add_child(shared)
 	card.add_child(UIKit.button("Appliquer les règles", "PrimaryButton", func():
-		var values := {"swap_in_combat": swap.button_pressed}
+		var values := {"swap_in_combat": swap.button_pressed, "shared_vision": shared.button_pressed}
 		for k in spins:
 			values[k] = int(spins[k].value)
 		server.mj_set_rules(values)

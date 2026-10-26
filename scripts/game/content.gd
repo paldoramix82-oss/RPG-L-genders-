@@ -28,10 +28,10 @@ const EFFECT_NAMES := {"damage": "Dégâts", "heal": "Soin", "restore": "Restaur
 	"cleanse": "Retirer des effets négatifs", "push": "Repousser", "pull": "Attirer", "ap": "Points d'action", "stat": "Modifier une caractéristique",
 	"drain": "Vol de vie", "summon": "Invoquer", "if": "Si… alors…", "narrate": "Texte narratif"}
 const MOD_KEYS := ["Force", "Dextérité", "Constitution", "Intelligence", "Esprit", "Charisme", "hp_max", "res_max", "defense",
-	"to_hit", "damage", "resist_phys", "resist_mag", "speed", "heal_pct", "crit", "ap", "damage_taken"]
+	"to_hit", "damage", "resist_phys", "resist_mag", "speed", "heal_pct", "crit", "ap", "damage_taken", "vision"]
 const MOD_NAMES := {"hp_max": "PV max", "res_max": "Ressource max", "defense": "Défense", "to_hit": "Toucher", "damage": "Dégâts",
 	"resist_phys": "Résistance physique", "resist_mag": "Résistance magique", "speed": "Vitesse", "heal_pct": "Soins (%)",
-	"crit": "Critique", "ap": "PA", "damage_taken": "Dégâts subis"}
+	"crit": "Critique", "ap": "PA", "damage_taken": "Dégâts subis", "vision": "Vision"}
 
 const DEFAULT_RULES := {
 	"stat_base": 5, "stat_pool": 15, "stat_min": 1, "stat_max": 10, "stat_cap": 14,
@@ -41,6 +41,7 @@ const DEFAULT_RULES := {
 	"xp_base": 100, "level_max": 20, "stat_points_per_level": 1, "pick_every_levels": 1,
 	"slots_basic": 3, "slots_ultimate": 1, "swap_in_combat": false,
 	"rest_hp_pct": 50, "start_gold": 20, "max_ability_rank": 3,
+	"vision_base": 3, "vision_dex_div": 2, "shared_vision": false,
 }
 ## Réglages des règles exposés au MJ : [clé, libellé, min, max].
 const RULE_FIELDS := [
@@ -68,6 +69,8 @@ const RULE_FIELDS := [
 	["rest_hp_pct", "PV récupérés au repos (%)", 0, 100],
 	["start_gold", "Or de départ", 0, 10000],
 	["max_ability_rank", "Rang maximum d'une capacité", 1, 5],
+	["vision_base", "Vision de base (cases, avant la Dextérité)", 0, 20],
+	["vision_dex_div", "Vision : +1 case tous les N points de Dextérité", 1, 10],
 ]
 
 static var _defaults := {}
@@ -95,7 +98,7 @@ static func normalize(data: Dictionary) -> Dictionary:
 	if not data.get("stats") is Array or (data.stats as Array).is_empty():
 		data["stats"] = [
 			{"name": "Force", "short": "FOR", "description": "Puissance physique."},
-			{"name": "Dextérité", "short": "DEX", "description": "Précision et agilité."},
+			{"name": "Dextérité", "short": "DEX", "description": "Précision, agilité et vision."},
 			{"name": "Constitution", "short": "CON", "description": "Résistance physique."},
 			{"name": "Intelligence", "short": "INT", "description": "Savoir et analyse."},
 			{"name": "Esprit", "short": "ESP", "description": "Volonté et magie."},

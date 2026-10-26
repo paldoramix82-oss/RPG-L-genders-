@@ -2,16 +2,20 @@ extends Node
 ## Music — lecture de la bande originale avec fondu enchaîné.
 ## Sur l'hôte, suit les choix du MJ ; sur un téléphone, suit l'hôte si le joueur
 ## a laissé la musique activée (réglage local « audio/enabled »).
+## Avant la partie (menus, création, salon), le thème principal joue en fond
+## tant que le MJ n'a pas lancé de morceau.
 
 signal changed
 
 const FADE := 1.5
+const MENU_TRACK := "kurtzuma"
 
 var current := ""
 var playing := false
 var _players: Array[AudioStreamPlayer] = []
 var _active := 0
 var _state := {}
+var _menu := false
 
 
 func _ready() -> void:
@@ -49,13 +53,24 @@ func set_volume(v: float) -> void:
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(0.0001, clampf(v, 0.0, 1.0))))
 
 
+## Musique des menus (avant le début de la partie) : active ou non.
+func set_menu(on: bool) -> void:
+	if on == _menu and (playing or not on or not enabled()):
+		return
+	_menu = on
+	apply_state(_state)
+
+
 ## state : {track, playing, started_at} (heure de départ de l'hôte, pour se caler).
 func apply_state(state: Dictionary) -> void:
 	_state = state
 	var track := String(state.get("track", ""))
 	var want := bool(state.get("playing", false)) and track != "" and enabled()
 	if not want:
-		stop()
+		if _menu and enabled():
+			play(MENU_TRACK)
+		else:
+			stop()
 		return
 	var offset := maxf(0.0, Protocol.now() - float(state.get("started_at", Protocol.now())))
 	play(track, offset)

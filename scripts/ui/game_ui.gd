@@ -190,6 +190,13 @@ static func stat_tile(stat_name: String, value: int, content: Dictionary, bonus:
 	full.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	full.add_theme_font_size_override("font_size", 13)
 	col.add_child(full)
+	if bonus != 0:
+		# Base + bonus d'équipement / d'effet, pour distinguer les deux.
+		var detail := UIKit.label("%d %s %d" % [value - bonus, "+" if bonus > 0 else "−", absi(bonus)], "MutedLabel")
+		detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		detail.add_theme_font_size_override("font_size", 12)
+		detail.add_theme_color_override("font_color", Palette.HEAL if bonus > 0 else Palette.HP)
+		col.add_child(detail)
 	return panel
 
 
@@ -234,6 +241,52 @@ static func status_row(effects: Array, px: float = 22.0) -> HFlowContainer:
 			box.add_child(t)
 		flow.add_child(box)
 	return flow
+
+
+## Filet décoratif : deux traits dorés et un losange au centre.
+static func ornament(height: float = 22.0) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(0, height)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.draw.connect(func():
+		var mid := c.size * 0.5
+		var w := minf(c.size.x * 0.42, 170.0)
+		c.draw_line(mid - Vector2(w, 0), mid - Vector2(12, 0), Palette.GOLD_DIM, 1.0, true)
+		c.draw_line(mid + Vector2(12, 0), mid + Vector2(w, 0), Palette.GOLD_DIM, 1.0, true)
+		c.draw_colored_polygon(PackedVector2Array([mid + Vector2(0, -6), mid + Vector2(6, 0), mid + Vector2(0, 6), mid + Vector2(-6, 0)]), Palette.GOLD)
+		c.draw_circle(mid - Vector2(w, 0), 2, Palette.GOLD_DIM)
+		c.draw_circle(mid + Vector2(w, 0), 2, Palette.GOLD_DIM))
+	return c
+
+
+## Titre de section : icône dorée, nom en capitales, filet qui file jusqu'au bord.
+static func section_title(text: String, icon_name: String = "", col: Color = Palette.GOLD) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	if icon_name != "":
+		var i := Icons.new(icon_name, col, 22)
+		i.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(i)
+	var l := UIKit.label(text, "HeadingLabel")
+	l.add_theme_color_override("font_color", col)
+	row.add_child(l)
+	var line := Control.new()
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.draw.connect(func():
+		var y := line.size.y * 0.55
+		line.draw_line(Vector2(4, y), Vector2(line.size.x, y), Color(col, 0.35), 1.0, true)
+		line.draw_colored_polygon(PackedVector2Array([Vector2(4, y - 3), Vector2(7, y), Vector2(4, y + 3), Vector2(1, y)]), Color(col, 0.7)))
+	row.add_child(line)
+	return row
+
+
+## Carte avec titre de section orné (remplace UIKit.card quand un titre compte).
+static func section(parent: Node, title: String, icon_name: String = "", variation: String = "CardPanel") -> VBoxContainer:
+	var body := UIKit.card(parent, "", variation)
+	if title != "":
+		body.add_child(section_title(title, icon_name))
+	return body
 
 
 ## Panneau « pourquoi c'est bloqué » / astuce : petite ligne d'aide.

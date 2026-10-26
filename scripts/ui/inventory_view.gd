@@ -14,6 +14,8 @@ var loot: Array = []
 var others: Array = []
 var mj := false
 var _tab := "bag"
+## Filtre du sac par catégorie (« all » : tout).
+static var _filter := "all"
 var _selected := ""
 var _detail: VBoxContainer
 var _grid: HFlowContainer
@@ -57,7 +59,7 @@ func _build() -> void:
 	top.add_child(Icons.new("coin", Palette.GOLD, 26))
 	top.add_child(UIKit.label("%d pièces d'or" % int(sheet.get("gold", 0)), "StrongLabel"))
 	# Emplacements équipés.
-	var slots := UIKit.card(self, "Équipé")
+	var slots := GameUI.section(self, "Équipé", "armor")
 	var srow := HFlowContainer.new()
 	srow.add_theme_constant_override("h_separation", 10)
 	srow.add_theme_constant_override("v_separation", 10)
@@ -84,18 +86,63 @@ func _build() -> void:
 			var cap := UIKit.label(spec[1] if i == 0 else "", "MutedLabel")
 			cap.add_theme_font_size_override("font_size", 12)
 			box.add_child(cap)
-	# Sac.
-	var bag := UIKit.card(self, "Sac (%d)" % (sheet.get("inventory", []) as Array).size())
+	# Sac, filtrable par catégorie (seulement celles réellement présentes).
+	var all_items: Array = sheet.get("inventory", [])
+	var bag := GameUI.section(self, "Sac (%d)" % all_items.size(), "bag")
+	var present: Array = []
+	for item in all_items:
+		var cat := String(item.get("category", "unique"))
+		if not present.has(cat):
+			present.append(cat)
+	if present.size() > 1:
+		var chips := HFlowContainer.new()
+		chips.add_theme_constant_override("h_separation", 4)
+		chips.add_theme_constant_override("v_separation", 4)
+		bag.add_child(chips)
+		var group := ButtonGroup.new()
+		for cat in ["all"] + Content.CATEGORIES.filter(func(c): return present.has(c)):
+			var key := String(cat)
+			var b := UIKit.button("Tout" if key == "all" else String(Content.CATEGORY_NAMES.get(key, key)) + "s", "NavButton")
+			b.toggle_mode = true
+			b.button_group = group
+			b.button_pressed = _filter == key
+			b.custom_minimum_size.y = 34
+			b.add_theme_font_size_override("font_size", 14)
+			b.pressed.connect(func():
+				_filter = key
+				_build())
+			chips.add_child(b)
+	if _filter != "all" and not present.has(_filter):
+		_filter = "all"
 	_grid = HFlowContainer.new()
 	_grid.add_theme_constant_override("h_separation", 8)
-	_grid.add_theme_constant_override("v_separation", 8)
+	_grid.add_theme_constant_override("v_separation", 10)
 	bag.add_child(_grid)
-	var items: Array = sheet.get("inventory", [])
-	if items.is_empty():
+	if all_items.is_empty():
 		bag.add_child(UIKit.label("Votre sac est vide.", "MutedLabel", true))
-	for item in items:
-		_grid.add_child(_slot_button(item, 64))
-	bag.add_child(UIKit.label("Touchez un objet pour le voir en détail.", "MutedLabel", true))
+	for item in all_items:
+		if _filter == "all" or String(item.get("category", "")) == _filter:
+			_grid.add_child(_item_tile(item))
+	bag.add_child(UIKit.label("Touchez un objet pour le voir en détail, l'équiper ou l'utiliser.", "MutedLabel", true))
+
+
+## Case de sac : icône sur fond de rareté et nom dessous.
+func _item_tile(item: Dictionary) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	box.custom_minimum_size.x = 72
+	var b := _slot_button(item, 64)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_child(b)
+	var n := UIKit.label(String(item.get("name", "?")), "MutedLabel")
+	n.add_theme_font_size_override("font_size", 12)
+	n.add_theme_color_override("font_color", Content.rarity_color(String(item.get("rarity", "commun"))).lightened(0.1))
+	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	n.custom_minimum_size.x = 72
+	n.clip_text = true
+	n.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	box.add_child(n)
+	return box
 
 
 func _slot_button(item: Dictionary, px: float) -> Control:
@@ -137,7 +184,7 @@ func _show_detail() -> void:
 			if p.has("before_text"):
 				txt = "%s  →  %s" % [p.before_text, p.after_text]
 			else:
-				txt = "%d  →  %d" % [int(p.before), int(p.after)]
+				txt = "%d  →  %d  (%+d)" % [int(p.before), int(p.after), int(p.after) - int(p.before)]
 				better = int(p.after) >= int(p.before)
 			var v := UIKit.label(txt, "StrongLabel")
 			v.add_theme_color_override("font_color", Palette.HEAL if better else Palette.HP)
@@ -159,24 +206,25 @@ func _show_detail() -> void:
 		var eq := bool(item.get("equipped", false))
 		actions.add_child(UIKit.button("Retirer" if eq else "Équiper", "" if eq else "PrimaryButton", func(): emit_close.call("item", {"action": "unequip" if eq else "equip", "uid": uid})))
 	if not (item.get("use", []) as Array).is_empty():
-		actions.add_child(UIKit.button("Utiliser", "PrimaryButton", func(): emit_close.call("item", {"action": "use", "uid": uid})))
+		# Confirmation seulement pour un objet précieux (pas pour chaque potion).
+		var precious := Content.RARITIES.find(String(item.get("rarity", "commun"))) >= 2
+		actions.add_child(UIKit.button("Utiliser", "PrimaryButton", func():
+			if precious:
+				ConfirmBox.ask(get_tree().current_scene, "Utiliser %s ?" % item.get("name", ""), "Objet %s : il sera consommé." % GameUI.rarity_name(item).to_lower(), "Utiliser", func(): emit_close.call("item", {"action": "use", "uid": uid}))
+			else:
+				emit_close.call("item", {"action": "use", "uid": uid})))
 	if String(item.get("teaches", "")) != "":
 		actions.add_child(UIKit.button("Lire (apprendre)", "PrimaryButton", func(): emit_close.call("item", {"action": "read", "uid": uid})))
 	for o in others:
 		var to := String(o.id)
 		actions.add_child(UIKit.button("Donner à %s" % o.name, "", func(): emit_close.call("item", {"action": "give", "uid": uid, "to": to})))
 	if String(item.get("category", "")) != "quete":
-		var drop := UIKit.button("Jeter", "DangerButton")
-		drop.pressed.connect(func():
-			if drop.text == "Jeter":
-				drop.text = "Confirmer : jeter"
-			else:
-				emit_close.call("item", {"action": "drop", "uid": uid}))
-		actions.add_child(drop)
+		actions.add_child(UIKit.button("Jeter", "DangerButton", func():
+			ConfirmBox.ask(get_tree().current_scene, "Jeter %s ?" % item.get("name", ""), "L'objet sera perdu définitivement.", "Jeter", func(): emit_close.call("item", {"action": "drop", "uid": uid}), true)))
 
 
 func _chest() -> void:
-	var card := UIKit.card(self, "Coffre du groupe")
+	var card := GameUI.section(self, "Coffre du groupe", "chest")
 	card.add_child(UIKit.label("Le butin des combats et certaines récompenses arrivent ici. Premier arrivé, premier servi : mettez-vous d'accord !", "MutedLabel", true))
 	if loot.is_empty():
 		card.add_child(UIKit.label("Le coffre est vide.", "MutedLabel", true))

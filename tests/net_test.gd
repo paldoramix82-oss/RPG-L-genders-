@@ -430,6 +430,8 @@ func _check_eli() -> void:
 		if String(t.name) == "Dana la Brave":
 			dana_pawn = t
 	_expect(not dana_pawn.is_empty() and _state.get("dana_pos", Vector2i(-1, -1)) == Vector2i(int(dana_pawn.x), int(dana_pawn.y)), "Eli voit le pion de Dana bouger (mise à jour légère des pions)")
+	var fog: Dictionary = c.map.get("fog", {}) if c.map.get("fog") is Dictionary else {}
+	_expect(String(fog.get("visible", "")).length() == int(c.map.get("w", 0)) * int(c.map.get("h", 0)) and String(fog.get("visible", "")).contains("1"), "Eli reçoit son brouillard de guerre (cases visibles)")
 
 
 # --- Outils --------------------------------------------------------------------

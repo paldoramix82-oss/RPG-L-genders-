@@ -1,5 +1,6 @@
 extends Control
-## Écran du joueur (pensé pour le téléphone en portrait, et adapté au PC).
+## Écran du joueur (pensé pour le téléphone, en portrait comme en paysage, et
+## adapté au PC).
 ##
 ## Parcours : validation éventuelle par le MJ → assistant de création → salon
 ## « Vous êtes prêt ! » → la partie.
@@ -9,13 +10,19 @@ extends Control
 ##   - au centre : le récit (narration, messages, résultats) et la carte (sur
 ##     téléphone, un bouton bascule entre les deux ; sur PC, côte à côte) ;
 ##   - en bas, toujours visible : portrait, PV, ressource, jauge d'ultime, les
-##     capacités équipées, et l'accès au sac, à la fiche et au journal.
+##     capacités équipées, l'indicateur de tour, et l'accès au sac, à la fiche,
+##     au journal et à la discussion.
+## En paysage (téléphone tourné), la barre du bas devient une colonne à droite
+## et les actions de tour passent à côté de la carte.
 ## Les menus s'ouvrent en panneaux superposés faciles à fermer.
 
 const WIDE_MIN := 900.0
 
 var _client: SessionClient
 var _wide := false
+var _landscape := false
+var _outer: VBoxContainer
+var _notifier: Notifier
 var _waiting: Control
 var _creation: VBoxContainer
 var _lobby: VBoxContainer
@@ -32,30 +39,42 @@ var _objective: Button
 
 # Centre
 var _center: BoxContainer
+var _body: HBoxContainer
+var _center_margin: MarginContainer
+var _side: VBoxContainer
 var _switch: HBoxContainer
 var _switch_buttons := {}
 var _feed_page: VBoxContainer
 var _map_page: VBoxContainer
 var _feed: FeedView
 var _composer: Composer
-var _outbox_label: Label
 var _quick_actions: HFlowContainer
 var _map_view: MapView
 var _timeline: HBoxContainer
 var _timeline_scroll: ScrollContainer
 var _turn_bar: VBoxContainer
+var _turn_panel: PanelContainer
+var _map_row: HBoxContainer
 var _view := "story"
 var _unread := false
 
 # Barre du bas
 var _hud: PanelContainer
+var _hud_col: VBoxContainer
+var _hud_bottom: HBoxContainer
+var _hud_sep: VSeparator
+var _hud_buttons: HBoxContainer
+var _hud_turn: Label
+var _chat_badge: Label
+var _unread_chat := 0
+var _chat_feed: FeedView
 var _portrait: Portrait
 var _name_label: Label
 var _hp_bar: ResourceBar
 var _res_bar: ResourceBar
 var _ult_bar: ResourceBar
 var _gold_label: Label
-var _abilities_row: HBoxContainer
+var _abilities_row: GridContainer
 var _sheet_badge: Control
 
 # Panneaux
@@ -71,6 +90,7 @@ var _was_started := false
 var _wizard_open := false
 var _last_level := 0
 var _known_quests := {}
+var _prev_sheet := {}
 
 
 func _ready() -> void:
@@ -83,6 +103,7 @@ func _ready() -> void:
 	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	outer.add_theme_constant_override("separation", 0)
 	add_child(outer)
+	_outer = outer
 	outer.add_child(_build_top_bar())
 
 	_waiting = _center_card("En attente du maître du jeu", "Votre demande a bien été reçue. Le MJ doit l'accepter.")
@@ -117,6 +138,8 @@ func _ready() -> void:
 	outer.add_child(_keyboard_pad)
 	_tray = DiceTray.new()
 	add_child(_tray)
+	_notifier = Notifier.new()
+	add_child(_notifier)
 
 	_client.status_changed.connect(func(_s): _refresh_all())
 	_client.welcomed.connect(_on_welcomed)
@@ -134,6 +157,10 @@ func _ready() -> void:
 	_client.loot_changed.connect(func(): _refresh_overlay("inventory"))
 	_client.content_changed.connect(_refresh_hud)
 	_client.fx.connect(_on_fx)
+	_client.outbox_changed.connect(func():
+		_refresh_outbox()
+		if _client.phase.get("turns", false) and _client.is_my_turn():
+			_refresh_turn_bar())
 	Net.state_changed.connect(func(_s): _refresh_connection())
 	Net.session_ended.connect(_on_session_ended)
 	get_viewport().size_changed.connect(_layout)
@@ -254,15 +281,25 @@ func _build_game() -> void:
 		b.custom_minimum_size.y = 40
 		_switch.add_child(b)
 		_switch_buttons[spec[0]] = b
+	# Corps : zone centrale (récit / carte) et, en paysage, colonne de droite.
+	_body = HBoxContainer.new()
+	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_body.add_theme_constant_override("separation", 0)
+	_game.add_child(_body)
 	_center = HBoxContainer.new()
 	_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_center.add_theme_constant_override("separation", 8)
-	var margin := MarginContainer.new()
-	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_center_margin = MarginContainer.new()
+	_center_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_center_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 6)
-	margin.add_child(_center)
-	_game.add_child(margin)
+		_center_margin.add_theme_constant_override("margin_" + side, 6)
+	_center_margin.add_child(_center)
+	_body.add_child(_center_margin)
+	_side = VBoxContainer.new()
+	_side.add_theme_constant_override("separation", 0)
+	_side.visible = false
+	_body.add_child(_side)
 	_map_page = _build_map_page()
 	_center.add_child(_map_page)
 	_feed_page = _build_feed_page()
@@ -291,20 +328,21 @@ func _build_feed_page() -> VBoxContainer:
 		filters.add_child(b)
 	_feed = FeedView.new("", false)
 	page.add_child(_feed)
-	_outbox_label = UIKit.label("", "MutedLabel", true)
-	_outbox_label.add_theme_color_override("font_color", Palette.WARN)
-	_outbox_label.visible = false
-	page.add_child(_outbox_label)
 	# Actions contextuelles : des idées, jamais une liste fermée.
 	_quick_actions = HFlowContainer.new()
 	_quick_actions.add_theme_constant_override("h_separation", 6)
 	_quick_actions.add_theme_constant_override("v_separation", 6)
 	page.add_child(_quick_actions)
-	for spec in [["Examiner", "J'examine "], ["Fouiller", "Je fouille "], ["Parler à…", "Je vais parler à "], ["Se cacher", "Je me cache "], ["Écouter", "J'écoute attentivement "]]:
-		var b := UIKit.button(spec[0], "", func(): _composer.start_action(spec[1]))
+	for spec in [["Examiner", "J'examine "], ["Parler à…", "Je vais parler à "], ["Interagir", "J'interagis avec "], ["Fouiller", "Je fouille "], ["Se cacher", "Je me cache "], ["Action libre…", ""]]:
+		var b := UIKit.button(spec[0], "PrimaryButton" if spec[1] == "" else "", func(): _composer.start_action(spec[1]))
 		b.custom_minimum_size.y = 34
 		b.add_theme_font_size_override("font_size", 15)
+		b.tooltip_text = "Décrivez librement ce que tente votre personnage : le MJ décide du résultat."
 		_quick_actions.add_child(b)
+	var use_item := UIKit.button("Utiliser un objet", "", _open_inventory.bind("bag"))
+	use_item.custom_minimum_size.y = 34
+	use_item.add_theme_font_size_override("font_size", 15)
+	_quick_actions.add_child(use_item)
 	_composer = Composer.new(
 		[["Au groupe", Protocol.TO_ALL], ["Au MJ (privé)", Protocol.TO_MJ]],
 		[["Jet visible", Protocol.TO_ALL], ["Jet secret (MJ)", Protocol.TO_MJ]])
@@ -336,18 +374,23 @@ func _build_map_page() -> VBoxContainer:
 	_timeline = HBoxContainer.new()
 	_timeline.add_theme_constant_override("separation", 6)
 	_timeline_scroll.add_child(_timeline)
+	_map_row = HBoxContainer.new()
+	_map_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_map_row.add_theme_constant_override("separation", 6)
+	page.add_child(_map_row)
 	_map_view = MapView.new()
 	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_map_view.custom_minimum_size.y = 200
+	_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_map_view.custom_minimum_size.y = 160
 	_map_view.move_requested.connect(func(id, x, y): _client.move_pawn(id, x, y))
 	_map_view.target_picked.connect(_on_target_picked)
-	page.add_child(_map_view)
-	var turn := PanelContainer.new()
-	turn.theme_type_variation = "InsetPanel"
-	page.add_child(turn)
+	_map_row.add_child(_map_view)
+	_turn_panel = PanelContainer.new()
+	_turn_panel.theme_type_variation = "InsetPanel"
+	page.add_child(_turn_panel)
 	_turn_bar = VBoxContainer.new()
 	_turn_bar.add_theme_constant_override("separation", 6)
-	turn.add_child(_turn_bar)
+	_turn_panel.add_child(_turn_bar)
 	return page
 
 
@@ -358,6 +401,7 @@ func _build_hud() -> PanelContainer:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 	panel.add_child(col)
+	_hud_col = col
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 8)
 	col.add_child(top)
@@ -388,6 +432,11 @@ func _build_hud() -> PanelContainer:
 	_name_label.clip_text = true
 	_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_row.add_child(_name_label)
+	# Indicateur de tour (combat) : « À vous · 2 PA » / « Tour de Loup ».
+	_hud_turn = UIKit.label("", "StrongLabel")
+	_hud_turn.add_theme_font_size_override("font_size", 14)
+	_hud_turn.visible = false
+	name_row.add_child(_hud_turn)
 	name_row.add_child(Icons.new("coin", Palette.GOLD, 18))
 	_gold_label = UIKit.label("0", "StrongLabel")
 	_gold_label.add_theme_color_override("font_color", Palette.GOLD)
@@ -402,21 +451,41 @@ func _build_hud() -> PanelContainer:
 	var bottom := HBoxContainer.new()
 	bottom.add_theme_constant_override("separation", 6)
 	col.add_child(bottom)
-	_abilities_row = HBoxContainer.new()
-	_abilities_row.add_theme_constant_override("separation", 6)
+	_hud_bottom = bottom
+	_abilities_row = GridContainer.new()
+	_abilities_row.add_theme_constant_override("h_separation", 6)
+	_abilities_row.add_theme_constant_override("v_separation", 6)
 	_abilities_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bottom.add_child(_abilities_row)
-	var sep := VSeparator.new()
-	bottom.add_child(sep)
-	for spec in [["bag", "Sac", _open_inventory.bind("bag")], ["person", "Fiche", _open_sheet], ["journal", "Journal", _open_journal.bind("quests")]]:
-		bottom.add_child(_icon_button(spec[0], spec[1], spec[2]))
+	_hud_sep = VSeparator.new()
+	bottom.add_child(_hud_sep)
+	_hud_buttons = HBoxContainer.new()
+	_hud_buttons.add_theme_constant_override("separation", 4)
+	bottom.add_child(_hud_buttons)
+	for spec in [["bag", "Sac", _open_inventory.bind("bag")], ["person", "Fiche", _open_sheet], ["journal", "Journal", _open_journal.bind("quests")], ["chat", "Discuter", _open_chat]]:
+		var b := _icon_button(spec[0], spec[1], spec[2])
+		_hud_buttons.add_child(b)
+		if spec[0] == "chat":
+			_chat_badge = UIKit.label("", "StrongLabel")
+			_chat_badge.add_theme_font_size_override("font_size", 11)
+			_chat_badge.add_theme_color_override("font_color", Palette.BG_DEEP)
+			_chat_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			var bsb := StyleBoxFlat.new()
+			bsb.bg_color = Palette.ULT
+			bsb.set_corner_radius_all(8)
+			bsb.content_margin_left = 4
+			bsb.content_margin_right = 4
+			_chat_badge.add_theme_stylebox_override("normal", bsb)
+			_chat_badge.position = Vector2(26, 0)
+			_chat_badge.visible = false
+			b.add_child(_chat_badge)
 	return panel
 
 
 ## Bouton du bas : icône et petit libellé dessous (tient sur un téléphone).
 func _icon_button(icon_name: String, text: String, on_pressed: Callable) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(46, 60)
+	b.custom_minimum_size = Vector2(40, 60)
 	b.tooltip_text = text
 	var face := Control.new()
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -425,8 +494,8 @@ func _icon_button(icon_name: String, text: String, on_pressed: Callable) -> Butt
 		var isz := 24.0
 		Icons.paint(face, icon_name, Rect2(Vector2((face.size.x - isz) * 0.5, 8), Vector2(isz, isz)), Palette.GOLD)
 		var font := get_theme_font("font", "StrongLabel")
-		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-		face.draw_string(font, Vector2((face.size.x - w) * 0.5, face.size.y - 8), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Palette.TEXT))
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		face.draw_string(font, Vector2((face.size.x - w) * 0.5, face.size.y - 8), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Palette.TEXT))
 	b.add_child(face)
 	b.pressed.connect(on_pressed)
 	return b
@@ -437,15 +506,78 @@ func _icon_button(icon_name: String, text: String, on_pressed: Callable) -> Butt
 # ---------------------------------------------------------------------------
 
 func _layout() -> void:
-	_wide = get_viewport_rect().size.x >= WIDE_MIN and not App.is_mobile()
+	var vp := get_viewport_rect().size
+	_wide = vp.x >= WIDE_MIN and not App.is_mobile()
+	_landscape = App.is_mobile() and vp.x > vp.y * 1.15
+	_apply_safe_area()
 	if _switch == null:
 		return
+	_arrange(_landscape)
 	_switch.visible = not _wide
 	if _wide:
 		_map_page.visible = true
 		_feed_page.visible = true
 	else:
 		_show_view(_view)
+
+
+## Marges des zones système (encoche, barre de navigation) sur téléphone.
+func _apply_safe_area() -> void:
+	if _outer == null or not App.is_mobile() or OS.get_cmdline_user_args().has("--force-mobile"):
+		return
+	var safe := DisplayServer.get_display_safe_area()
+	var win := DisplayServer.window_get_size()
+	if safe.size.x <= 0 or win.x <= 0:
+		return
+	var k := get_viewport_rect().size.x / float(win.x)
+	_outer.offset_left = maxf(0.0, safe.position.x * k)
+	_outer.offset_top = maxf(0.0, safe.position.y * k)
+	_outer.offset_right = -maxf(0.0, (win.x - safe.end.x) * k)
+	_outer.offset_bottom = -maxf(0.0, (win.y - safe.end.y) * k)
+
+
+## Portrait : barre du bas et actions sous la carte. Paysage : colonne de droite
+## (bascule Récit/Carte, personnage, capacités, boutons) et actions à côté de la carte.
+func _arrange(landscape: bool) -> void:
+	var in_side := _hud.get_parent() == _side
+	if landscape and not in_side:
+		_switch.get_parent().remove_child(_switch)
+		_side.add_child(_switch)
+		_hud.get_parent().remove_child(_hud)
+		_side.add_child(_hud)
+		_hud.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_hud_bottom.remove_child(_abilities_row)
+		_hud_col.add_child(_abilities_row)
+		_hud_bottom.remove_child(_hud_buttons)
+		_hud_col.add_child(_hud_buttons)
+		_hud_bottom.visible = false
+		_turn_panel.get_parent().remove_child(_turn_panel)
+		_map_row.add_child(_turn_panel)
+		_turn_panel.custom_minimum_size.x = 190
+		_side.custom_minimum_size.x = 250
+		_side.visible = true
+	elif not landscape and in_side:
+		_side.remove_child(_switch)
+		_game.add_child(_switch)
+		_game.move_child(_switch, 0)
+		_side.remove_child(_hud)
+		_game.add_child(_hud)
+		_hud.size_flags_vertical = Control.SIZE_FILL
+		_hud_col.remove_child(_abilities_row)
+		_hud_bottom.add_child(_abilities_row)
+		_hud_bottom.move_child(_abilities_row, 0)
+		_hud_col.remove_child(_hud_buttons)
+		_hud_bottom.add_child(_hud_buttons)
+		_hud_bottom.visible = true
+		_map_row.remove_child(_turn_panel)
+		_map_page.add_child(_turn_panel)
+		_turn_panel.custom_minimum_size.x = 0
+		_side.visible = false
+	_hud_buttons.alignment = BoxContainer.ALIGNMENT_CENTER if landscape else BoxContainer.ALIGNMENT_BEGIN
+	_timeline_scroll.custom_minimum_size.y = 56 if landscape else 66
+	_refresh_hud()
+	_refresh_turn_bar()
+	_refresh_header()
 
 
 func _show_view(view: String) -> void:
@@ -467,6 +599,7 @@ func _refresh_all() -> void:
 	var accepted := _client.is_accepted()
 	var has_sheet := not _client.my_character().is_empty()
 	var started := _client.game_started()
+	Music.set_menu(not started)
 	_waiting.visible = not accepted
 	_creation.get_parent().visible = accepted and (not has_sheet or _wizard_open)
 	_lobby.get_parent().get_parent().visible = accepted and has_sheet and not started and not _wizard_open
@@ -512,6 +645,11 @@ func _refresh_header() -> void:
 				next = String(o.text)
 				break
 		_objective.text = "◆  " + (("Objectif : %s" % next) if next != "" else String(q.title)) + ("  (%s)" % q.title if next != "" else "")
+		if _landscape:
+			# Paysage : pas de place pour une ligne de plus, l'objectif suit la situation.
+			_situation_label.text += "   ◆ " + (next if next != "" else String(q.title))
+	if _landscape:
+		_objective.visible = false
 
 
 func _show_creation_intro() -> void:
@@ -645,6 +783,7 @@ func _on_welcomed() -> void:
 	_feed.set_messages(_client.messages)
 	_was_started = _client.game_started()
 	_last_level = int(_client.my_character().get("level", 0))
+	_prev_sheet = _client.my_character().duplicate(true)
 	for q in _client.quests:
 		_known_quests[q.id] = q.status
 	_refresh_map()
@@ -682,7 +821,49 @@ func _on_message(m: Dictionary) -> void:
 	if not _wide and _view != "story" and kind not in [Protocol.KIND_SYSTEM]:
 		_unread = true
 		_switch_buttons.story.text = "Récit  ◆"
+	if _chat_feed != null and is_instance_valid(_chat_feed):
+		_chat_feed.add_message(m)
+	var from_other := String(m.get("from", "")) != _map_view.my_id
+	if from_other and kind in [Protocol.KIND_CHAT, Protocol.KIND_NARRATION, Protocol.KIND_ACTION] and _overlay_kind != "chat" and not _wide and _view != "story":
+		_unread_chat += 1
+		_refresh_chat_badge()
+	if from_other and kind == Protocol.KIND_CHAT and String(m.get("to", "")) == _map_view.my_id and _overlay_kind != "chat":
+		_notifier.push("Message privé de %s" % m.get("from_name", "?"), "chat")
 	_refresh_outbox()
+
+
+func _refresh_chat_badge() -> void:
+	if _chat_badge == null:
+		return
+	_chat_badge.visible = _unread_chat > 0
+	_chat_badge.text = str(mini(_unread_chat, 99))
+
+
+## Discussion : si le récit est à l'écran, on va droit à la saisie ; sinon un
+## panneau superposé montre les messages et la saisie, sans quitter la carte
+## (discuter ne coûte aucun point d'action et n'interrompt pas le combat).
+func _open_chat() -> void:
+	_unread_chat = 0
+	_refresh_chat_badge()
+	if _wide or (_view == "story" and not _landscape):
+		_show_view("story")
+		_composer.focus_text()
+		return
+	var panel := _open_overlay("chat", "Discussion", "chat")
+	_chat_feed = FeedView.new(_map_view.my_id, false)
+	_chat_feed.custom_minimum_size.y = maxf(180.0, get_viewport_rect().size.y * (0.42 if not _landscape else 0.5))
+	_chat_feed.set_messages(_client.messages)
+	_chat_feed.set_filter("story")
+	panel.body.add_child(_chat_feed)
+	var composer := Composer.new(
+		[["Au groupe", Protocol.TO_ALL], ["Au MJ (privé)", Protocol.TO_MJ]],
+		[["Jet visible", Protocol.TO_ALL], ["Jet secret (MJ)", Protocol.TO_MJ]])
+	composer.send_message.connect(func(to, text): _client.send_chat(to, text))
+	composer.send_action.connect(func(to, text): _client.declare_action(to, text))
+	composer.send_roll.connect(_roll)
+	panel.body.add_child(composer)
+	panel.body.add_child(GameUI.hint("Parler est gratuit : aucun point d'action dépensé, le combat continue."))
+	panel.closed.connect(func(): _chat_feed = null)
 
 
 func _on_message_updated(m: Dictionary) -> void:
@@ -694,6 +875,9 @@ func _on_message_updated(m: Dictionary) -> void:
 
 func _on_characters() -> void:
 	var sheet := _client.my_character()
+	if not _prev_sheet.is_empty() and not sheet.is_empty() and _client.game_started():
+		_notify_changes(_prev_sheet, sheet)
+	_prev_sheet = sheet.duplicate(true)
 	var level := int(sheet.get("level", 0))
 	if _last_level > 0 and level > _last_level:
 		_splash("Niveau %d !" % level, Palette.XP)
@@ -706,6 +890,40 @@ func _on_characters() -> void:
 	_refresh_timeline()
 	_refresh_overlay("sheet")
 	_refresh_overlay("inventory")
+
+
+## Notifications nées de l'état confirmé par l'hôte (jamais d'une prévision locale).
+func _notify_changes(old: Dictionary, new: Dictionary) -> void:
+	var dhp := int(new.get("hp", 0)) - int(old.get("hp", 0))
+	if dhp > 0:
+		_notifier.push("Vous récupérez %d PV." % dhp, "heal")
+	elif dhp < 0 and int(new.get("hp", 0)) <= 0:
+		_notifier.push("Vous êtes hors de combat !", "danger")
+	var dgold := int(new.get("gold", 0)) - int(old.get("gold", 0))
+	if dgold > 0:
+		_notifier.push("+%d pièces d'or" % dgold, "gold")
+	var before := {}
+	for it in old.get("inventory", []):
+		before[String(it.get("uid", ""))] = int(it.get("qty", 1))
+	for it in new.get("inventory", []):
+		var uid := String(it.get("uid", ""))
+		var gained := int(it.get("qty", 1)) - int(before.get(uid, 0))
+		if gained > 0:
+			_notifier.push("Objet obtenu : %s%s" % [it.get("name", "?"), (" ×%d" % gained) if gained > 1 else ""], "loot", String(it.get("icon", "chest")))
+	var known_before: Array = old.get("known", old.get("abilities", []))
+	for a in new.get("known", new.get("abilities", [])):
+		var aid := String(a.get("id", a)) if a is Dictionary else String(a)
+		var had := known_before.any(func(b): return (String(b.get("id", "")) if b is Dictionary else String(b)) == aid)
+		if not had:
+			var def: Dictionary = a if a is Dictionary else Content.get_entry(_client.content, "abilities", aid)
+			_notifier.push("Nouvelle compétence apprise : %s" % def.get("name", aid), "magic", String(def.get("icon", "sparkle")))
+	if int(new.get("ult", 0)) >= 100 and int(old.get("ult", 0)) < 100:
+		_notifier.push("Votre ultime est disponible !", "ult")
+		Input.vibrate_handheld(60)
+	var effects_before := (old.get("effects", []) as Array).map(func(e): return String(e.get("id", "")))
+	for e in new.get("effects", []):
+		if not effects_before.has(String(e.get("id", ""))):
+			_notifier.push("Effet : %s" % e.get("name", "?"), "magic", String(e.get("icon", "sparkle")))
 
 
 func _on_quests() -> void:
@@ -785,7 +1003,8 @@ func _refresh_timeline() -> void:
 	for i in rotated.size():
 		var t := MapData.token(_client.map, String(rotated[i]))
 		if t.is_empty():
-			continue
+			# Combattant hors de vue (brouillard) : on sait qu'il est là, sans plus.
+			t = {"id": String(rotated[i]), "name": "Hors de vue", "kind": "unknown", "color": "#3a3a49"}
 		_timeline.add_child(_timeline_chip(t, i == 0))
 
 
@@ -816,7 +1035,7 @@ func _timeline_chip(t: Dictionary, active: bool) -> Control:
 	if not sheet.is_empty():
 		p = Portrait.for_sheet(sheet, _client.content, 36)
 	else:
-		p = Portrait.new({}, Color(String(t.get("color", "#8a6a4a"))), 36, "skull" if String(t.get("kind", "")) == "monster" else "person")
+		p = Portrait.new({}, Color(String(t.get("color", "#8a6a4a"))), 36, {"monster": "skull", "unknown": "question"}.get(String(t.get("kind", "")), "person"))
 	p.active = active
 	p.ko = ko
 	row.add_child(p)
@@ -837,14 +1056,19 @@ func _timeline_chip(t: Dictionary, active: bool) -> Control:
 	return panel
 
 
-## Panneau sous la carte : actions de base pendant votre tour, sinon qui joue.
+## Panneau sous la carte (à côté en paysage) : actions de base pendant votre
+## tour avec leur coût en PA, sinon qui joue. Les actions impossibles sont grisées.
 func _refresh_turn_bar() -> void:
 	if _turn_bar == null:
 		return
 	UIKit.clear(_turn_bar)
 	var phase := _client.phase
 	if not _pending.is_empty():
-		_turn_bar.add_child(UIKit.label("Touchez la cible entourée de rouge sur la carte (%s)." % _pending.get("label", ""), "StrongLabel", true))
+		var l := UIKit.label("Choisissez la cible de « %s » : touchez un pion entouré de rouge." % _pending.get("label", ""), "StrongLabel", true)
+		l.add_theme_color_override("font_color", Palette.DANGER.lightened(0.35))
+		_turn_bar.add_child(l)
+		if _map_view.target_ids.is_empty():
+			_turn_bar.add_child(GameUI.hint("Aucune cible à portée : rapprochez-vous ou annulez."))
 		_turn_bar.add_child(UIKit.button("Annuler", "", _cancel_target))
 		return
 	if not phase.get("turns", false):
@@ -854,50 +1078,67 @@ func _refresh_turn_bar() -> void:
 		return
 	if not _client.is_my_turn():
 		var current := MapData.token(_client.map, String(phase.get("current", "")))
-		_turn_bar.add_child(UIKit.label("Au tour de %s. Vous pouvez discuter en attendant." % current.get("name", "?") if not current.is_empty() else "Patientez…", "MutedLabel", true))
+		_turn_bar.add_child(UIKit.label("Au tour de %s. Vous pouvez discuter en attendant." % current.get("name", "?") if not current.is_empty() else "Un combattant hors de vue joue…", "MutedLabel", true))
 		_turn_bar.add_child(_dice_row())
 		return
+	var busy := _client.pending_count() > 0
+	var ap := int(phase.get("ap", 0))
 	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
 	_turn_bar.add_child(head)
 	var title := UIKit.label("À vous !", "HeadingLabel")
 	head.add_child(title)
-	head.add_child(_ap_pips(int(phase.get("ap", 0)), int(phase.get("ap_max", 2))))
+	head.add_child(_ap_pips(ap, int(phase.get("ap_max", 2))))
 	var info := ""
 	if phase.get("move", "") == "limit":
 		if phase.get("type", "") == "combat":
-			info = ("%d case%s" % [int(phase.moves_left), "s" if int(phase.moves_left) > 1 else ""]) if int(phase.moves_left) > 0 else "bouger : 1 PA"
+			info = ("%d case%s" % [int(phase.moves_left), "s" if int(phase.moves_left) > 1 else ""]) if int(phase.moves_left) > 0 else "bouger : %d PA" % int(Content.rule(_client.content, "move_ap"))
 		else:
 			info = "%d case%s" % [int(phase.moves_left), "s" if int(phase.moves_left) > 1 else ""]
 	var il := UIKit.label(info, "MutedLabel")
 	il.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	il.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	head.add_child(il)
+	var end := UIKit.button("Fin du tour  ›", "PrimaryButton" if ap <= 0 else "", func(): _client.turn_action("end"))
+	end.custom_minimum_size = Vector2(0, 40)
+	end.add_theme_font_size_override("font_size", 15)
+	end.tooltip_text = "Terminer mon tour"
+	end.disabled = busy
+	if not _landscape:
+		head.add_child(end)
 	var r := Content.rules(_client.content)
 	var actions := GridContainer.new()
-	actions.columns = 2
+	actions.columns = 1 if _landscape else 2
 	actions.add_theme_constant_override("h_separation", 6)
 	actions.add_theme_constant_override("v_separation", 6)
 	_turn_bar.add_child(actions)
-	var ap := int(phase.get("ap", 0))
 	var buttons: Array = []
 	if phase.get("type", "") == "combat":
+		var reach := int(Rules.attack_profile(_client.my_character(), _client.content, Rules.weapons(_client.my_character())[0]).get("range", 1))
 		for spec in [["Attaque rapide", "quick", int(r.quick_attack_ap), "Une attaque avec votre arme."], ["Attaque puissante", "power", int(r.power_attack_ap), "−2 au toucher, +50 % de dégâts."]]:
-			var b := UIKit.button("%s · %d PA" % [spec[0], spec[2]], "PrimaryButton" if spec[1] == "quick" else "", _start_target.bind({"action": spec[1], "label": spec[0], "kind": "enemy"}))
-			b.disabled = ap < int(spec[2])
+			var b := UIKit.button("%s · %d PA" % [spec[0], spec[2]], "PrimaryButton" if spec[1] == "quick" and ap >= int(spec[2]) else "", _start_target.bind({"action": spec[1], "label": spec[0], "kind": "enemy", "range": reach}))
+			b.disabled = ap < int(spec[2]) or busy
 			b.tooltip_text = spec[3]
 			buttons.append(b)
 		var defend := UIKit.button("Se défendre · %d PA" % int(r.defend_ap), "", func(): _client.turn_action("defend"))
-		defend.disabled = ap < int(r.defend_ap)
+		defend.disabled = ap < int(r.defend_ap) or busy
 		defend.tooltip_text = "+3 Défense jusqu'à votre prochain tour."
 		buttons.append(defend)
-	var end := UIKit.button("Terminer mon tour  ›", "PrimaryButton" if ap <= 0 else "", func(): _client.turn_action("end"))
-	buttons.append(end)
+		var item := UIKit.button("Objet · %d PA" % int(r.item_ap), "", _open_inventory.bind("bag"))
+		item.disabled = ap < int(r.item_ap) or busy
+		item.tooltip_text = "Ouvrir le sac pour boire une potion ou utiliser un objet."
+		buttons.append(item)
 	for b in buttons:
-		b.custom_minimum_size.y = 44
+		b.custom_minimum_size.y = 42 if not _landscape else 38
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.add_theme_font_size_override("font_size", 16)
+		b.add_theme_font_size_override("font_size", 15)
 		b.clip_text = true
 		actions.add_child(b)
+	if _landscape:
+		end.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_turn_bar.add_child(end)
+	if busy:
+		_turn_bar.add_child(GameUI.hint("Action envoyée, en attente de l'hôte…"))
 
 
 func _ap_pips(ap: int, ap_max: int) -> Control:
@@ -914,8 +1155,10 @@ func _ap_pips(ap: int, ap_max: int) -> Control:
 
 
 func _dice_row() -> Control:
-	var dice := HBoxContainer.new()
-	dice.add_theme_constant_override("separation", 6)
+	var dice := GridContainer.new()
+	dice.columns = 3 if _landscape else 6
+	dice.add_theme_constant_override("h_separation", 6)
+	dice.add_theme_constant_override("v_separation", 6)
 	for expr in ["d20", "d12", "d10", "d8", "d6", "d4"]:
 		var b := UIKit.button(expr, "", _roll.bind(Protocol.TO_ALL, expr, ""))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -947,16 +1190,31 @@ func _refresh_hud() -> void:
 	var abilities := Rules.usable_abilities(sheet, content)
 	_ult_bar.visible = abilities.any(func(a): return a.get("ultimate", false))
 	_ult_bar.set_values(int(sheet.get("ult", 0)), 100)
+	# Indicateur de tour.
+	var phase := _client.phase
+	# (En paysage, le panneau de tour à côté de la carte suffit.)
+	_hud_turn.visible = phase.get("turns", false) and _client.game_started() and not _landscape
+	if _client.is_my_turn():
+		_hud_turn.text = "À VOUS · %d PA" % int(phase.get("ap", 0)) if phase.get("type", "") == "combat" else "À VOUS"
+		_hud_turn.add_theme_color_override("font_color", Palette.GOLD)
+	else:
+		var cur := MapData.token(_client.map, String(phase.get("current", "")))
+		_hud_turn.text = "Tour : %s" % cur.get("name", "…")
+		_hud_turn.add_theme_color_override("font_color", Palette.MUTED)
+	_portrait.active = _client.is_my_turn()
 	UIKit.clear(_abilities_row)
+	var shown := abilities.slice(0, 6)
+	_abilities_row.columns = 3 if _landscape else maxi(1, shown.size())
 	if abilities.is_empty():
+		_abilities_row.columns = 1
 		_abilities_row.add_child(UIKit.label("Aucune capacité équipée (voir la fiche).", "MutedLabel", true))
-	for a in abilities.slice(0, 6):
+	for a in shown:
 		_abilities_row.add_child(_ability_button(a, sheet))
 
 
 func _ability_button(a: Dictionary, sheet: Dictionary) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(56, 64)
+	b.custom_minimum_size = Vector2(46, 64)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.tooltip_text = "%s — %s" % [a.get("name", ""), Effects.ability_costs(a, String(sheet.get("res_name", "Énergie")))]
 	var col := GameUI.ability_color(a)
@@ -967,17 +1225,23 @@ func _ability_button(a: Dictionary, sheet: Dictionary) -> Button:
 	var short := String(a.get("short", a.get("name", "")))
 	var cost := maxi(0, int(a.get("cost", 0)) - (int(a.get("rank", 1)) - 1))
 	var icon_name := String(a.get("icon", "star"))
+	# États : disponible, sélectionnée (en attente de cible), coût insuffisant, en recharge, inutilisable.
+	var chosen := String(_pending.get("id", "")) == String(a.get("id", "")) and not _pending.is_empty()
+	var poor := reason.begins_with("Pas assez de %s" % sheet.get("res_name", "ressource"))
 	var face := Control.new()
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	face.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	face.draw.connect(func():
 		var r := Rect2(Vector2.ZERO, face.size)
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = col.darkened(0.8)
-		sb.border_color = col.darkened(0.1) if reason == "" else Palette.BORDER
-		sb.set_border_width_all(2 if ult else 1)
+		sb.bg_color = col.darkened(0.8) if not chosen else col.darkened(0.55)
+		sb.border_color = Palette.GOLD if chosen else (col.darkened(0.1) if reason == "" else Palette.BORDER)
+		sb.set_border_width_all(3 if chosen else (2 if ult else 1))
 		sb.set_corner_radius_all(10)
 		face.draw_style_box(sb, r)
+		if reason == "" and ult and charge >= 100:
+			# Ultime prêt : halo doré.
+			face.draw_rect(r.grow(-3), Color(Palette.ULT, 0.15))
 		if ult and charge < 100:
 			var fill := StyleBoxFlat.new()
 			fill.bg_color = Color(Palette.ULT, 0.22)
@@ -993,7 +1257,12 @@ func _ability_button(a: Dictionary, sheet: Dictionary) -> Button:
 		var sub := ("%d %%" % charge) if ult and charge < 100 else (str(cost) if cost > 0 else "")
 		if sub != "":
 			var sw := font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-			face.draw_string(font, Vector2((r.size.x - sw) * 0.5, r.size.y - 4), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Palette.ULT if ult else Palette.MANA.lightened(0.3))
+			face.draw_string(font, Vector2((r.size.x - sw) * 0.5, r.size.y - 4), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Palette.ULT if ult else (Palette.HP.lightened(0.2) if poor else Palette.MANA.lightened(0.3)))
+		if chosen:
+			var ct := "CIBLE ?"
+			var cw2 := font.get_string_size(ct, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+			face.draw_rect(Rect2(Vector2((r.size.x - cw2) * 0.5 - 3, 1), Vector2(cw2 + 6, 13)), Palette.GOLD)
+			face.draw_string(font, Vector2((r.size.x - cw2) * 0.5, 11), ct, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Palette.BG_DEEP)
 		if cd > 0:
 			face.draw_rect(r, Color(0, 0, 0, 0.5))
 			var t := str(cd)
@@ -1029,7 +1298,50 @@ func _ability_block(a: Dictionary) -> String:
 	var cond: Dictionary = a.get("conditions", {})
 	if cond.has("self_hp_below") and int(sheet.get("hp", 0)) * 100 >= int(cond.self_hp_below) * int(sheet.get("hp_max", 1)):
 		return "Utilisable seulement sous %d %% de PV." % int(cond.self_hp_below)
+	# Cibles possibles à portée (combat au tour par tour uniquement).
+	var target := String(a.get("target", "enemy"))
+	if phase.get("turns", false) and _needs_target(a) and not _client.my_token().is_empty():
+		var rng := int(a.get("range", 1))
+		var ids := _targets_for(target, rng)
+		if ids.is_empty():
+			return ("Aucun allié à portée (portée %d)." if target.ends_with("ally") else "Aucun ennemi à portée (portée %d) : rapprochez-vous.") % rng
+		if target.ends_with("ally") and (a.get("effects", []) as Array).all(func(e): return String(e.get("type", "")) == "heal"):
+			var hurt := ids.filter(func(id):
+				var t := MapData.token(_client.map, String(id))
+				return int(t.get("hp", 0)) < int(t.get("hp_max", 0)))
+			if hurt.is_empty():
+				return "Aucun allié blessé à soigner à portée."
 	return ""
+
+
+func _needs_target(a: Dictionary) -> bool:
+	var target := String(a.get("target", "enemy"))
+	return target in ["enemy", "ally", "any"] or (target.begins_with("area") and int(a.get("range", 0)) > 0)
+
+
+## Pions qui peuvent être visés (selon le type de cible) et, en combat, à portée.
+func _targets_for(kind: String, rng: int) -> Array:
+	var ids: Array = []
+	var me := _client.my_token()
+	var limit: bool = bool(_client.phase.get("turns", false)) and rng > 0 and not me.is_empty()
+	for t in _client.map.get("tokens", []):
+		if String(t.get("kind", "")) == "object":
+			continue
+		var ally := String(t.get("kind", "")) == "pc" or String(t.get("side", "")) == "players"
+		var ko := int(t.get("hp_max", 0)) > 0 and int(t.get("hp", 1)) <= 0
+		var ok := true
+		match kind:
+			"enemy", "area_enemy":
+				ok = not ally and not ko
+			"ally", "area_ally":
+				ok = ally
+		if ok and limit:
+			ok = Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))) <= rng
+		if ok:
+			ids.append(t.id)
+	if kind in ["ally", "any", "area_ally"] and not me.is_empty() and not ids.has(me.id):
+		ids.append(me.id)
+	return ids
 
 
 # ---------------------------------------------------------------------------
@@ -1046,10 +1358,10 @@ func _open_ability(a: Dictionary) -> void:
 		l.add_theme_color_override("font_color", Palette.WARN)
 		panel.body.add_child(l)
 	var target := String(a.get("target", "enemy"))
-	var needs := target in ["enemy", "ally", "any"] or (target.begins_with("area") and int(a.get("range", 0)) > 0)
+	var needs := _needs_target(a)
 	var use := UIKit.button("Utiliser" + (" (choisir la cible)" if needs else ""), "PrimaryButton", func():
 		_close_overlay()
-		var payload := {"action": "ability", "id": String(a.get("id", "")), "label": String(a.get("name", "")), "kind": target}
+		var payload := {"action": "ability", "id": String(a.get("id", "")), "label": String(a.get("name", "")), "kind": target, "range": int(a.get("range", 1))}
 		if needs:
 			_start_target(payload)
 		else:
@@ -1064,28 +1376,10 @@ func _start_target(action: Dictionary) -> void:
 	_pending = action
 	_map_view.target_mode = true
 	_map_view.reachable = {}
-	var ids: Array = []
-	var me := _client.my_token()
-	var kind := String(action.get("kind", "enemy"))
-	for t in _client.map.get("tokens", []):
-		if String(t.get("kind", "")) == "object":
-			continue
-		var ally := String(t.get("kind", "")) == "pc" or String(t.get("side", "")) == "players"
-		var ko := int(t.get("hp_max", 0)) > 0 and int(t.get("hp", 1)) <= 0
-		match kind:
-			"enemy", "area_enemy":
-				if not ally and not ko:
-					ids.append(t.id)
-			"ally", "area_ally":
-				if ally:
-					ids.append(t.id)
-			_:
-				ids.append(t.id)
-	if kind in ["ally", "any"] and not me.is_empty() and not ids.has(me.id):
-		ids.append(me.id)
-	_map_view.target_ids = ids
+	_map_view.target_ids = _targets_for(String(action.get("kind", "enemy")), int(action.get("range", 0)))
 	_show_view("map")
 	_refresh_turn_bar()
+	_refresh_hud()
 	_map_view.queue_redraw()
 
 
@@ -1095,12 +1389,13 @@ func _cancel_target() -> void:
 	_map_view.target_ids = []
 	_refresh_turn_bar()
 	_refresh_reachable()
+	_refresh_hud()
 
 
 func _on_target_picked(token_id: String) -> void:
 	var action := _pending
 	if not action.is_empty() and not _map_view.target_ids.has(token_id):
-		_feed.add_notice("Cette cible ne convient pas : choisissez un pion entouré de rouge.", Palette.WARN)
+		_notifier.push("Cible hors de portée ou non valide : choisissez un pion entouré de rouge.", "warning")
 		return
 	_cancel_target()
 	match String(action.get("action", "")):
@@ -1116,7 +1411,7 @@ func _on_target_picked(token_id: String) -> void:
 
 func _open_overlay(kind: String, title: String, icon_name: String = "") -> OverlayPanel:
 	_close_overlay()
-	_overlay = OverlayPanel.new(title, _wide, icon_name)
+	_overlay = OverlayPanel.new(title, _wide or _landscape, icon_name)
 	_overlay_kind = kind
 	_overlay.closed.connect(func():
 		_overlay = null
@@ -1314,6 +1609,19 @@ func _journal_settings(body: VBoxContainer) -> void:
 	volume.drag_ended.connect(func(_c): App.save_settings())
 	UIKit.field(sound, "Volume", volume)
 	sound.add_child(UIKit.label(("En cours : " + Music.title()) if Music.playing else "Pas de musique pour l'instant (c'est le MJ qui choisit).", "MutedLabel", true))
+	if App.is_mobile():
+		var disp := UIKit.card(body, "Affichage")
+		var orient := OptionButton.new()
+		for spec in [["auto", "Automatique (tourner le téléphone)"], ["portrait", "Toujours en portrait"], ["landscape", "Toujours en paysage"]]:
+			orient.add_item(spec[1])
+			orient.set_item_metadata(orient.item_count - 1, spec[0])
+			if String(App.get_setting("display", "orientation", "auto")) == spec[0]:
+				orient.select(orient.item_count - 1)
+		orient.item_selected.connect(func(i):
+			App.set_setting("display", "orientation", String(orient.get_item_metadata(i)))
+			App.save_settings()
+			Style.apply_orientation())
+		UIKit.field(disp, "Orientation de l'écran", orient)
 	var conn := UIKit.card(body, "Connexion")
 	var params := Net.join_params()
 	conn.add_child(UIKit.label("%s\nHôte : %s  ·  ping %s" % [Net.state_label(), params.get("ip", "?"), UIKit.ping_text(Net.get_peer_rtt(1))], "MutedLabel", true))
@@ -1397,43 +1705,21 @@ func _refresh_connection() -> void:
 	_refresh_outbox()
 
 
+## Indicateur discret d'envoi en attente de confirmation par l'hôte.
 func _refresh_outbox() -> void:
-	if _outbox_label == null:
+	if _conn_chip == null:
 		return
 	var n := _client.pending_count()
-	_outbox_label.visible = n > 0
-	_outbox_label.text = "%d envoi%s en cours…" % [n, "s" if n > 1 else ""]
+	if n > 0 and Net.state == Net.State.CONNECTED:
+		UIKit.set_chip(_conn_chip, "Envoi…", Palette.WARN)
+	elif n > 0:
+		UIKit.set_chip(_conn_chip, "%d en attente" % n, Palette.WARN)
 
 
 func _on_command_failed(_req_id: String, error: String) -> void:
 	_feed.add_notice("Impossible : " + error, Palette.DANGER)
-	_toast(error)
-
-
-## Message bref et non bloquant en haut de l'écran.
-func _toast(text: String) -> void:
-	var panel := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("3a2425")
-	sb.border_color = Palette.DANGER
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(8)
-	sb.content_margin_left = 12
-	sb.content_margin_right = 12
-	sb.content_margin_top = 8
-	sb.content_margin_bottom = 8
-	panel.add_theme_stylebox_override("panel", sb)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var l := UIKit.label(text, "", true)
-	l.add_theme_color_override("font_color", Palette.TEXT)
-	panel.add_child(l)
-	add_child(panel)
-	panel.position = Vector2(12, 70)
-	panel.size.x = size.x - 24
-	var tw := create_tween()
-	tw.tween_interval(2.6)
-	tw.tween_property(panel, "modulate:a", 0.0, 0.4)
-	tw.tween_callback(panel.queue_free)
+	_notifier.push(error, "danger")
+	_refresh_turn_bar()
 
 
 func _on_session_ended(reason: String) -> void:
@@ -1442,13 +1728,6 @@ func _on_session_ended(reason: String) -> void:
 
 
 func _confirm_leave() -> void:
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "Quitter la partie"
-	dialog.dialog_text = "Vous pourrez revenir : votre place et votre personnage sont conservés."
-	dialog.ok_button_text = "Quitter"
-	dialog.cancel_button_text = "Rester"
-	dialog.confirmed.connect(func():
+	ConfirmBox.ask(self, "Quitter la partie ?", "Vous pourrez revenir : votre place et votre personnage sont conservés.", "Quitter", func():
 		Net.leave()
-		App.goto(App.SCENE_JOIN))
-	add_child(dialog)
-	dialog.popup_centered()
+		App.goto(App.SCENE_JOIN), true, "Rester")

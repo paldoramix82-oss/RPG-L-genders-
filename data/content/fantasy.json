@@ -40,7 +40,7 @@
   {
    "name": "Dextérité",
    "short": "DEX",
-   "description": "Précision et agilité : toucher, esquive (Défense), initiative, discrétion, tir."
+   "description": "Précision et agilité : toucher, esquive (Défense), initiative, discrétion, tir, et vision (jusqu'où l'on voit sur la carte)."
   },
   {
    "name": "Constitution",

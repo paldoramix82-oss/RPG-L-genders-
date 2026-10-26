@@ -30,6 +30,8 @@ var _map_view: MapView
 var _map_select: OptionButton
 var _map_status: Label
 var _move_check: CheckBox
+var _fog_check: CheckBox
+var _fog_preview: CheckBox
 var _tool := "move"
 var _tool_buttons := {}
 var _tool_options: VBoxContainer
@@ -714,6 +716,20 @@ func _build_world_tools() -> Control:
 	_move_check.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_move_check.toggled.connect(func(on): Net.server.mj_update_map(_edit_map, {"players_can_move": on}))
 	mc.add_child(_move_check)
+	_fog_check = CheckBox.new()
+	_fog_check.text = "Brouillard de guerre (chacun ne voit qu'autour de lui ; vision = Dextérité)"
+	_fog_check.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_fog_check.toggled.connect(func(on): Net.server.mj_update_map(_edit_map, {"fog": on}))
+	mc.add_child(_fog_check)
+	var fog_row := HFlowContainer.new()
+	fog_row.add_theme_constant_override("h_separation", 6)
+	mc.add_child(fog_row)
+	_fog_preview = CheckBox.new()
+	_fog_preview.text = "Voir le brouillard des joueurs"
+	_fog_preview.toggled.connect(func(_on): _refresh_fog_preview())
+	fog_row.add_child(_fog_preview)
+	fog_row.add_child(_small_button("Oublier l'exploration", "", func():
+		_confirm("Les joueurs oublient tout ce qu'ils ont exploré sur cette carte ?", func(): Net.server.mj_reset_fog(_edit_map))))
 
 	# --- Outils ---
 	var tc := UIKit.card(side, "Outils")
@@ -788,6 +804,16 @@ func _refresh_map_status() -> void:
 	_map_status.text = ("Affichée aux joueurs." if shown else "Non affichée : vous seul la voyez.") + "  %d × %d cases, %d pions." % [map.w, map.h, map.tokens.size()]
 	_map_status.add_theme_color_override("font_color", Palette.OK if shown else Palette.MUTED)
 	_move_check.set_pressed_no_signal(map.get("players_can_move", true))
+	_fog_check.set_pressed_no_signal(Vision.enabled(map))
+	_refresh_fog_preview()
+
+
+func _refresh_fog_preview() -> void:
+	if _fog_preview == null:
+		return
+	_map_view.fog_alpha = 0.6
+	_map_view.fog_override = Net.server.fog_preview(_edit_map) if _fog_preview.button_pressed else {}
+	_map_view.queue_redraw()
 
 
 func _on_maps_changed() -> void:
@@ -1246,6 +1272,7 @@ func _refresh_lobby_bar() -> void:
 		return
 	var server := Net.server
 	var started: bool = server.session.get("started", false)
+	Music.set_menu(not started)
 	_lobby_bar.visible = not started
 	if started:
 		return

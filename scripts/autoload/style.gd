@@ -19,19 +19,36 @@ func _ready() -> void:
 	if App.is_mobile():
 		get_window().size_changed.connect(_apply_mobile_scale)
 		_apply_mobile_scale()
+		apply_orientation()
 
 
-## Sur téléphone : environ 400 unités de large, quelle que soit la résolution,
-## pour des textes lisibles et des boutons assez grands pour les doigts.
+## Sur téléphone : le petit côté de l'écran fait environ 400 unités, quelle que
+## soit la résolution et l'orientation (portrait ou paysage), pour des textes
+## lisibles et des boutons assez grands pour les doigts.
 func _apply_mobile_scale() -> void:
 	var size := DisplayServer.window_get_size()
 	if size.x <= 0 or size.y <= 0:
 		return
 	var dpi := float(DisplayServer.screen_get_dpi())
 	var density := clampf(dpi / 160.0, 1.0, 4.0)
-	var logical_width := clampf(size.x / density, 360.0, 560.0)
-	var logical_height := logical_width * size.y / size.x
-	get_window().content_scale_size = Vector2i(int(logical_width), int(logical_height))
+	var short_side := float(mini(size.x, size.y))
+	var logical_short := clampf(short_side / density, 360.0, 560.0)
+	var k := logical_short / short_side
+	get_window().content_scale_size = Vector2i(int(size.x * k), int(size.y * k))
+
+
+## Orientation choisie par le joueur : « auto » (selon le capteur), « portrait »
+## ou « paysage ». Réglage local à l'appareil.
+func apply_orientation() -> void:
+	if not OS.has_feature("mobile"):
+		return
+	match String(App.get_setting("display", "orientation", "auto")):
+		"portrait":
+			DisplayServer.screen_set_orientation(DisplayServer.SCREEN_SENSOR_PORTRAIT)
+		"landscape":
+			DisplayServer.screen_set_orientation(DisplayServer.SCREEN_SENSOR_LANDSCAPE)
+		_:
+			DisplayServer.screen_set_orientation(DisplayServer.SCREEN_SENSOR)
 
 
 func _build_theme() -> Theme:
@@ -45,6 +62,9 @@ func _build_theme() -> Theme:
 	t.set_font("font", "TitleLabel", font_display)
 	t.set_font_size("font_size", "TitleLabel", 44)
 	t.set_color("font_color", "TitleLabel", Palette.GOLD)
+	t.set_color("font_shadow_color", "TitleLabel", Color(0, 0, 0, 0.65))
+	t.set_constant("shadow_offset_x", "TitleLabel", 0)
+	t.set_constant("shadow_offset_y", "TitleLabel", 2)
 	_variation(t, "HeadingLabel", "Label")
 	t.set_font("font", "HeadingLabel", font_display)
 	t.set_font_size("font_size", "HeadingLabel", 21)
@@ -66,20 +86,33 @@ func _build_theme() -> Theme:
 	t.set_font_size("bold_font_size", "RichTextLabel", 19)
 
 	# --- Panneaux ---
-	t.set_stylebox("panel", "PanelContainer", _box(Palette.PANEL, Palette.BORDER, 1, 10, 18))
+	# Cartes : coins biseautés, dégradé discret, équerres dorées.
+	var card := OrnateStyle.make(Palette.PANEL.lightened(0.04), Palette.PANEL.darkened(0.18), Palette.BORDER, Color(Palette.GOLD_DIM, 0.85), 8, 18)
+	card.inner_line = true
+	t.set_stylebox("panel", "PanelContainer", card)
 	_variation(t, "CardPanel", "PanelContainer")
-	t.set_stylebox("panel", "CardPanel", _box(Palette.PANEL, Palette.BORDER, 1, 10, 18))
+	t.set_stylebox("panel", "CardPanel", card)
 	_variation(t, "InsetPanel", "PanelContainer")
-	t.set_stylebox("panel", "InsetPanel", _box(Palette.BG_DEEP, Palette.BORDER, 1, 8, 12))
+	t.set_stylebox("panel", "InsetPanel", OrnateStyle.make(Palette.BG_DEEP.lightened(0.02), Palette.BG_DEEP, Palette.BORDER.darkened(0.15), Color(0, 0, 0, 0), 5, 12))
 	_variation(t, "HighlightPanel", "PanelContainer")
-	t.set_stylebox("panel", "HighlightPanel", _box(Palette.GOLD_DEEP, Palette.GOLD_DIM, 1, 10, 16))
+	var hl := OrnateStyle.make(Palette.GOLD_DEEP.lightened(0.06), Palette.GOLD_DEEP.darkened(0.45), Palette.GOLD_DIM, Palette.GOLD, 8, 16)
+	hl.inner_line = true
+	t.set_stylebox("panel", "HighlightPanel", hl)
+	_variation(t, "MagicPanel", "PanelContainer")
+	var mg := OrnateStyle.make(Palette.VIOLET_DEEP.lightened(0.05), Palette.VIOLET_DEEP.darkened(0.4), Palette.VIOLET_DIM, Palette.VIOLET.lightened(0.3), 8, 16)
+	mg.inner_line = true
+	t.set_stylebox("panel", "MagicPanel", mg)
+	_variation(t, "DangerPanel", "PanelContainer")
+	t.set_stylebox("panel", "DangerPanel", OrnateStyle.make(Color("3a2023"), Color("221416"), Palette.DANGER.darkened(0.3), Palette.DANGER, 8, 16))
 	_variation(t, "BarPanel", "PanelContainer")
-	var bar := _box(Palette.BG_DEEP, Palette.BORDER, 0, 0, 12)
+	var bar := _box(Palette.BG_DEEP, Color(Palette.GOLD_DIM, 0.5), 0, 0, 12)
 	bar.border_width_bottom = 1
 	t.set_stylebox("panel", "BarPanel", bar)
 	_variation(t, "NavPanel", "PanelContainer")
-	var nav := _box(Palette.BG_DEEP, Palette.BORDER, 0, 0, 6)
+	var nav := _box(Palette.BG_DEEP, Color(Palette.GOLD_DIM, 0.6), 0, 0, 6)
 	nav.border_width_top = 1
+	nav.shadow_color = Color(0, 0, 0, 0.45)
+	nav.shadow_size = 10
 	t.set_stylebox("panel", "NavPanel", nav)
 	_variation(t, "BubbleMine", "PanelContainer")
 	t.set_stylebox("panel", "BubbleMine", _box(Palette.VIOLET_DEEP, Palette.VIOLET_DIM, 1, 8, 10))
@@ -99,7 +132,9 @@ func _build_theme() -> Theme:
 	_button_styles(t, "DangerButton", Color("3a2425"), Palette.DANGER.darkened(0.35), Palette.DANGER.lightened(0.2))
 	_variation(t, "NavButton", "Button")
 	_button_styles(t, "NavButton", Color(0, 0, 0, 0), Color(0, 0, 0, 0), Palette.MUTED)
-	t.set_stylebox("pressed", "NavButton", _box(Palette.VIOLET_DEEP, Palette.VIOLET_DIM, 0, 8, 10))
+	var nav_on := OrnateStyle.make(Palette.VIOLET_DEEP.lightened(0.05), Palette.VIOLET_DEEP.darkened(0.2), Palette.GOLD_DIM, Color(0, 0, 0, 0), 5, 10)
+	t.set_stylebox("pressed", "NavButton", nav_on)
+	t.set_stylebox("hover_pressed", "NavButton", nav_on)
 	t.set_color("font_pressed_color", "NavButton", Palette.GOLD)
 	t.set_font_size("font_size", "NavButton", 17)
 
@@ -116,16 +151,17 @@ func _build_theme() -> Theme:
 
 	# --- Champs de saisie ---
 	for type in ["LineEdit", "TextEdit"]:
-		t.set_stylebox("normal", type, _box(Palette.BG_DEEP, Palette.BORDER, 1, 8, 12))
-		t.set_stylebox("focus", type, _box(Palette.BG_DEEP, Palette.GOLD_DIM, 1, 8, 12))
-		t.set_stylebox("read_only", type, _box(Palette.BG, Palette.BORDER, 1, 8, 12))
+		t.set_stylebox("normal", type, OrnateStyle.make(Palette.BG_DEEP, Palette.BG_DEEP.lightened(0.03), Palette.BORDER, Color(0, 0, 0, 0), 5, 12))
+		var focus_edit := OrnateStyle.make(Color(0, 0, 0, 0), Color(0, 0, 0, 0), Palette.GOLD_DIM, Color(0, 0, 0, 0), 5, 12)
+		t.set_stylebox("focus", type, focus_edit)
+		t.set_stylebox("read_only", type, OrnateStyle.make(Palette.BG, Palette.BG, Palette.BORDER, Color(0, 0, 0, 0), 5, 12))
 		t.set_color("font_color", type, Palette.TEXT)
 		t.set_color("font_placeholder_color", type, Palette.FAINT)
 		t.set_color("caret_color", type, Palette.GOLD)
 		t.set_color("selection_color", type, Palette.VIOLET_DIM)
 
 	# --- Listes déroulantes et menus ---
-	t.set_stylebox("panel", "PopupMenu", _box(Palette.PANEL_ALT, Palette.GOLD_DIM, 1, 6, 8))
+	t.set_stylebox("panel", "PopupMenu", OrnateStyle.make(Palette.PANEL_ALT, Palette.PANEL, Palette.GOLD_DIM, Color(0, 0, 0, 0), 6, 8))
 	t.set_stylebox("hover", "PopupMenu", _box(Palette.VIOLET_DIM, Color(0, 0, 0, 0), 0, 4, 6))
 	t.set_color("font_color", "PopupMenu", Palette.TEXT)
 	t.set_color("font_hover_color", "PopupMenu", Palette.GOLD)
@@ -144,7 +180,7 @@ func _build_theme() -> Theme:
 	t.set_constant("separation", "HSeparator", 12)
 	t.set_constant("separation", "VBoxContainer", 10)
 	t.set_constant("separation", "HBoxContainer", 10)
-	t.set_stylebox("panel", "TooltipPanel", _box(Palette.PANEL_ALT, Palette.GOLD_DIM, 1, 6, 8))
+	t.set_stylebox("panel", "TooltipPanel", OrnateStyle.make(Palette.PANEL_ALT, Palette.PANEL, Palette.GOLD_DIM, Color(0, 0, 0, 0), 5, 8))
 	t.set_color("font_color", "TooltipLabel", Palette.TEXT)
 	return t
 
@@ -153,14 +189,16 @@ func _variation(t: Theme, name: StringName, base: StringName) -> void:
 	t.set_type_variation(name, base)
 
 
+## Boutons biseautés avec léger dégradé et reflet en haut.
 func _button_styles(t: Theme, type: String, bg: Color, border: Color, fg: Color) -> void:
-	t.set_stylebox("normal", type, _box(bg, border, 1, 8, 12))
-	t.set_stylebox("hover", type, _box(bg.lightened(0.08), border.lightened(0.25), 1, 8, 12))
-	t.set_stylebox("pressed", type, _box(bg.darkened(0.2), Palette.GOLD_DIM, 1, 8, 12))
-	t.set_stylebox("hover_pressed", type, _box(bg.darkened(0.1), Palette.GOLD_DIM, 1, 8, 12))
-	t.set_stylebox("disabled", type, _box(bg.darkened(0.3), border.darkened(0.3), 1, 8, 12))
-	var focus := _box(Color(0, 0, 0, 0), Palette.GOLD_DIM, 1, 8, 12)
-	focus.draw_center = false
+	t.set_stylebox("normal", type, _btn(bg.lightened(0.05), bg.darkened(0.12), border))
+	t.set_stylebox("hover", type, _btn(bg.lightened(0.12), bg.darkened(0.02), border.lightened(0.3) if border.a > 0 else Color(Palette.GOLD_DIM, 0.5)))
+	t.set_stylebox("pressed", type, _btn(bg.darkened(0.25), bg.darkened(0.1), Palette.GOLD_DIM))
+	t.set_stylebox("hover_pressed", type, _btn(bg.darkened(0.15), bg, Palette.GOLD_DIM))
+	var off := _btn(Color(bg.darkened(0.35), bg.a * 0.7), Color(bg.darkened(0.45), bg.a * 0.7), Color(border.darkened(0.35), border.a * 0.6))
+	off.top_glint = false
+	t.set_stylebox("disabled", type, off)
+	var focus := OrnateStyle.make(Color(0, 0, 0, 0), Color(0, 0, 0, 0), Palette.GOLD_DIM, Color(0, 0, 0, 0), 5, 12)
 	t.set_stylebox("focus", type, focus)
 	t.set_color("font_color", type, fg)
 	t.set_color("font_hover_color", type, fg.lightened(0.15))
@@ -168,6 +206,12 @@ func _button_styles(t: Theme, type: String, bg: Color, border: Color, fg: Color)
 	t.set_color("font_hover_pressed_color", type, fg)
 	t.set_color("font_focus_color", type, fg)
 	t.set_color("font_disabled_color", type, Palette.FAINT)
+
+
+func _btn(top: Color, bottom: Color, border: Color) -> OrnateStyle:
+	var sb := OrnateStyle.make(top, bottom, border, Color(0, 0, 0, 0), 5, 12)
+	sb.top_glint = top.a > 0
+	return sb
 
 
 func _box(bg: Color, border: Color, border_width: int, radius: int, margin: float) -> StyleBoxFlat:

@@ -17,7 +17,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "co
 
 STATS = [
     {"name": "Force", "short": "FOR", "description": "Puissance physique : dégâts au corps à corps, attaques puissantes, porter, enfoncer."},
-    {"name": "Dextérité", "short": "DEX", "description": "Précision et agilité : toucher, esquive (Défense), initiative, discrétion, tir."},
+    {"name": "Dextérité", "short": "DEX", "description": "Précision et agilité : toucher, esquive (Défense), initiative, discrétion, tir, et vision (jusqu'où l'on voit sur la carte)."},
     {"name": "Constitution", "short": "CON", "description": "Résistance physique : points de vie, résistance aux coups et au poison."},
     {"name": "Intelligence", "short": "INT", "description": "Savoir et analyse : puissance des sorts arcaniques, énigmes, connaissances."},
     {"name": "Esprit", "short": "ESP", "description": "Volonté et concentration : mana, résistance mentale et magique, puissance des soins."},

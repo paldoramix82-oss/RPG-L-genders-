@@ -16,6 +16,7 @@ var _keypad: GridContainer
 
 
 func _ready() -> void:
+	Music.set_menu(true)
 	add_child(Backdrop.new())
 	var scroll := TouchScroll.new()
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

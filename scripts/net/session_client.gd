@@ -24,6 +24,8 @@ signal quests_changed
 signal loot_changed
 ## Retours visuels d'une action (dégâts, soins, effets) : [{token, type, amount, text}].
 signal fx(list: Array)
+## Une commande vient d'être envoyée ou confirmée par l'hôte (indicateur « envoi… »).
+signal outbox_changed
 
 var join_status := ""
 var session := {}
@@ -64,6 +66,7 @@ func send_command(cmd: String, payload: Dictionary) -> String:
 	_outbox[req_id] = {"cmd": cmd, "payload": payload}
 	if is_accepted():
 		_send.call(cmd, payload)
+	outbox_changed.emit()
 	return req_id
 
 
@@ -239,6 +242,10 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 		Protocol.EVT_TOKENS:
 			if String(payload.get("map_id", "")) == String(map.get("id", "")) and payload.get("tokens") is Array:
 				map["tokens"] = payload.tokens
+				if payload.get("fog") is Dictionary:
+					map["fog"] = payload.fog
+				if payload.get("labels") is Array:
+					map["labels"] = payload.labels
 				map_changed.emit()
 		Protocol.EVT_MUSIC:
 			music = payload.get("music", {})
@@ -265,6 +272,7 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 		Protocol.EVT_ACK:
 			var req_id := String(payload.get("req_id", ""))
 			_outbox.erase(req_id)
+			outbox_changed.emit()
 			if not payload.get("ok", false):
 				command_failed.emit(req_id, String(payload.get("error", "Erreur inconnue.")))
 		Protocol.EVT_NOTICE:

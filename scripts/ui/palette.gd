@@ -1,12 +1,13 @@
 class_name Palette
 extends RefCounted
-## Couleurs de la direction artistique : anthracite, or discret, violet désaturé, blanc cassé.
+## Couleurs de la direction artistique : anthracite et noir bleuté, or doux,
+## violet désaturé (magie), blanc cassé pour le texte.
 
-const BG := Color("1b1a1f")
-const BG_DEEP := Color("141317")
-const PANEL := Color("24222a")
-const PANEL_ALT := Color("2d2a34")
-const BORDER := Color("3d3746")
+const BG := Color("16171d")
+const BG_DEEP := Color("0e0f14")
+const PANEL := Color("1e1f28")
+const PANEL_ALT := Color("272934")
+const BORDER := Color("3a3a49")
 const GOLD := Color("c9a96e")
 const GOLD_DIM := Color("8a7550")
 const GOLD_DEEP := Color("3a3124")

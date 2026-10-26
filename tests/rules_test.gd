@@ -16,6 +16,7 @@ func _ready() -> void:
 	_test_combat()
 	_test_progression_and_quests()
 	_test_migration()
+	_test_vision()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -266,3 +267,55 @@ func _test_migration() -> void:
 	var auto := {"id": "p_a", "owner": "p_a", "name": "Auto", "auto": true, "class_id": "pretre", "hp": 10, "hp_max": 20, "stats": []}
 	var conv2 := Migrate.sheet(auto, c, {})
 	_expect(conv2.class_id == "soigneur" and Rules.equipped_abilities(conv2).size() == 4, "ancien Prêtre devenu Soigneur, avec ses 4 capacités")
+
+
+func _test_vision() -> void:
+	print("\n— Brouillard de guerre")
+	var server := _server()
+	var a := _add_player(server, "Vue")
+	var b := _add_player(server, "Myope")
+	server._cmd_char_create(a, {"class_id": "rodeur", "alloc": {"Force": 0, "Dextérité": 5, "Constitution": 4, "Intelligence": 0, "Esprit": 3, "Charisme": 3}, "choices": [0], "identity": {"name": "Vue"}})
+	server._cmd_char_create(b, {"class_id": "guerrier", "alloc": {"Force": 5, "Dextérité": 0, "Constitution": 5, "Intelligence": 0, "Esprit": 2, "Charisme": 3}, "choices": [0], "identity": {"name": "Myope"}})
+	var ra := Vision.radius(server.characters[a.id], server.content)
+	var rb := Vision.radius(server.characters[b.id], server.content)
+	_expect(ra > rb and ra == 3 + Rules.stat(server.characters[a.id], "Dextérité", server.content) / 2, "vision = 3 + Dextérité ÷ 2 (%d contre %d cases)" % [ra, rb])
+	var m := server.mj_create_map("Plaine", 40, 20)
+	server.mj_set_active_map(m.id)
+	server.mj_start_game("exploration")
+	var map: Dictionary = server.maps[server.active_map]
+	var pa := MapData.token(map, "pawn_" + a.id)
+	var pb := MapData.token(map, "pawn_" + b.id)
+	pa.x = 5
+	pa.y = 10
+	pb.x = 34
+	pb.y = 10
+	var near := server.mj_spawn_monster("loup", 8, 10, false)
+	var far := server.mj_spawn_monster("loup", 20, 10, false)
+	var ids := func(view: Dictionary) -> Array: return (view.get("tokens", []) as Array).map(func(t): return String(t.id))
+	var va := server._map_view(a.id)
+	_expect(ids.call(va).has(near.id) and not ids.call(va).has(far.id), "un joueur voit le loup proche, pas le loup lointain")
+	_expect(not ids.call(va).has(pb.id), "ni le pion d'un allié hors de vue (vision non partagée)")
+	_expect(String(va.fog.visible).length() == 40 * 20 and Vision.is_set(va.fog.visible, map, 6, 10) and not Vision.is_set(va.fog.visible, map, 30, 10), "état du brouillard envoyé au téléphone")
+	# Un mur coupe la vue.
+	for y in range(8, 13):
+		server.mj_paint(m.id, 7, y, "#")
+	_expect(not ids.call(server._map_view(a.id)).has(near.id), "un mur cache le loup derrière lui")
+	server.mj_add_label(m.id, 24, 4, "Ruines", false)
+	_expect((server._map_view(a.id).labels as Array).is_empty(), "étiquette d'une zone inexplorée cachée")
+	pa.x = 24
+	pa.y = 6
+	var v2 := server._map_view(a.id)
+	_expect((v2.labels as Array).size() == 1, "étiquette révélée une fois la zone explorée")
+	pa.x = 5
+	pa.y = 10
+	var v3 := server._map_view(a.id)
+	_expect(Vision.is_set(v3.fog.explored, map, 24, 6) and not Vision.is_set(v3.fog.visible, map, 24, 6), "les zones déjà vues restent connues (exploration mémorisée)")
+	server.mj_set_rules({"shared_vision": true})
+	_expect(ids.call(server._map_view(a.id)).has(pb.id), "vision partagée : on voit tout le groupe et ce qu'il voit")
+	server.mj_set_rules({"shared_vision": false})
+	server.mj_update_map(m.id, {"fog": false})
+	_expect(ids.call(server._map_view(a.id)).has(far.id), "brouillard désactivé : toute la carte est visible")
+	server.mj_update_map(m.id, {"fog": true})
+	server.mj_reset_fog(m.id)
+	_expect(not Vision.is_set(server._map_view(a.id).fog.explored, map, 24, 6), "le MJ peut faire oublier l'exploration")
+	_expect(not server.fog_preview(m.id).is_empty(), "aperçu du brouillard pour le MJ")

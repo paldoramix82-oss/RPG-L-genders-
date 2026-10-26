@@ -1,8 +1,10 @@
 class_name Backdrop
 extends Control
-## Fond d'écran commun : anthracite, halo violet discret et constellation dorée.
+## Fond d'écran commun : noir bleuté, halo violet discret, constellation dorée
+## et vignette sombre sur les bords (attire l'œil vers le centre).
 
 var _stars: Array[Vector3] = []
+var _vignette: GradientTexture2D
 
 
 func _ready() -> void:
@@ -13,6 +15,17 @@ func _ready() -> void:
 	for i in 42:
 		_stars.append(Vector3(rng.randf(), rng.randf(), rng.randf_range(0.6, 1.8)))
 	resized.connect(queue_redraw)
+	var g := Gradient.new()
+	g.set_color(0, Color(0, 0, 0, 0))
+	g.set_color(1, Color(0, 0, 0, 0.62))
+	g.add_point(0.55, Color(0, 0, 0, 0.08))
+	_vignette = GradientTexture2D.new()
+	_vignette.gradient = g
+	_vignette.fill = GradientTexture2D.FILL_RADIAL
+	_vignette.fill_from = Vector2(0.5, 0.42)
+	_vignette.fill_to = Vector2(1.05, 1.05)
+	_vignette.width = 256
+	_vignette.height = 256
 
 
 func _draw() -> void:
@@ -28,3 +41,4 @@ func _draw() -> void:
 		var c := Palette.GOLD
 		c.a = 0.25 + s.z * 0.12
 		draw_circle(Vector2(s.x * size.x, s.y * size.y), s.z, c)
+	draw_texture_rect(_vignette, Rect2(Vector2.ZERO, size), false)

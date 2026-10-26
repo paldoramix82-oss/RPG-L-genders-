@@ -377,7 +377,7 @@ func leave(reason: String = "Le MJ a terminé la partie.") -> void:
 
 
 func _reset() -> void:
-	Music.stop()
+	Music.apply_state({})
 	_closing = true
 	_attempt_serial += 1
 	discovery.stop()

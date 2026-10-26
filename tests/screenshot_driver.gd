@@ -150,6 +150,9 @@ func _player() -> void:
 	c.roll("d20+2", Protocol.TO_ALL, "Escalade")
 	c.send_chat(Protocol.TO_MJ, "Je garde une flamme allumée dans ma main, discrètement.")
 	await get_tree().create_timer(4.5).timeout
+	if OS.get_cmdline_user_args().has("--debug-fog"):
+		var f: Variant = c.map.get("fog")
+		print("FOG ", typeof(f), " ", (f as Dictionary).keys() if f is Dictionary else [], " ", String(f.get("visible", "")).count("1") if f is Dictionary else -1, " ", c.map.get("w"), "x", c.map.get("h"))
 	match tab:
 		"story":
 			screen._show_view("story")

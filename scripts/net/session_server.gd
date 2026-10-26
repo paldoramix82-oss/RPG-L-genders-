@@ -792,11 +792,43 @@ func mj_update_map(map_id: String, data: Dictionary) -> void:
 		map.description = Protocol.sanitize_text(data.description, 500)
 	if data.has("players_can_move"):
 		map.players_can_move = bool(data.players_can_move)
+	if data.has("fog"):
+		map.fog_of_war = bool(data.fog)
 	if data.has("w") or data.has("h"):
 		MapData.resize(map, int(data.get("w", map.w)), int(data.get("h", map.h)))
+		map.erase("explored")
 	if data.has("spawn_x"):
 		map.spawn = {"x": clampi(int(data.spawn_x), 0, map.w - 1), "y": clampi(int(data.spawn_y), 0, map.h - 1)}
 	map_changed(map_id)
+
+
+## Le groupe oublie ce qu'il a exploré sur cette carte (brouillard complet).
+func mj_reset_fog(map_id: String) -> void:
+	var map: Dictionary = maps.get(map_id, {})
+	if map.is_empty():
+		return
+	map.erase("explored")
+	map_changed(map_id)
+
+
+## Aperçu pour le MJ : réunion de ce que voient et ont exploré tous les joueurs.
+func fog_preview(map_id: String) -> Dictionary:
+	var map: Dictionary = maps.get(map_id, {})
+	if map.is_empty() or not Vision.enabled(map):
+		return {}
+	var seen := {}
+	var explored := "0".repeat(int(map.w) * int(map.h))
+	for p in players.values():
+		seen.merge(Vision.visible_for(map, String(p.id), characters, content))
+		var e := String(map.get("explored", {}).get(String(p.id), ""))
+		if e.length() == explored.length():
+			var a := explored.to_ascii_buffer()
+			var b := e.to_ascii_buffer()
+			for i in a.size():
+				if b[i] == 49:
+					a[i] = 49
+			explored = a.get_string_from_ascii()
+	return {"explored": Vision.explore(map, explored, seen), "visible": Vision.mask(map, seen)}
 
 
 ## Peint un disque de terrain. Renvoie true si quelque chose a changé.
@@ -1697,6 +1729,9 @@ func mj_set_rules(values: Dictionary) -> void:
 			content.rules[spec[0]] = clampi(int(values[spec[0]]), int(spec[2]), int(spec[3]))
 	if values.has("swap_in_combat"):
 		content.rules.swap_in_combat = bool(values.swap_in_combat)
+	if values.has("shared_vision"):
+		content.rules.shared_vision = bool(values.shared_vision)
+		_mark("map")
 	for id in characters:
 		Rules.refresh(characters[id], content)
 	_mark("content")
@@ -2003,8 +2038,10 @@ func broadcast_fx(list: Array) -> void:
 	var map: Dictionary = maps.get(active_map, {})
 	var visible: Array = list.filter(func(f): return not MapData.token(map, String(f.get("token", ""))).get("hidden", false))
 	for player in _accepted_online():
-		if not visible.is_empty():
-			_send.call(player.peer_id, Protocol.EVT_FX, {"fx": visible})
+		var ids: Variant = _visible_tokens_for(player.id)
+		var mine: Array = visible if ids == null else visible.filter(func(f): return (ids as Dictionary).has(String(f.get("token", ""))))
+		if not mine.is_empty():
+			_send.call(player.peer_id, Protocol.EVT_FX, {"fx": mine})
 	fx.emit(list)
 
 
@@ -2137,7 +2174,7 @@ func _send_welcome(player: Dictionary) -> void:
 		"players": public_players(),
 		"messages": history,
 		"characters": characters_for(player.id),
-		"map": _map_view(),
+		"map": _map_view(player.id),
 		"phase": phase_view_for_player(),
 		"music": music_view_for_player(),
 		"content": Content.for_player(content),
@@ -2164,9 +2201,41 @@ func characters_for(player_id: String) -> Array:
 	return list
 
 
-func _map_view() -> Dictionary:
+## Carte active vue par un joueur : sans les pions cachés ni les notes du MJ et,
+## avec le brouillard de guerre, seulement ce que son personnage voit (pions,
+## étiquettes des zones explorées) + l'état du brouillard pour l'affichage.
+func _map_view(player_id: String = "") -> Dictionary:
 	var map: Dictionary = maps.get(active_map, {})
-	return MapData.view_for_player(map) if not map.is_empty() else {}
+	if map.is_empty():
+		return {}
+	var view := MapData.view_for_player(map)
+	if player_id == "" or not Vision.enabled(map):
+		return view
+	var seen := Vision.visible_for(map, player_id, characters, content)
+	if not map.get("explored") is Dictionary:
+		map["explored"] = {}
+	var before := String(map.explored.get(player_id, ""))
+	var explored := Vision.explore(map, before, seen)
+	if explored != before:
+		map.explored[player_id] = explored
+		_unsaved = true
+	var w := int(map.w)
+	view["fog"] = {"explored": explored, "visible": Vision.mask(map, seen)}
+	view["tokens"] = (view.tokens as Array).filter(func(t):
+		return String(t.get("owner", "")) == player_id or seen.has(int(t.y) * w + int(t.x)))
+	view["labels"] = (view.labels as Array).filter(func(l): return Vision.is_set(explored, map, int(l.x), int(l.y)))
+	return view
+
+
+## Pions qu'un joueur voit en ce moment (null : tous les pions non cachés).
+func _visible_tokens_for(player_id: String) -> Variant:
+	var map: Dictionary = maps.get(active_map, {})
+	if map.is_empty() or not Vision.enabled(map):
+		return null
+	var ids := {}
+	for t in _map_view(player_id).get("tokens", []):
+		ids[String(t.id)] = true
+	return ids
 
 
 func _broadcast_players() -> void:
@@ -2181,15 +2250,19 @@ func _broadcast_characters() -> void:
 
 
 func _broadcast_map() -> void:
-	var view := _map_view()
 	for player in _accepted_online():
-		_send.call(player.peer_id, Protocol.EVT_MAP, {"map": view})
+		_send.call(player.peer_id, Protocol.EVT_MAP, {"map": _map_view(player.id)})
 
 
+## Mise à jour légère (déplacements) : pions, et brouillard s'il est actif.
 func _broadcast_tokens() -> void:
-	var view := _map_view()
 	for player in _accepted_online():
-		_send.call(player.peer_id, Protocol.EVT_TOKENS, {"map_id": view.get("id", ""), "tokens": view.get("tokens", [])})
+		var view := _map_view(player.id)
+		var payload := {"map_id": view.get("id", ""), "tokens": view.get("tokens", [])}
+		if view.has("fog"):
+			payload["fog"] = view.fog
+			payload["labels"] = view.labels
+		_send.call(player.peer_id, Protocol.EVT_TOKENS, payload)
 
 
 func _broadcast_settings() -> void:

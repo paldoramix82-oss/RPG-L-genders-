@@ -34,6 +34,10 @@ var reachable := {}
 var target_mode := false
 ## Pions ciblables pendant le choix d'une cible (entourés en rouge).
 var target_ids: Array = []
+## Brouillard de guerre imposé (aperçu du MJ) ; sinon celui reçu avec la carte.
+var fog_override := {}
+## Opacité des zones jamais explorées (1 pour les joueurs, moins pour l'aperçu MJ).
+var fog_alpha := 1.0
 ## Chiffres et textes flottants (dégâts, soins, effets) : {token, text, color, t}.
 var _floaters: Array = []
 
@@ -60,6 +64,8 @@ var _terrain_vp: SubViewport
 var _painter: TerrainPainter
 var _baked_cells := ""
 var _baked_size := Vector2i.ZERO
+var _fog_tex: ImageTexture
+var _fog_key := ""
 
 
 func _ready() -> void:
@@ -285,6 +291,7 @@ func _draw() -> void:
 			draw_line(offset + Vector2(x * cs, y0 * cs), offset + Vector2(x * cs, y1 * cs), gc, 1.0)
 		for y in range(y0, y1 + 1):
 			draw_line(offset + Vector2(x0 * cs, y * cs), offset + Vector2(x1 * cs, y * cs), gc, 1.0)
+	_draw_fog(board)
 	if is_mj and map.has("spawn"):
 		var sp := cell_center(Vector2(float(map.spawn.x), float(map.spawn.y)))
 		draw_arc(sp, cs * 0.42, 0, TAU, 24, Palette.OK, 2.0, true)
@@ -338,6 +345,42 @@ func _draw() -> void:
 			if MapData.in_bounds(map, c.x, c.y):
 				draw_rect(Rect2(offset + Vector2(c) * cs, Vector2(cs, cs)), Color(Palette.GOLD, 0.35))
 			_draw_token(t, (_drag_pos - offset) / cs - Vector2(0.5, 0.5), cs, 0.85)
+
+
+## Brouillard : une image d'un pixel par case, étirée et lissée sur le plateau
+## (bords doux). Jamais exploré : nuit ; exploré mais hors de vue : pénombre.
+func _draw_fog(board: Rect2) -> void:
+	var raw: Variant = fog_override if not fog_override.is_empty() else map.get("fog", {})
+	var fog: Dictionary = raw if raw is Dictionary else {}
+	if fog.is_empty():
+		return
+	var explored := String(fog.get("explored", ""))
+	var seen := String(fog.get("visible", ""))
+	var w := int(map.w)
+	var h := int(map.h)
+	if explored.length() != w * h or seen.length() != w * h:
+		return
+
+	var key := "%d:%d:%d:%d:%s" % [w, h, explored.hash(), seen.hash(), fog_alpha]
+	if key != _fog_key or _fog_tex == null:
+		_fog_key = key
+		var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+		var night := Color(Palette.BG_DEEP.darkened(0.3), fog_alpha)
+		var dusk := Color(0.03, 0.03, 0.06, 0.58 * fog_alpha + 0.05)
+		for y in h:
+			for x in w:
+				var i := y * w + x
+				if seen[i] == "1":
+					img.set_pixel(x, y, Color(0, 0, 0, 0))
+				elif explored[i] == "1":
+					img.set_pixel(x, y, dusk)
+				else:
+					img.set_pixel(x, y, night)
+		if _fog_tex == null or _fog_tex.get_size() != Vector2(w, h):
+			_fog_tex = ImageTexture.create_from_image(img)
+		else:
+			_fog_tex.update(img)
+	draw_texture_rect(_fog_tex, board, false)
 
 
 ## Recalcule la texture du terrain (au chargement et quand le MJ peint).

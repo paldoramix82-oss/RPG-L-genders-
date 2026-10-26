@@ -138,6 +138,7 @@ static func derived(sheet: Dictionary, content: Dictionary) -> Dictionary:
 		"heal_pct": int(m.get("heal_pct", 0)),
 		"crit_bonus": int(cls.get("crit_bonus", 0)) + int(m.get("crit", 0)),
 		"ap": maxi(0, int(r.get("ap_per_turn", 2)) + int(m.get("ap", 0))),
+		"vision": maxi(1, int(r.get("vision_base", 3)) + dex / maxi(1, int(r.get("vision_dex_div", 2))) + int(m.get("vision", 0))),
 		"mods": m,
 	}
 	var passive: Dictionary = sheet.get("passive", {})

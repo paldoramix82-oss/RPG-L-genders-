@@ -1,8 +1,10 @@
 class_name CharacterSheet
 extends VBoxContainer
-## Fiche de personnage organisée par catégories : identité et progression,
-## ressources, caractéristiques et valeurs de combat, effets en cours, passif,
-## capacités (équipées / connues), montée de niveau, équipement, histoire.
+## Fiche de personnage : en-tête toujours visible (portrait, nom, classe, niveau,
+## expérience, ressources), montée de niveau si elle attend, puis quatre onglets :
+##   Personnage (caractéristiques base + bonus, valeurs de combat, effets),
+##   Capacités (passif, équipées, connues, à débloquer),
+##   Équipement (objets portés), Histoire (magie, personnalité, secret).
 ## Vue complète (propriétaire, MJ) ou publique (autres joueurs).
 ##
 ## options : {mine: bool, mj: bool, act: Callable(action: String, data: Dictionary)}
@@ -13,6 +15,9 @@ var content := {}
 var mine := false
 var mj := false
 var act := Callable()
+## Onglet affiché (conservé quand la fiche se met à jour).
+static var last_tab := "stats"
+var _tab := "stats"
 
 
 func _init(sheet_data: Dictionary, content_data: Dictionary, options: Dictionary = {}) -> void:
@@ -21,6 +26,7 @@ func _init(sheet_data: Dictionary, content_data: Dictionary, options: Dictionary
 	mine = bool(options.get("mine", false))
 	mj = bool(options.get("mj", false))
 	act = options.get("act", Callable())
+	_tab = String(options.get("tab", last_tab))
 	add_theme_constant_override("separation", 12)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_build()
@@ -32,11 +38,55 @@ func _emit(action: String, data: Dictionary = {}) -> void:
 
 
 func _build() -> void:
+	UIKit.clear(self)
 	var c := sheet
 	var public := bool(c.get("public", false))
 	var d := Rules.derived(c, content) if not public else {}
+	_header(c, public, d)
+	if mine and not public:
+		_level_up()
+	if public:
+		_effects(c)
+		_story(c)
+		add_child(UIKit.label("Vous voyez la partie publique de cette fiche.", "MutedLabel", true))
+		return
+	# Onglets.
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 4)
+	add_child(tabs)
+	var group := ButtonGroup.new()
+	for spec in [["stats", "Personnage", "person"], ["skills", "Capacités", "bolt"], ["gear", "Équipement", "armor"], ["story", "Histoire", "book"]]:
+		var b := UIKit.button(spec[1], "NavButton")
+		b.toggle_mode = true
+		b.button_group = group
+		b.button_pressed = _tab == spec[0]
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size.y = 40
+		b.add_theme_font_size_override("font_size", 14)
+		b.clip_text = true
+		var key: String = spec[0]
+		b.pressed.connect(func():
+			_tab = key
+			last_tab = key
+			_build())
+		tabs.add_child(b)
+	match _tab:
+		"skills":
+			_skills(c, d)
+		"gear":
+			_gear(c)
+		"story":
+			_story(c)
+			if String(c.get("appearance", "")) == "" and String(c.get("background", "")) == "":
+				add_child(UIKit.label("Aucune histoire écrite pour l'instant.", "MutedLabel", true))
+			if mine or mj:
+				add_child(UIKit.button("Modifier l'histoire et l'apparence", "", func(): _emit("edit_story")))
+		_:
+			_stats(c, d)
+
+
+func _header(c: Dictionary, public: bool, d: Dictionary) -> void:
 	var cls := Rules.get_class_def(content, String(c.get("class_id", "")))
-	# --- En-tête ---
 	var head := UIKit.card(self, "", "HighlightPanel")
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
@@ -61,59 +111,65 @@ func _build() -> void:
 			sub.append(String(c[key]))
 	sub.append("Niveau %d" % int(c.get("level", 1)))
 	titles.add_child(UIKit.label("  ·  ".join(sub), "StrongLabel", true))
+	if not cls.is_empty() and String(cls.get("description", "")) != "":
+		titles.add_child(UIKit.label(String(cls.description), "MutedLabel", true))
 	if not public:
 		var lp := Rules.level_progress(c, content)
-		var xp := ResourceBar.new("XP", Palette.XP, 16)
+		var xp := ResourceBar.new("XP", Palette.XP, 14)
 		xp.show_text = false
 		xp.set_values(int(lp.xp) - int(lp.from), maxi(1, int(lp.to) - int(lp.from)), false)
 		titles.add_child(xp)
-		titles.add_child(UIKit.label("%d / %d XP pour le niveau %d" % [int(lp.xp), int(lp.to), int(lp.level) + 1], "MutedLabel"))
 		var money := HBoxContainer.new()
-		money.add_child(Icons.new("coin", Palette.GOLD, 22))
-		money.add_child(UIKit.label("%d pièces d'or" % int(c.get("gold", 0)), "StrongLabel"))
+		money.add_theme_constant_override("separation", 6)
+		var xl := UIKit.label("%d / %d XP" % [int(lp.xp), int(lp.to)], "MutedLabel")
+		xl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		money.add_child(xl)
+		money.add_child(Icons.new("coin", Palette.GOLD, 20))
+		var gl := UIKit.label("%d or" % int(c.get("gold", 0)), "StrongLabel")
+		gl.add_theme_color_override("font_color", Palette.GOLD)
+		money.add_child(gl)
 		titles.add_child(money)
-	# --- Ressources ---
-	var bars := UIKit.card(self, "")
-	var hp := ResourceBar.new("PV", Palette.HP, 26)
+	# Ressources.
+	var hp := ResourceBar.new("PV", Palette.HP, 24)
 	hp.set_values(int(c.get("hp", 0)), int(c.get("hp_max", 1)), false)
-	bars.add_child(hp)
+	head.add_child(hp)
 	if int(c.get("res_max", 0)) > 0:
-		var res := ResourceBar.new(String(c.get("res_name", d.get("res_name", "Énergie"))), Palette.MANA, 22)
+		var res := ResourceBar.new(String(c.get("res_name", d.get("res_name", "Énergie"))), Palette.MANA, 20)
 		res.set_values(int(c.get("res", 0)), int(c.res_max), false)
-		bars.add_child(res)
+		head.add_child(res)
 	if not public and _has_ultimate():
-		var ult := ResourceBar.new("Ultime", Palette.ULT, 16)
+		var ult := ResourceBar.new("Ultime", Palette.ULT, 14)
 		ult.set_values(int(c.get("ult", 0)), 100, false)
-		bars.add_child(ult)
-		bars.add_child(UIKit.label("La jauge d'ultime se remplit en combat (coups donnés et reçus, chaque tour).", "MutedLabel", true))
-	# --- Montée de niveau ---
-	if mine and not public:
-		_level_up()
-	# --- Effets en cours ---
+		head.add_child(ult)
 	var effects: Array = c.get("effects", [])
 	if not effects.is_empty():
-		var ec := UIKit.card(self, "Effets en cours")
-		for e in effects:
-			var line := HBoxContainer.new()
-			line.add_theme_constant_override("separation", 10)
-			line.add_child(GameUI.icon_badge(String(e.get("icon", "sparkle")), Color(String(e.get("color", "#a07cc9"))), 30))
-			var txt := "%s%s" % [e.get("name", "?"), (" — %d tour%s" % [int(e.turns), "s" if int(e.turns) > 1 else ""]) if int(e.get("turns", 0)) > 0 else ""]
-			if int(e.get("value", 0)) > 0:
-				txt += " (%d)" % int(e.value)
-			var box := VBoxContainer.new()
-			box.add_theme_constant_override("separation", 0)
-			box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			box.add_child(UIKit.label(txt, "StrongLabel", true))
-			if String(e.get("description", "")) != "":
-				box.add_child(UIKit.label(String(e.description), "MutedLabel", true))
-			line.add_child(box)
-			ec.add_child(line)
-	if public:
-		_story(c)
-		add_child(UIKit.label("Vous voyez la partie publique de cette fiche.", "MutedLabel", true))
+		head.add_child(GameUI.status_row(effects, 22))
+
+
+func _effects(c: Dictionary) -> void:
+	var effects: Array = c.get("effects", [])
+	if effects.is_empty():
 		return
-	# --- Caractéristiques et combat ---
-	var sc := UIKit.card(self, "Caractéristiques")
+	var ec := GameUI.section(self, "Effets en cours", "sparkle")
+	for e in effects:
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 10)
+		line.add_child(GameUI.icon_badge(String(e.get("icon", "sparkle")), Color(String(e.get("color", "#a07cc9"))), 30))
+		var txt := "%s%s" % [e.get("name", "?"), (" — %d tour%s" % [int(e.turns), "s" if int(e.turns) > 1 else ""]) if int(e.get("turns", 0)) > 0 else ""]
+		if int(e.get("value", 0)) > 0:
+			txt += " (%d)" % int(e.value)
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 0)
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(UIKit.label(txt, "StrongLabel", true))
+		if String(e.get("description", "")) != "":
+			box.add_child(UIKit.label(String(e.description), "MutedLabel", true))
+		line.add_child(box)
+		ec.add_child(line)
+
+
+func _stats(c: Dictionary, d: Dictionary) -> void:
+	var sc := GameUI.section(self, "Caractéristiques", "person")
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 8)
 	flow.add_theme_constant_override("v_separation", 8)
@@ -122,9 +178,9 @@ func _build() -> void:
 		var base := Rules.base_stat(c, s)
 		var eff := Rules.stat(c, s, content, d.mods)
 		flow.add_child(GameUI.stat_tile(s, eff, content, eff - base))
-	sc.add_child(UIKit.label("En vert : bonus d'équipement ou d'effet ; en rouge : malus.", "MutedLabel", true))
+	sc.add_child(UIKit.label("Petit chiffre : valeur de base + bonus. En vert : bonus d'équipement ou d'effet ; en rouge : malus.", "MutedLabel", true))
 	sc.add_child(explain_stats(content))
-	var fc := UIKit.card(self, "Au combat")
+	var fc := GameUI.section(self, "Au combat", "sword")
 	var grid := HFlowContainer.new()
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
@@ -132,7 +188,8 @@ func _build() -> void:
 	var w: Dictionary = Rules.weapons(c)[0]
 	var p := Rules.attack_profile(c, content, w)
 	for spec in [["Défense", str(d.defense), "Score à atteindre au d20 pour vous toucher."], ["Initiative", "%+d" % int(d.initiative), "Ajoutée au d20 pour l'ordre de jeu."],
-			["Vitesse", "%d cases" % int(d.speed), "Cases parcourues par déplacement."], ["Points d'action", str(d.ap), "Actions par tour de combat."],
+			["Vitesse", "%d cases" % int(d.speed), "Cases parcourues par déplacement."], ["Vision", "%d cases" % int(d.get("vision", 5)), "Jusqu'où vous voyez sur la carte (Dextérité)."],
+			["Points d'action", str(d.ap), "Actions par tour de combat."],
 			["Rés. physique", str(d.resist_phys), "Retirée aux dégâts physiques reçus."], ["Rés. magique", str(d.resist_mag), "Retirée aux dégâts magiques reçus."],
 			["Toucher", "%+d" % int(p.to_hit), "Ajouté au d20 de votre attaque d'arme."], ["Dégâts", "%s%+d" % [p.damage, int(p.damage_bonus)], "Dégâts de votre arme."],
 			["Critique", ("%d-20" % int(p.crit)) if int(p.crit) < 20 else "20", "Résultat du d20 qui double les dés de dégâts."]]:
@@ -149,43 +206,79 @@ func _build() -> void:
 			mm.append("%s %+d" % [Content.MOD_NAMES.get(k, k), int(mods[k])])
 	if not mm.is_empty():
 		fc.add_child(UIKit.label("Bonus et malus actuels : " + ", ".join(mm), "MutedLabel", true))
-	# --- Passif ---
+	_effects(c)
+
+
+func _skills(c: Dictionary, d: Dictionary) -> void:
 	var passive: Dictionary = c.get("passive", {})
 	if not passive.is_empty() and String(passive.get("name", "")) != "":
-		var pc := UIKit.card(self, "Passif de classe")
+		var pc := GameUI.section(self, "Passif de classe", "spiral")
 		pc.add_child(GameUI.passive_card(passive, content))
-	# --- Capacités ---
 	var res_name := String(d.res_name)
-	var ac := UIKit.card(self, "Capacités")
 	var equipped := Rules.equipped_abilities(c)
+	var ac := GameUI.section(self, "Équipées", "bolt")
 	ac.add_child(UIKit.label("Barre rapide : %d / %d capacités de base + ultime." % [equipped.filter(func(a): return not a.get("ultimate", false)).size(), int(Content.rule(content, "slots_basic"))], "MutedLabel", true))
+	var known: Array = (c.get("abilities", []) as Array).filter(func(a): return not a.get("equipped", false))
 	for a in c.get("abilities", []):
-		var holder := VBoxContainer.new()
-		holder.add_theme_constant_override("separation", 4)
-		ac.add_child(holder)
-		var note := "" if a.get("equipped", false) else "Connue, pas équipée."
-		holder.add_child(GameUI.ability_card(a, content, res_name, note))
-		if mine or mj:
-			var id := String(a.get("id", ""))
-			var eq := bool(a.get("equipped", false))
-			holder.add_child(UIKit.button("Retirer de la barre rapide" if eq else "Équiper dans la barre rapide", "" if eq else "PrimaryButton", func():
-				_emit("equip_ability", {"id": id, "equipped": not eq})))
+		if a.get("equipped", false):
+			_ability_row(ac, a, res_name, "")
 	for item in Rules.equipped(c):
 		for g in item.get("grants", []):
 			var a := Content.ability_copy(content, String(g), true)
 			if not a.is_empty():
 				ac.add_child(GameUI.ability_card(a, content, res_name, "Accordée par %s." % item.name))
-	# --- Équipement ---
-	var eqc := UIKit.card(self, "Équipement porté")
+	if not known.is_empty():
+		var kc := GameUI.section(self, "Connues", "book")
+		for a in known:
+			_ability_row(kc, a, res_name, "Connue, pas équipée.")
+	# À débloquer : capacités de la classe pas encore apprises.
+	var cls := Rules.get_class_def(content, String(c.get("class_id", "")))
+	var have: Array = (c.get("abilities", []) as Array).map(func(a): return String(a.get("id", "")))
+	var locked: Array = (cls.get("learnable", []) as Array).filter(func(l): return not have.has(String(l.get("ability", ""))))
+	if not locked.is_empty():
+		var lc := GameUI.section(self, "À débloquer", "key")
+		for l in locked:
+			var a := Content.get_entry(content, "abilities", String(l.get("ability", "")))
+			if a.is_empty():
+				continue
+			var lvl := int(l.get("level", 2))
+			var card := GameUI.ability_card(a, content, res_name, ("Disponible : choisissez-la à votre prochaine montée de niveau." if lvl <= int(c.get("level", 1)) else "Se débloque au niveau %d." % lvl))
+			card.modulate = Color(1, 1, 1, 0.6) if lvl > int(c.get("level", 1)) else Color.WHITE
+			lc.add_child(card)
+
+
+func _ability_row(parent: Node, a: Dictionary, res_name: String, note: String) -> void:
+	var holder := VBoxContainer.new()
+	holder.add_theme_constant_override("separation", 4)
+	parent.add_child(holder)
+	holder.add_child(GameUI.ability_card(a, content, res_name, note))
+	if mine or mj:
+		var id := String(a.get("id", ""))
+		var eq := bool(a.get("equipped", false))
+		holder.add_child(UIKit.button("Retirer de la barre rapide" if eq else "Équiper dans la barre rapide", "" if eq else "PrimaryButton", func():
+			_emit("equip_ability", {"id": id, "equipped": not eq})))
+
+
+func _gear(c: Dictionary) -> void:
+	var eqc := GameUI.section(self, "Équipement porté", "armor")
 	var any := false
 	for item in Rules.equipped(c):
 		eqc.add_child(GameUI.item_card(item, content))
 		any = true
 	if not any:
 		eqc.add_child(UIKit.label("Rien d'équipé. Ouvrez l'inventaire pour vous équiper.", "MutedLabel", true))
-	_story(c)
-	if mine or mj:
-		add_child(UIKit.button("Modifier l'histoire et l'apparence", "", func(): _emit("edit_story")))
+	var bag := (c.get("inventory", []) as Array).filter(func(i): return not i.get("equipped", false))
+	if not bag.is_empty():
+		var bc := GameUI.section(self, "Dans le sac (%d)" % bag.size(), "bag")
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 6)
+		flow.add_theme_constant_override("v_separation", 6)
+		bc.add_child(flow)
+		for item in bag:
+			var slot := GameUI.item_slot(item, 48)
+			slot.tooltip_text = String(item.get("name", ""))
+			slot.mouse_filter = Control.MOUSE_FILTER_PASS
+			flow.add_child(slot)
 
 
 ## Bouton « À quoi servent les caractéristiques ? » qui déplie leurs descriptions.
@@ -215,7 +308,7 @@ func _level_up() -> void:
 	var picks := int(pending.get("picks", 0))
 	if points <= 0 and picks <= 0:
 		return
-	var card := UIKit.card(self, "Niveau supérieur !", "HighlightPanel")
+	var card := GameUI.section(self, "Niveau supérieur !", "xp", "HighlightPanel")
 	if points > 0:
 		card.add_child(UIKit.label("%d point%s de caractéristique à placer :" % [points, "s" if points > 1 else ""], "StrongLabel", true))
 		var flow := HFlowContainer.new()
@@ -248,7 +341,7 @@ func _level_up() -> void:
 func _story(c: Dictionary) -> void:
 	var magic: Dictionary = c.get("magic", {})
 	if String(magic.get("name", "")) != "" or String(magic.get("category", "")) != "":
-		var m := UIKit.card(self, "Magie")
+		var m := GameUI.section(self, "Magie", "wand")
 		var top := String(magic.get("name", ""))
 		if String(magic.get("category", "")) != "":
 			top += ("  —  " if top != "" else "") + String(magic.category)
@@ -262,7 +355,7 @@ func _story(c: Dictionary) -> void:
 		if String(c.get(spec[0], "")) == "":
 			continue
 		if story == null:
-			story = UIKit.card(self, "Histoire et personnalité")
+			story = GameUI.section(self, "Histoire et personnalité", "book")
 		_para(story, spec[1], c[spec[0]])
 
 
