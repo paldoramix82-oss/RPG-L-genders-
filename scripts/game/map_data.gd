@@ -180,9 +180,12 @@ static func update_token(t: Dictionary, data: Dictionary, map: Dictionary) -> vo
 		t.x = clampi(int(data.x), 0, int(map.w) - 1)
 	if data.has("y"):
 		t.y = clampi(int(data.y), 0, int(map.h) - 1)
-	for key in ["hp", "hp_max"]:
+	for key in ["hp", "hp_max", "defense", "speed"]:
 		if data.has(key):
 			t[key] = clampi(int(data[key]), -9999, 99999)
+	if data.has("attack"):
+		var attack := String(data.attack).strip_edges()
+		t.attack = attack if attack == "" or Dice.roll(attack, RandomNumberGenerator.new()).ok else "1d6"
 	if data.has("hidden"):
 		t.hidden = bool(data.hidden)
 	if data.has("note"):

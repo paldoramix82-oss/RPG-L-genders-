@@ -120,6 +120,13 @@ func _build() -> void:
 
 	# --- État ---
 	var state := UIKit.card(self, "État")
+	var auto := CheckBox.new()
+	auto.text = "Calcul automatique (classe et points répartis) : PV, énergie, défense et caractéristiques sont recalculés à l'enregistrement"
+	auto.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	auto.button_pressed = bool(sheet.get("auto", false))
+	auto.disabled = String(sheet.get("class_id", "")) == ""
+	state.add_child(auto)
+	_f["auto"] = auto
 	var res_name := String(_cfg("resource_name", "Énergie"))
 	var grid := GridContainer.new()
 	grid.columns = 2
@@ -331,7 +338,7 @@ func collect() -> Dictionary:
 	var out := sheet.duplicate(true)
 	for key in ["name", "concept", "species", "origin", "age", "appearance", "rank", "status",
 			"personality", "goals", "background", "relations", "notes", "secret",
-			"hp", "hp_max", "res", "res_max", "level", "xp"]:
+			"hp", "hp_max", "res", "res_max", "level", "xp", "auto"]:
 		if _f.has(key):
 			out[key] = _value(_f[key])
 	out.magic = {

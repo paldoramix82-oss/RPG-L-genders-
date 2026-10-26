@@ -17,13 +17,13 @@ Cocher chaque ligne et noter les remarques.
 ### A. Démarrage du serveur
 - [ ] A1. Lancer l'exe → l'écran d'accueil s'affiche.
 - [ ] A2. « Héberger une partie » → « Lancer le serveur » : la fenêtre du pare-feu apparaît, autoriser les réseaux privés.
-- [ ] A3. Le tableau de bord affiche l'adresse IP (192.168.x.x ou 10.x.x.x), le port et le code.
+- [ ] A3. Le tableau de bord affiche l'adresse IP en grand (192.168.x.x ou 10.x.x.x). Aucun code.
 
 ### B. Connexion d'un téléphone
 - [ ] B1. Sur le téléphone : « Rejoindre une partie ». (Bouton « Héberger » grisé : normal.)
 - [ ] B2. La partie apparaît-elle dans « Parties détectées » ? (oui / non — « non » n'est pas bloquant)
-- [ ] B3. Saisir nom, IP, port, code → « Rejoindre ». Le téléphone affiche « En attente du maître du jeu ».
-- [ ] B4. Sur le PC : la demande apparaît avec Accepter / Refuser. Accepter → le téléphone passe sur « Aventure ».
+- [ ] B3. Saisir le nom puis l'IP au pavé numérique (vérifier que la touche « . » fonctionne après « 192.168 ») → « Rejoindre ». Le téléphone propose de créer son personnage.
+- [ ] B4. (Option « Valider moi-même chaque nouveau joueur » cochée) La demande apparaît sur le PC avec Accepter / Refuser.
 - [ ] B5. Le ping affiché côté PC et côté téléphone (onglet Groupe) est raisonnable (< 100 ms en général).
 
 ### C. Messages
@@ -36,7 +36,7 @@ Cocher chaque ligne et noter les remarques.
 ### D. Plusieurs joueurs (critère : 3 joueurs)
 - [ ] D1. Connecter 3 téléphones, tous acceptés, tous visibles dans l'onglet Groupe et côté MJ.
 - [ ] D2. Un 2ᵉ appareil avec le même nom qu'un joueur existant est refusé.
-- [ ] D3. Un mauvais code est refusé avec un message clair.
+- [ ] D3. Une mauvaise adresse IP affiche un message clair (« Le PC du MJ ne répond pas »).
 
 ### E. Coupures
 - [ ] E1. Couper le Wi-Fi d'un téléphone 10 s puis le rallumer → « Reconnexion… » puis « Connecté », messages conservés.
@@ -48,17 +48,17 @@ Cocher chaque ligne et noter les remarques.
 
 ### F. Ergonomie
 - [ ] F1. Textes lisibles et boutons faciles à toucher sur chaque téléphone.
-- [ ] F2. Aucun défilement horizontal.
+- [ ] F2. Aucun défilement horizontal ; on fait défiler les listes longues (assistant, fiche, codex) en glissant le doigt n'importe où, même en partant d'un bouton.
 - [ ] F3. Le tableau de bord du MJ est lisible en plein écran sur le PC.
 
 ### G. Fonctions de jeu
-- [ ] G1. Un joueur crée sa fiche (onglet Fiche) : son pion apparaît sur la carte de tous.
+- [ ] G1. Un joueur crée son personnage avec l'assistant (classe, 12 points, arme, nom) : il arrive dans le salon « Vous êtes prêt ! », son pion apparaît sur la carte. Le MJ voit « Préparation : 1/1 » et appuie sur « La partie commence ! ».
 - [ ] G2. Le joueur déplace son pion en touchant une case : le mouvement apparaît chez le MJ et les autres joueurs.
 - [ ] G3. Le MJ pose un monstre caché : les joueurs ne le voient pas ; il le révèle : il apparaît.
-- [ ] G4. Combat : initiative, tour suivant, le joueur ne peut bouger qu'à son tour.
+- [ ] G4. Exploration : chacun son tour, déplacement limité à la vitesse, « Fin du tour ». Combat : « C'est votre tour ! », Attaquer → choisir l'arme → toucher la cible → jet automatique ; le MJ fait jouer ses monstres ; Repos rend des PV.
 - [ ] G5. Action déclarée par un joueur → le MJ la résout avec un jet → résultat reçu.
 - [ ] G6. Jet de dés secret d'un joueur : visible du MJ seulement.
-- [ ] G7. Terminer la session, puis *Reprendre* la campagne : fiches, cartes et pions sont restaurés ; les joueurs se reconnectent avec le même code.
+- [ ] G7. Terminer la session, puis *Reprendre* la campagne : fiches, cartes et pions sont restaurés ; les joueurs se reconnectent avec la même adresse IP.
 - [ ] G8. Héberger depuis un téléphone Android (optionnel) et rejoindre depuis les autres.
 
 ## Rapport

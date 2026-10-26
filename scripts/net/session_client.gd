@@ -13,7 +13,7 @@ signal message_received(message: Dictionary)
 signal message_updated(message: Dictionary)
 signal characters_changed
 signal map_changed
-signal combat_changed
+signal phase_changed
 signal settings_changed
 signal music_changed
 signal command_failed(req_id: String, error: String)
@@ -28,7 +28,7 @@ var players: Array = []
 var messages: Array = []
 var characters: Array = []
 var map := {}
-var combat := {}
+var phase := {}
 var music := {}
 
 var _send: Callable  # func(cmd: String, payload: Dictionary)
@@ -76,6 +76,23 @@ func save_character(sheet: Dictionary) -> String:
 ## Lance soi-même le dé demandé par le MJ (pour une action ou une demande de jet).
 func answer_roll(message_id: String) -> String:
 	return send_command(Protocol.CMD_ROLL_ANSWER, {"message_id": message_id})
+
+
+## Action pendant son tour : « end », « attack », « ability », « item ».
+func turn_action(action: String, target: String = "", index: int = 0) -> String:
+	return send_command(Protocol.CMD_TURN, {"action": action, "target": target, "index": index})
+
+
+func my_token() -> Dictionary:
+	return MapData.token(map, "pawn_" + String(me.get("id", "")))
+
+
+func is_my_turn() -> bool:
+	return phase.get("turns", false) and String(phase.get("current", "")) != "" and phase.current == my_token().get("id", "-")
+
+
+func game_started() -> bool:
+	return bool(session.get("started", false))
 
 
 func move_pawn(token_id: String, x: int, y: int) -> String:
@@ -133,7 +150,7 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 			players = payload.get("players", [])
 			characters = payload.get("characters", [])
 			map = payload.get("map", {})
-			combat = payload.get("combat", {})
+			phase = payload.get("phase", {})
 			music = payload.get("music", {})
 			messages.clear()
 			_message_index.clear()
@@ -146,7 +163,7 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 			players_changed.emit()
 			characters_changed.emit()
 			map_changed.emit()
-			combat_changed.emit()
+			phase_changed.emit()
 			music_changed.emit()
 			resend_pending()
 		Protocol.EVT_PLAYERS:
@@ -176,9 +193,9 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 		Protocol.EVT_MUSIC:
 			music = payload.get("music", {})
 			music_changed.emit()
-		Protocol.EVT_COMBAT:
-			combat = payload.get("combat", {})
-			combat_changed.emit()
+		Protocol.EVT_PHASE:
+			phase = payload.get("phase", {})
+			phase_changed.emit()
 		Protocol.EVT_SETTINGS:
 			session = payload.get("session", session)
 			settings_changed.emit()

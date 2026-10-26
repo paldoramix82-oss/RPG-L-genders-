@@ -154,7 +154,8 @@ func get_peer_ip(peer_id: int) -> String:
 # Connexion (téléphone d'un joueur)
 # ---------------------------------------------------------------------------
 
-func join(ip: String, port: int, code: String, player_name: String) -> String:
+## Rejoint l'hôte à cette adresse : plus besoin de code de partie.
+func join(ip: String, port: int, player_name: String) -> String:
 	if _ending:
 		return "Fermeture de la session précédente en cours, réessayez."
 	leave()
@@ -163,14 +164,11 @@ func join(ip: String, port: int, code: String, player_name: String) -> String:
 		return "Adresse IP invalide (exemple : 192.168.1.20)."
 	if port < 1024 or port > 65535:
 		return "Port invalide."
-	if Protocol.normalize_code(code).length() != Protocol.CODE_LENGTH:
-		return "Le code de partie contient %d caractères." % Protocol.CODE_LENGTH
 	if Protocol.sanitize_name(player_name) == "":
 		return "Indiquez votre nom."
 	_join = {
 		"ip": ip,
 		"port": port,
-		"code": Protocol.normalize_code(code),
 		"name": Protocol.sanitize_name(player_name),
 	}
 	role = Role.CLIENT
@@ -299,7 +297,6 @@ func _on_peer_authenticating(peer_id: int) -> void:
 	elif role == Role.CLIENT and peer_id == 1:
 		(multiplayer as SceneMultiplayer).send_auth(1, Protocol.encode_auth({
 			"proto": Protocol.VERSION,
-			"code": _join.code,
 			"name": _join.name,
 			"token": App.device_token(),
 		}))

@@ -17,7 +17,7 @@ run() {
 
 run server &
 sleep 1.5
-for role in alice bob wrongcode mallory; do
+for role in alice bob mallory; do
 	run "$role" &
 done
 wait
@@ -41,7 +41,7 @@ done
 wait
 
 status=0
-for role in server alice bob wrongcode mallory server2 yann server3 dana eli; do
+for role in server alice bob mallory server2 yann server3 dana eli; do
 	# « resources still in use at exit » : références circulaires propres aux
 	# fonctions anonymes du script de test, sans effet sur le jeu.
 	grep -E "^\[$role\]|SCRIPT ERROR|ERROR:" "$LOGDIR/$role.log" | grep -v "resources still in use" | sed "s/^/  /"

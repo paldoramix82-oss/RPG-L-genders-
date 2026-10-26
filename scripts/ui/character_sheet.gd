@@ -53,6 +53,24 @@ func _build(c: Dictionary) -> void:
 		if c.has("xp"):
 			gauges.add_child(UIKit.label("Expérience : %d" % int(c.xp), "MutedLabel"))
 
+	# --- Combat : valeurs calculées et attaques ---
+	if c.has("stats"):
+		var uid := String(universe.get("id", ""))
+		var d := Rules.derived(c, uid)
+		var fight := UIKit.card(self, "Au combat")
+		var grid := GridContainer.new()
+		grid.columns = 3
+		grid.add_theme_constant_override("h_separation", 8)
+		grid.add_theme_constant_override("v_separation", 8)
+		fight.add_child(grid)
+		for spec in [["Défense", str(d.defense)], ["Initiative", "%+d" % d.initiative], ["Vitesse", "%d cases" % d.speed]]:
+			grid.add_child(_stat(spec[0], 0, false, spec[1]))
+		for w in Rules.weapons(c):
+			fight.add_child(UIKit.label(CreationWizard._attack_text(Rules.attack_profile(c, uid, w)), "", true))
+		var cls := Rules.get_class_def(uid, String(c.get("class_id", "")))
+		if not cls.is_empty():
+			fight.add_child(UIKit.label("Classe : %s — %s" % [cls.name, cls.get("role", "")], "MutedLabel", true))
+
 	# --- Magie ---
 	var magic: Dictionary = c.get("magic", {})
 	if String(magic.get("name", "")) != "" or String(magic.get("category", "")) != "":
@@ -72,13 +90,16 @@ func _build(c: Dictionary) -> void:
 			var box := UIKit.card(ab, "", "InsetPanel")
 			box.add_child(UIKit.label(String(a.name), "StrongLabel", true))
 			var meta: PackedStringArray = []
-			if String(a.get("cost", "")) != "":
-				meta.append("Coût : " + String(a.cost))
-			if String(a.get("range", "")) != "":
-				meta.append("Portée : " + String(a.range))
+			if str(a.get("cost", "")) != "":
+				meta.append("Coût : " + str(a.cost))
+			if str(a.get("range", "")) not in ["", "0"]:
+				meta.append("Portée : " + str(a.range))
 			if not meta.is_empty():
 				box.add_child(UIKit.label("  ·  ".join(meta), "MutedLabel", true))
-			_para(box, "", a.get("description", ""))
+			if String(a.get("kind", "")) != "":
+				box.add_child(UIKit.label(CreationWizard._ability_text(a, String(universe.get("character", {}).get("resource_name", "Énergie"))), "MutedLabel", true))
+			else:
+				_para(box, "", a.get("description", ""))
 			_para(box, "Limites", a.get("limits", ""))
 
 	# --- Caractéristiques et compétences ---
@@ -102,7 +123,12 @@ func _build(c: Dictionary) -> void:
 			line.add_child(n)
 			if int(item.get("qty", 1)) != 1:
 				line.add_child(UIKit.label("× %d" % int(item.qty), "MutedLabel"))
+			if item.get("equipped", false):
+				line.add_child(UIKit.chip("équipé", Palette.OK))
 			inv.add_child(line)
+			var stats_text := CreationWizard._item_stats(item)
+			if stats_text != "":
+				inv.add_child(UIKit.label(stats_text, "", true))
 			if String(item.get("description", "")) != "":
 				inv.add_child(UIKit.label(String(item.description), "MutedLabel", true))
 
@@ -156,13 +182,13 @@ func _gauge(caption: String, value: int, max_value: int, color: Color) -> Contro
 	return box
 
 
-func _stat(stat_name: String, value: int, signed: bool) -> Control:
+func _stat(stat_name: String, value: int, signed: bool, text: String = "") -> Control:
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = "InsetPanel"
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 0)
 	panel.add_child(col)
-	var v := UIKit.label(("%+d" % value) if signed else str(value), "CodeLabel")
+	var v := UIKit.label(text if text != "" else (("%+d" % value) if signed else str(value)), "CodeLabel")
 	v.add_theme_font_size_override("font_size", 24)
 	v.add_theme_color_override("font_color", Palette.GOLD)
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

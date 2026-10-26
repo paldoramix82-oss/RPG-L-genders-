@@ -42,7 +42,7 @@ docs/
 
 **Transport** : `ENetMultiplayerPeer` (UDP, canaux fiables), via le `SceneMultiplayer` de Godot. Le PC du MJ est le serveur (identifiant de pair 1).
 
-**Authentification** : on utilise la phase d'authentification native de `SceneMultiplayer` (`auth_callback`). Tant qu'elle n'est pas terminée, le pair ne peut ni envoyer ni recevoir de RPC. Le téléphone envoie (en JSON) : version du protocole, code de session, nom, identifiant secret d'appareil. Le serveur répond `ok` ou un motif de refus, puis ferme la connexion en cas de refus.
+**Authentification** : on utilise la phase d'authentification native de `SceneMultiplayer` (`auth_callback`). Tant qu'elle n'est pas terminée, le pair ne peut ni envoyer ni recevoir de RPC. Le téléphone envoie (en JSON) : version du protocole, nom, identifiant secret d'appareil (pas de code de partie : l'adresse IP suffit). Le serveur répond `ok` ou un motif de refus, puis ferme la connexion en cas de refus.
 
 **Deux RPC seulement** (dans `Net`) :
 
@@ -74,7 +74,9 @@ Ce bus de messages permet d'ajouter des fonctions (actions libres, dés, inventa
 | `action_declare` | enregistrée « en attente » ; seul le MJ la résout |
 | `dice_roll` | formule analysée, dés tirés par l'hôte |
 | `char_save` | uniquement sa propre fiche, champs validés, refusé si le MJ a verrouillé les fiches |
-| `pawn_move` | uniquement son propre pion, sur la carte affichée, case franchissable, autorisé par le MJ, à son tour en combat |
+| `pawn_move` | uniquement son propre pion, sur la carte affichée, case franchissable, autorisé par le MJ, selon la phase : à son tour et dans la limite de sa vitesse |
+| `char_save` (assistant) | répartition limitée à 12 points (−4 à +6), PV / énergie / défense recalculés par l'hôte (`Rules.refresh`) |
+| `turn` | seulement à son tour, pour son pion : `end`, `attack` (portée de l'arme, jet d20 + mod. contre la défense, critique), `ability` (coût en énergie), `item` |
 | `roll_answer` | uniquement un jet que le MJ a demandé à ce joueur, une seule fois ; le dé est tiré par l'hôte |
 
 | Événement (hôte → joueur) | Filtrage |
@@ -85,9 +87,9 @@ Ce bus de messages permet d'ajouter des fonctions (actions libres, dés, inventa
 | `map` | sans pions, étiquettes ni notes cachés (envoyée quand le terrain ou les étiquettes changent) |
 | `tokens` | seulement les pions visibles (envoi léger à chaque déplacement) |
 | `music` | morceau, lecture, heure de départ (si le MJ diffuse la musique) |
-| `combat` | ordre limité aux pions visibles |
+| `phase` | type de phase, tour, ordre limité aux pions visibles, déplacements restants, action utilisée |
 
-Les changements de carte, de fiches et de combat sont regroupés et envoyés au plus une fois par image (`SessionServer.flush()`).
+Les changements de carte, de fiches et de phase sont regroupés et envoyés au plus une fois par image (`SessionServer.flush()`).
 
 ## Données et sauvegarde
 

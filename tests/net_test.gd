@@ -3,7 +3,7 @@ extends Node
 ## et communique réellement via ENet (UDP) sur la machine locale.
 ## Lancement : tests/run_net_test.sh
 ##
-## Scénario 1 : server, alice, bob, wrongcode, mallory.
+## Scénario 1 : server, alice, bob, mallory.
 ## Scénario 2 : server2, zoe (tuée brutalement par le script), yann.
 ## Scénario 3 : server3, dana, eli (fiches, carte, pions, dés, actions, secrets).
 
@@ -30,8 +30,6 @@ func _ready() -> void:
 			_run_alice()
 		"bob":
 			_run_bob()
-		"wrongcode":
-			_run_wrong_code()
 		"mallory":
 			_run_mallory()
 		"server2":
@@ -56,7 +54,7 @@ func _ready() -> void:
 # --- Serveur (PC du MJ) -------------------------------------------------------
 
 func _run_server() -> void:
-	var err := Net.host({"name": "Test", "mj_name": "MJ Test", "port": port, "max_players": 4, "auto_accept": false, "code": CODE})
+	var err := Net.host({"name": "Test", "mj_name": "MJ Test", "port": port, "max_players": 4, "auto_accept": false})
 	_expect(err == "", "serveur démarré (%s)" % err)
 	var server := Net.server
 	server.players_changed.connect(func():
@@ -97,7 +95,6 @@ func _check_server() -> void:
 	_expect(names.count("Alice") == 1, "Alice a conservé une seule fiche après reconnexion")
 	_expect(_find(server, "Alice").get("disconnects", 0) >= 1, "la coupure d'Alice a été détectée")
 	_expect(_find(server, "Mallory").get("status", "") == Protocol.STATUS_REFUSED, "Mallory refusée")
-	_expect(not names.has("Intrus"), "mauvais code : aucune fiche créée")
 
 
 # --- Alice : reconnexion et file d'envoi -------------------------------------
@@ -152,18 +149,6 @@ func _check_bob() -> void:
 
 # --- Refus ---------------------------------------------------------------------
 
-func _run_wrong_code() -> void:
-	await get_tree().create_timer(0.4).timeout
-	Net.join_failed.connect(func(reason): _state.reason = reason)
-	var err := Net.join("127.0.0.1", port, "ZZZZZZ", "Intrus")
-	_expect(err == "", "tentative lancée")
-
-
-func _check_wrong_code() -> void:
-	_expect(String(_state.get("reason", "")).contains("Code"), "mauvais code refusé : « %s »" % _state.get("reason", ""))
-	_expect(Net.client == null, "aucune session côté client")
-
-
 func _run_mallory() -> void:
 	await get_tree().create_timer(1.2).timeout
 	Net.session_ended.connect(func(reason): _state.reason = reason)
@@ -179,7 +164,7 @@ func _check_mallory() -> void:
 # --- Scénario 2 : coupure brutale et fin de session -----------------------
 
 func _run_server2() -> void:
-	var err := Net.host({"name": "Test2", "port": port, "auto_accept": true, "code": CODE})
+	var err := Net.host({"name": "Test2", "port": port, "auto_accept": true})
 	_expect(err == "", "serveur 2 démarré")
 	Net.server.log_added.connect(func(entry):
 		if String(entry.text).begins_with("Zoe est déconnecté"):
@@ -209,24 +194,46 @@ func _check_yann() -> void:
 	_expect(Net.state == Net.State.OFFLINE, "client hors ligne")
 
 
-# --- Scénario 3 : fiches, carte, pions, dés, actions, secrets ---------------
+# --- Scénario 3 : partie complète (création, phases, tours, combat, secrets) --
 
 func _run_server3() -> void:
-	var err := Net.host({"name": "Test3", "port": port, "auto_accept": true, "code": CODE, "universe": "legenders"})
+	var err := Net.host({"name": "Test3", "port": port, "auto_accept": true, "universe": "legenders"})
 	_expect(err == "", "serveur 3 démarré")
 	var server := Net.server
 	server.characters_changed.connect(func():
-		if _state.get("setup", false) or server.characters.size() < 2:
+		var ready := server.players.keys().filter(func(id): return server.characters.has(id))
+		if _state.get("setup", false) or ready.size() < 2:
 			return
 		_state.setup = true
 		var map_id := server.active_map
 		server.mj_add_token(map_id, {"kind": "monster", "name": "Monstre caché", "x": 1, "y": 1, "hidden": true, "hp": 9, "hp_max": 9})
-		server.mj_add_token(map_id, {"kind": "npc", "name": "PNJ visible", "x": 2, "y": 1, "hidden": false})
+		_state.npc = server.mj_add_token(map_id, {"kind": "npc", "name": "PNJ visible", "x": 2, "y": 1, "hidden": false, "hp": 30, "hp_max": 30, "defense": 8, "attack": "1d4"}).id
 		server.mj_add_label(map_id, 3, 3, "Passage secret", true)
 		server.mj_roll("d20", Protocol.TO_MJ, "jet secret MJ")
 		server.mj_roll("d6", _find(server, "Dana").id, "jet pour Dana")
-		server.mj_combat_start(false)
-		server.mj_combat_end())
+		server.mj_start_game("exploration"))
+	server.phase_changed.connect(func():
+		var phase: Dictionary = server.phase
+		var map: Dictionary = server.maps[server.active_map]
+		if phase.type == "exploration" and int(phase.round) >= 2 and not _state.get("combat", false):
+			# Deuxième tour d'exploration : on passe au combat, Dana d'abord, le PNJ au contact.
+			_state.combat = true
+			var dana_pawn := MapData.token(map, "pawn_" + String(_find(server, "Dana").id))
+			server.mj_update_token(server.active_map, _state.npc, {"x": int(dana_pawn.x) + 1, "y": int(dana_pawn.y)})
+			server.mj_set_phase.call_deferred("combat")
+		elif phase.type == "combat" and not _state.get("ordered", false):
+			_state.ordered = true
+			var dana_id := "pawn_" + String(_find(server, "Dana").id)
+			phase.order.erase(dana_id)
+			phase.order.push_front(dana_id)
+			phase.turn = 0
+			server._begin_turn()
+			server._phase_changed()
+		elif phase.type == "combat" and server._current_token() == _state.get("npc", "") and not _state.get("npc_attacked", false):
+			_state.npc_attacked = true
+			var dana_id := "pawn_" + String(_find(server, "Dana").id)
+			_state.npc_attack_error = server.turn_action(_state.npc, {"action": "attack", "target": dana_id, "index": 0})
+			server.turn_action.call_deferred(_state.npc, {"action": "end"}))
 	server.message_added.connect(func(m):
 		if m.get("kind", "") == Protocol.KIND_ACTION:
 			# Le MJ demande à Dana de lancer elle-même son dé.
@@ -249,9 +256,14 @@ func _check_server3() -> void:
 	var sheet: Dictionary = server.characters.get(dana.get("id", ""), {})
 	_expect(sheet.get("name", "") == "Dana la Brave", "fiche de Dana enregistrée")
 	_expect(sheet.get("secret", "") == "mon secret", "secret de la fiche conservé côté hôte")
-	var pawn := MapData.token(server.maps[server.active_map], "pawn_" + String(dana.get("id", "")))
-	_expect(not pawn.is_empty(), "pion de Dana créé sur la carte")
-	_expect(int(pawn.get("x", -1)) == int(_state.get("dana_target_x", -2)) or pawn.get("x", 0) is int, "pion de Dana présent")
+	_expect(sheet.get("auto", false) and sheet.get("class_id", "") == "ombre", "fiche de Dana créée avec l'assistant (classe Ombre)")
+	var d := Rules.derived(sheet, "legenders")
+	_expect(int(sheet.get("hp_max", 0)) == int(d.hp_max) and int(d.hp_max) > 10 and int(sheet.defense) == int(d.defense), "PV et défense calculés automatiquement par l'hôte (%d PV, déf. %d)" % [d.hp_max, d.defense])
+	_expect(sheet.get("inventory", []).any(func(i): return i.name == "Kunai jumeaux"), "équipement choisi dans l'assistant (Kunai jumeaux)")
+	_expect(server.session.get("started", false), "la partie a été lancée par le MJ")
+	var attacks := server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ROLL and String(m.get("text", "")).contains("attaque"))
+	_expect(attacks.any(func(m): return String(m.text).begins_with("Dana la Brave attaque PNJ visible")), "Dana a attaqué le PNJ à son tour (jet automatique)")
+	_expect(String(_state.get("npc_attack_error", "x")) == "" and attacks.any(func(m): return String(m.text).begins_with("PNJ visible attaque Dana")), "le MJ a fait attaquer son PNJ à son tour")
 	_expect(server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and m.status == Protocol.ACTION_RESOLVED).size() == 1, "action de Dana résolue par le MJ")
 	_expect(int(_state.get("imported", 0)) >= 10, "pack de PNJ importé (%d fiches)" % int(_state.get("imported", 0)))
 	var eli_req := server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ROLL_REQUEST)
@@ -263,29 +275,57 @@ func _check_server3() -> void:
 	var restored := SessionServer.new({"port": port}, Callable(), Callable(), reloaded)
 	_expect(restored.maps.size() == server.maps.size() and restored.active_map == server.active_map, "reprise : cartes et carte affichée restaurées")
 	_expect(not MapData.token(restored.maps[restored.active_map], "pawn_" + String(dana.get("id", ""))).is_empty(), "reprise : pion de Dana restauré")
-	_expect(restored.session.code == server.session.code and restored.players.size() == 2, "reprise : même code et mêmes joueurs (reconnexion possible)")
-	_expect(restored.music.track == "taverne", "reprise : dernière musique mémorisée")
+	_expect(restored.players.size() == 2 and restored.session.get("started", false), "reprise : mêmes joueurs, partie déjà lancée")
+	_expect(restored.music.track != "" and restored.music.track == server.music.track, "reprise : dernière musique mémorisée (%s)" % server.music.track)
 	CampaignStore.delete(server.session.id)
 
 
 func _run_dana() -> void:
 	await get_tree().create_timer(0.5).timeout
 	_join("Dana")
+	Net.client.command_failed.connect(func(_r, error): _state.errors = _state.get("errors", []) + [error])
 	Net.client.welcomed.connect(func():
-		Net.client.save_character({"name": "Dana la Brave", "secret": "mon secret", "species": "Humain",
-			"magic": {"category": "Renforcement", "name": "Flammes", "public": true},
-			"abilities": [{"name": "Poing de braise", "description": "Un coup enflammé"}],
-			"stats": [{"name": "Force", "value": 14}], "hp": 18, "hp_max": 18}))
-	Net.client.map_changed.connect(func():
-		var pawn := MapData.token(Net.client.map, "pawn_" + String(Net.client.me.get("id", "")))
-		if pawn.is_empty() or _state.get("moved", false):
+		var c := Net.client
+		var cls := Rules.get_class_def("legenders", "ombre")
+		var base := CharacterData.create(c.universe, c.me.id, c.me.id, "Dana la Brave")
+		var sheet := Rules.build_sheet(base, "legenders", "ombre", cls.recommended, [1, 0])
+		sheet.secret = "mon secret"
+		sheet.species = "Humain"
+		sheet.magic.name = "Flammes"
+		c.save_character(sheet))
+	Net.client.phase_changed.connect(func():
+		var c := Net.client
+		if not c.is_my_turn():
 			return
-		_state.moved = true
-		var p := MapData.free_cell_near(Net.client.map, int(pawn.x) + 2, int(pawn.y))
-		_state.target = p
-		Net.client.move_pawn(pawn.id, p.x, p.y)
-		Net.client.declare_action(Protocol.TO_ALL, "Je force la porte.")
-		Net.client.roll("2d6+3", Protocol.TO_ALL, "Escalade"))
+		var pawn := c.my_token()
+		if c.phase.type == "exploration" and not _state.get("explored", false):
+			_state.explored = true
+			# Trop loin : refusé ; puis une case à côté : accepté.
+			var far := int(c.phase.moves_left) + 2
+			for f: Vector2i in [Vector2i(far, 0), Vector2i(-far, 0), Vector2i(0, far), Vector2i(0, -far), Vector2i(far, far), Vector2i(-far, -far)]:
+				var q: Vector2i = Vector2i(int(pawn.x), int(pawn.y)) + f
+				if MapData.passable(c.map, q.x, q.y) and MapData.token_at(c.map, q.x, q.y).is_empty():
+					c.move_pawn(pawn.id, q.x, q.y)
+					break
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 1), Vector2i(-1, -1)]:
+				var p: Vector2i = Vector2i(int(pawn.x), int(pawn.y)) + d
+				if MapData.passable(c.map, p.x, p.y) and MapData.token_at(c.map, p.x, p.y).is_empty():
+					_state.target = p
+					break
+			c.move_pawn(pawn.id, _state.target.x, _state.target.y)
+			c.declare_action(Protocol.TO_ALL, "Je force la porte.")
+			c.roll("2d6+3", Protocol.TO_ALL, "Escalade")
+			c.turn_action("end")
+		elif c.phase.type == "exploration" and int(c.phase.round) >= 2:
+			c.turn_action("end")
+		elif c.phase.type == "combat" and not _state.get("attacked", false):
+			for t in c.map.tokens:
+				if t.name == "PNJ visible":
+					_state.attacked = true
+					c.turn_action("attack", t.id, 0)
+					c.turn_action("end")
+		elif c.phase.type == "combat":
+			c.turn_action("end"))
 	Net.client.message_updated.connect(func(m):
 		if m.get("kind", "") == Protocol.KIND_ACTION and m.status == Protocol.ACTION_ROLL and m.from == Net.client.me.id:
 			Net.client.answer_roll(m.id))
@@ -298,11 +338,14 @@ func _check_dana() -> void:
 	_expect(not names.has("Monstre caché"), "Dana ne reçoit pas le pion caché")
 	_expect(names.has("PNJ visible"), "Dana voit le PNJ visible")
 	_expect((map.get("labels", []) as Array).filter(func(l): return l.text == "Passage secret").is_empty(), "Dana ne reçoit pas l'étiquette secrète")
-	var pawn := MapData.token(map, "pawn_" + String(c.me.get("id", "")))
+	var errors: Array = _state.get("errors", [])
+	_expect(errors.any(func(e): return String(e).begins_with("Trop loin")), "déplacement au-delà de la vitesse refusé en exploration")
+	var pawn := c.my_token()
 	var target: Vector2i = _state.get("target", Vector2i(-9, -9))
-	_expect(not pawn.is_empty() and int(pawn.x) == target.x and int(pawn.y) == target.y, "Dana a déplacé son pion")
+	_expect(not pawn.is_empty() and int(pawn.x) == target.x and int(pawn.y) == target.y, "Dana a déplacé son pion pendant son tour")
 	_expect((c.universe.get("codex", []) as Array).filter(func(e): return e.get("mj_only", false)).is_empty(), "codex sans entrées réservées au MJ")
 	_expect(c.my_character().get("secret", "") == "mon secret", "Dana voit son propre secret")
+	_expect(c.game_started() and c.phase.get("type", "") == "combat", "Dana est passée en combat (phase reçue)")
 	var labels := c.messages.map(func(m): return m.get("text", ""))
 	_expect(not labels.has("jet secret MJ"), "Dana ne voit pas le jet secret du MJ")
 	_expect(labels.has("jet pour Dana"), "Dana voit le jet que le MJ lui montre")
@@ -312,16 +355,23 @@ func _check_dana() -> void:
 	_expect(actions.size() == 1 and actions[0].status == Protocol.ACTION_RESOLVED and actions[0].result == "La porte cède.", "Dana reçoit la résolution de son action")
 	_expect(actions.size() == 1 and actions[0].roll.get("difficulty", 0) == 12 and actions[0].roll.has("success"), "Dana a lancé elle-même le dé demandé (difficulté 12)")
 	_expect(not labels.has("Perception secrète"), "Dana ne voit pas le jet secret demandé à Eli")
-	_expect(c.music.get("track", "") == "taverne" and c.music.get("playing", false), "musique de l'hôte reçue (taverne)")
+	_expect(c.music.get("track", "") != "", "musique de l'hôte reçue")
 	_expect(c.characters.size() == 2, "les fiches de PNJ du MJ ne sont pas envoyées aux joueurs")
 
 
 func _run_eli() -> void:
 	await get_tree().create_timer(0.9).timeout
 	_join("Eli")
+	Net.client.command_failed.connect(func(_r, error):
+		_state.errors = _state.get("errors", []) + [error]
+		if String(error).begins_with("Répartition"):
+			Net.client.save_character({"name": "Eli", "secret": "secret d'Eli"}))
 	Net.client.welcomed.connect(func():
-		Net.client.save_character({"name": "Eli", "secret": "secret d'Eli"}))
-	Net.client.command_failed.connect(func(_r, error): _state.failed = error)
+		# Trop de points répartis : refusé par l'hôte.
+		var c := Net.client
+		var base := CharacterData.create(c.universe, c.me.id, c.me.id, "Eli")
+		var sheet := Rules.build_sheet(base, "legenders", "briseur", {"Force": 6, "Agilité": 6, "Endurance": 6}, [0, 0])
+		c.save_character(sheet))
 	Net.client.message_received.connect(func(m):
 		if m.get("kind", "") == Protocol.KIND_ROLL_REQUEST:
 			Net.client.answer_roll(m.id))
@@ -329,6 +379,16 @@ func _run_eli() -> void:
 		for t in Net.client.map.get("tokens", []):
 			if String(t.name) == "Dana la Brave":
 				_state.dana_pos = Vector2i(int(t.x), int(t.y)))
+	Net.client.phase_changed.connect(func():
+		var c := Net.client
+		if not c.phase.get("turns", false) or c.my_token().is_empty():
+			return
+		if c.is_my_turn():
+			c.turn_action("end")
+		elif not _state.get("out_of_turn", false):
+			_state.out_of_turn = true
+			var me := c.my_token()
+			c.move_pawn(me.id, int(me.x), int(me.y) + 1))
 	Net.client.characters_changed.connect(func():
 		if _state.get("tried", false):
 			return
@@ -340,14 +400,17 @@ func _run_eli() -> void:
 
 func _check_eli() -> void:
 	var c := Net.client
+	var errors: Array = _state.get("errors", [])
 	var dana := {}
 	for ch in c.characters:
 		if ch.get("name", "") == "Dana la Brave":
 			dana = ch
+	_expect(errors.any(func(e): return String(e).begins_with("Répartition des points invalide")), "trop de points répartis : refusé par l'hôte")
 	_expect(not dana.is_empty(), "Eli voit la fiche publique de Dana")
 	_expect(not dana.has("secret") and not dana.has("stats"), "la fiche de Dana vue par Eli ne contient ni secret ni détails")
 	_expect(dana.get("magic", {}).get("name", "") == "Flammes", "Eli voit le nom public de la magie de Dana")
-	_expect(String(_state.get("failed", "")).contains("propre pion"), "Eli ne peut pas déplacer le pion de Dana")
+	_expect(errors.any(func(e): return String(e).contains("propre pion")), "Eli ne peut pas déplacer le pion de Dana")
+	_expect(errors.any(func(e): return String(e) == "Ce n'est pas votre tour."), "Eli ne peut pas bouger pendant le tour de Dana")
 	var labels := c.messages.map(func(m): return m.get("text", ""))
 	_expect(not labels.has("jet pour Dana"), "Eli ne voit pas le jet montré à Dana")
 	_expect(labels.has("Je force la porte."), "Eli voit l'action publique de Dana")
@@ -357,13 +420,13 @@ func _check_eli() -> void:
 	for t in c.map.get("tokens", []):
 		if String(t.name) == "Dana la Brave":
 			dana_pawn = t
-	_expect(not dana_pawn.is_empty() and _state.get("dana_pos", Vector2i(-1, -1)) == Vector2i(int(dana_pawn.x), int(dana_pawn.y)) and int(dana_pawn.x) != 0, "Eli voit le pion de Dana bouger (mise à jour légère des pions)")
+	_expect(not dana_pawn.is_empty() and _state.get("dana_pos", Vector2i(-1, -1)) == Vector2i(int(dana_pawn.x), int(dana_pawn.y)), "Eli voit le pion de Dana bouger (mise à jour légère des pions)")
 
 
 # --- Outils --------------------------------------------------------------------
 
 func _join(player_name: String) -> void:
-	var err := Net.join("127.0.0.1", port, CODE.to_lower(), player_name)
+	var err := Net.join("127.0.0.1", port, player_name)
 	_expect(err == "", "%s : connexion lancée (%s)" % [player_name, err])
 
 
@@ -382,8 +445,6 @@ func _finish() -> void:
 			_check_alice()
 		"bob":
 			_check_bob()
-		"wrongcode":
-			_check_wrong_code()
 		"mallory":
 			_check_mallory()
 		"server2":

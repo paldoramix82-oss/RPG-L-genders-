@@ -12,10 +12,10 @@ const PAWN_COLORS := ["#c9a96e", "#b0605a", "#6f9fc9", "#8fb28a", "#a07cc9", "#d
 const TEXT_FIELDS := {
 	"name": SHORT, "age": 20, "species": SHORT, "origin": SHORT, "concept": SHORT,
 	"appearance": LONG, "background": LONG, "personality": LONG, "goals": LONG,
-	"relations": LONG, "notes": LONG, "secret": LONG, "status": SHORT, "rank": 10, "kind": 10,
+	"relations": LONG, "notes": LONG, "secret": LONG, "status": SHORT, "rank": 10, "kind": 10, "class_id": 40,
 }
 ## Champs visibles par les autres joueurs (le reste : propriétaire + MJ).
-const PUBLIC_FIELDS := ["id", "owner", "name", "species", "origin", "concept", "appearance", "rank", "level", "hp", "hp_max", "pawn", "status", "magic_public"]
+const PUBLIC_FIELDS := ["id", "owner", "name", "species", "origin", "concept", "appearance", "rank", "level", "hp", "hp_max", "pawn", "status", "class_id"]
 
 
 static func create(universe: Dictionary, id: String, owner: String, char_name: String = "") -> Dictionary:
@@ -28,7 +28,8 @@ static func create(universe: Dictionary, id: String, owner: String, char_name: S
 	return {
 		"id": id, "owner": owner, "name": char_name, "age": "", "species": "", "origin": "", "concept": "",
 		"appearance": "", "background": "", "personality": "", "goals": "", "relations": "",
-		"notes": "", "secret": "", "status": "", "rank": "", "kind": "npc",
+		"notes": "", "secret": "", "status": "", "rank": "", "kind": "npc", "class_id": "", "auto": false, "alloc": {},
+		"defense": 0, "speed": 0,
 		"level": 1, "xp": 0, "hp": hp, "hp_max": hp, "res": res, "res_max": res,
 		"stats": stats, "skills": [],
 		"magic": {"category": "", "name": "", "origin": "", "description": "", "limits": "", "public": true},
@@ -46,7 +47,7 @@ static func sanitize(input: Variant, base: Dictionary) -> Dictionary:
 		if input.has(key):
 			out[key] = Protocol.sanitize_text(input[key], TEXT_FIELDS[key])
 	out.name = Protocol.sanitize_name(out.name)
-	for key in ["level", "xp", "hp", "hp_max", "res", "res_max"]:
+	for key in ["level", "xp", "hp", "hp_max", "res", "res_max", "defense", "speed"]:
 		if input.has(key):
 			out[key] = clampi(_int(input[key]), -9999, 99999)
 	out.hp_max = maxi(1, out.hp_max)
@@ -56,9 +57,18 @@ static func sanitize(input: Variant, base: Dictionary) -> Dictionary:
 	if input.has("skills"):
 		out.skills = _rows(input.skills, {"name": SHORT}, ["value"])
 	if input.has("abilities"):
-		out.abilities = _rows(input.abilities, {"name": SHORT, "description": LONG, "cost": SHORT, "range": SHORT, "limits": LONG, "effects": LONG}, [])
+		out.abilities = _rows(input.abilities, {"name": SHORT, "description": LONG, "cost": SHORT, "limits": LONG, "effects": LONG,
+			"kind": 10, "damage": 20, "heal": 20, "stat": 20}, ["res_cost", "range"])
 	if input.has("inventory"):
-		out.inventory = _rows(input.inventory, {"name": SHORT, "description": LONG, "category": SHORT, "value": SHORT}, ["qty"])
+		out.inventory = _rows(input.inventory, {"name": SHORT, "description": LONG, "category": 20, "value": SHORT,
+			"damage": 20, "heal": 20, "stat": 20, "effect": 40}, ["qty", "crit", "range", "defense"], ["equipped"])
+	if input.has("auto"):
+		out.auto = bool(input.auto)
+	if input.get("alloc") is Dictionary:
+		var alloc := {}
+		for s in ["Force", "Agilité", "Endurance", "Intelligence", "Perception", "Charisme"]:
+			alloc[s] = clampi(_int(input.alloc.get(s, 0)), -4, 6)
+		out.alloc = alloc
 	if input.has("effects"):
 		out.effects = _rows(input.effects, {"name": SHORT, "description": LONG}, [])
 	if input.get("magic") is Dictionary:
@@ -108,7 +118,7 @@ static func initials_of(text: String) -> String:
 	return (words[0].substr(0, 1) + words[1].substr(0, 1)).to_upper()
 
 
-static func _rows(raw: Variant, text_keys: Dictionary, int_keys: Array) -> Array:
+static func _rows(raw: Variant, text_keys: Dictionary, int_keys: Array, bool_keys: Array = []) -> Array:
 	var rows: Array = []
 	if not raw is Array:
 		return rows
@@ -119,7 +129,10 @@ static func _rows(raw: Variant, text_keys: Dictionary, int_keys: Array) -> Array
 		for key in text_keys:
 			row[key] = Protocol.sanitize_text(item.get(key, ""), text_keys[key])
 		for key in int_keys:
-			row[key] = clampi(_int(item.get(key, 0)), -9999, 99999)
+			if item.has(key):
+				row[key] = clampi(_int(item.get(key, 0)), -9999, 99999)
+		for key in bool_keys:
+			row[key] = bool(item.get(key, false))
 		if String(row.get("name", "")).strip_edges() != "":
 			rows.append(row)
 	return rows

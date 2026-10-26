@@ -12,7 +12,7 @@ signal message_updated(message: Dictionary)
 signal log_added(entry: Dictionary)
 signal characters_changed
 signal maps_changed
-signal combat_changed
+signal phase_changed
 signal saved(error: String)
 signal music_changed(state: Dictionary)
 
@@ -27,7 +27,8 @@ var characters := {}
 var maps := {}
 var map_order: Array = []
 var active_map := ""
-var combat := {"active": false, "order": [], "turn": 0, "round": 1}
+## Phase de jeu en cours (voir Phases) et tour par tour.
+var phase := {"type": "libre", "order": [], "turn": 0, "round": 1, "moves_left": 0, "action_used": false, "initiative": {}}
 var music := {"track": "", "playing": false, "started_at": 0.0, "broadcast": true, "auto_combat": true}
 var _music_before_combat := {}
 
@@ -40,7 +41,7 @@ var _rate := {}  # peer_id -> Array[float]
 var _auth_failures := {}  # ip -> {count, until}
 var _next_message := 1
 var _rng := RandomNumberGenerator.new()
-var _dirty := {}  # "map" / "characters" / "combat" -> true : diffusion groupée
+var _dirty := {}  # "map" / "tokens" / "characters" / "phase" / "music" -> true : diffusion groupée
 var _unsaved := false
 
 
@@ -59,6 +60,7 @@ func _init(settings: Dictionary, send: Callable, kick: Callable, saved_data: Dic
 		"universe": String(settings.get("universe", Universe.DEFAULT_ID)),
 		"description": Protocol.sanitize_text(settings.get("description", "")),
 		"created": Protocol.now(),
+		"started": false,
 	}
 	_apply_runtime_settings(settings)
 	universe = Universe.get_by_id(session.universe)
@@ -77,7 +79,7 @@ func _init(settings: Dictionary, send: Callable, kick: Callable, saved_data: Dic
 
 func _apply_runtime_settings(settings: Dictionary) -> void:
 	session.max_players = clampi(int(settings.get("max_players", session.get("max_players", Protocol.DEFAULT_MAX_PLAYERS))), 1, Protocol.MAX_PLAYERS_LIMIT)
-	session.auto_accept = bool(settings.get("auto_accept", session.get("auto_accept", false)))
+	session.auto_accept = bool(settings.get("auto_accept", session.get("auto_accept", true)))
 	session.port = int(settings.get("port", Protocol.DEFAULT_PORT))
 	session.players_edit_sheets = bool(settings.get("players_edit_sheets", session.get("players_edit_sheets", true)))
 
@@ -97,10 +99,8 @@ func authenticate(peer_id: int, ip: String, request: Dictionary) -> Dictionary:
 		_log("Version incompatible depuis %s." % ip, "warn")
 		return _reject("Version du jeu différente de celle de l'hôte. Installez la même version (protocole v%d)." % Protocol.VERSION)
 
-	if Protocol.normalize_code(String(request.get("code", ""))) != session.code:
-		_register_auth_failure(ip)
-		_log("Code invalide depuis %s." % ip, "warn")
-		return _reject("Code de partie invalide.")
+	# Plus de code de partie : l'adresse IP suffit pour rejoindre. Le MJ peut
+	# toujours choisir de valider chaque nouveau joueur.
 
 	var token := String(request.get("token", ""))
 	if token.length() < 16 or token.length() > 64 or not token.is_valid_hex_number():
@@ -229,6 +229,8 @@ func handle_command(peer_id: int, cmd: Variant, payload: Variant) -> void:
 			error = _cmd_pawn_move(player, payload)
 		Protocol.CMD_ROLL_ANSWER:
 			error = _cmd_roll_answer(player, payload)
+		Protocol.CMD_TURN:
+			error = _cmd_turn(player, payload)
 		_:
 			error = "Commande inconnue."
 
@@ -298,6 +300,10 @@ func _cmd_char_save(player: Dictionary, payload: Dictionary) -> String:
 	if String(sheet.name) == "":
 		sheet.name = player.name
 	var is_new := existing.is_empty()
+	if sheet.get("auto", false):
+		if not Rules.valid_alloc(sheet.get("alloc", {})):
+			return "Répartition des points invalide (%d points maximum)." % Rules.POINT_POOL
+		sheet = Rules.refresh(sheet, session.universe, is_new)
 	characters[player.id] = sheet
 	_sync_pawns_for(player.id)
 	_mark("characters")
@@ -321,8 +327,18 @@ func _cmd_pawn_move(player: Dictionary, payload: Dictionary) -> String:
 	var y := int(payload.get("y", -1))
 	if not MapData.passable(map, x, y):
 		return "Case infranchissable."
-	if combat.active and _current_combat_token() != "" and _current_combat_token() != t.id:
-		return "Combat en cours : attendez votre tour."
+	var rules := Phases.def(phase.type)
+	if rules.move == "none":
+		return "Pas de déplacement pendant la phase « %s »." % rules.name
+	if rules.turns:
+		if _current_token() != t.id:
+			return "Ce n'est pas votre tour."
+		if rules.move == "limit":
+			var dist := Rules.distance(Vector2i(int(t.x), int(t.y)), Vector2i(x, y))
+			if dist > int(phase.moves_left):
+				return "Trop loin : il vous reste %d case%s de déplacement." % [phase.moves_left, "s" if int(phase.moves_left) > 1 else ""]
+			phase.moves_left = int(phase.moves_left) - dist
+			_mark("phase")
 	t.x = x
 	t.y = y
 	_mark("tokens")
@@ -527,6 +543,7 @@ func mj_save_character(sheet_input: Dictionary) -> Dictionary:
 	var sheet := CharacterData.sanitize(sheet_input, base)
 	sheet.id = base.id
 	sheet.owner = base.owner
+	sheet = Rules.refresh(sheet, session.universe)
 	characters[id] = sheet
 	_sync_pawns_for(id)
 	_mark("characters")
@@ -643,9 +660,9 @@ func mj_set_active_map(map_id: String) -> void:
 	if not maps.has(map_id):
 		return
 	active_map = map_id
-	if combat.active:
-		mj_combat_end()
 	_ensure_player_pawns(maps[map_id])
+	if Phases.def(phase.type).turns:
+		mj_set_phase(phase.type)
 	_mark("map")
 	_unsaved = true
 	maps_changed.emit()
@@ -715,7 +732,7 @@ func mj_remove_token(map_id: String, token_id: String) -> void:
 	if map.is_empty():
 		return
 	map.tokens = map.tokens.filter(func(t): return t.id != token_id)
-	combat.order.erase(token_id)
+	phase.order.erase(token_id)
 	map_changed(map_id, true)
 
 
@@ -754,74 +771,347 @@ func map_changed(map_id: String, tokens_only: bool = false) -> void:
 	maps_changed.emit()
 
 
-# --- Combat ---
+# --- Lancement de la partie et phases ---
 
-## Démarre un combat avec les pions visibles de la carte (initiative d20 tirée par le serveur).
-func mj_combat_start(include_hidden: bool = false) -> void:
-	var map: Dictionary = maps.get(active_map, {})
-	if map.is_empty():
+## « La partie commence ! » : tout le monde passe de la création à la partie.
+func mj_start_game(first_phase: String = "exploration") -> void:
+	session.started = true
+	_ensure_player_pawns(maps.get(active_map, {}))
+	_system_message("La partie commence ! Bonne aventure à tous.")
+	_broadcast_settings()
+	mj_set_phase(first_phase)
+	_unsaved = true
+
+
+## Change de phase. Les phases au tour par tour construisent l'ordre de jeu :
+## les joueurs (exploration, dialogue) ou tous les pions visibles par initiative (combat).
+func mj_set_phase(type: String, include_hidden: bool = false) -> void:
+	if not Phases.DEFS.has(type):
 		return
-	var rolls := {}
-	var order: Array = []
-	for t in map.tokens:
-		if t.kind == "object" or (t.hidden and not include_hidden):
-			continue
-		rolls[t.id] = _rng.randi_range(1, 20)
-		order.append(t.id)
-	order.sort_custom(func(a, b): return rolls[a] > rolls[b])
-	combat = {"active": true, "order": order, "turn": 0, "round": 1, "initiative": rolls}
-	var names: PackedStringArray = []
-	for id in order:
-		names.append("%s (%d)" % [MapData.token(map, id).name, rolls[id]])
-	_system_message("Le combat commence ! Initiative : " + ", ".join(names) + ".")
-	_combat_changed()
-	if music.auto_combat:
+	var previous := String(phase.type)
+	if previous == "repos" and type != "repos":
+		_end_rest()
+	var rules := Phases.def(type)
+	phase = {"type": type, "order": [], "turn": 0, "round": 1, "moves_left": 0, "action_used": false, "initiative": {}}
+	var map: Dictionary = maps.get(active_map, {})
+	if rules.turns and not map.is_empty():
+		if rules.who == "players":
+			for t in map.tokens:
+				if t.kind == "pc" and players.has(String(t.owner)) and int(t.get("hp", 1)) > 0:
+					phase.order.append(t.id)
+		else:
+			for t in map.tokens:
+				if t.kind == "object" or (t.hidden and not include_hidden):
+					continue
+				phase.initiative[t.id] = _rng.randi_range(1, 20) + int(Rules.derived(_sheet_for_token(t), session.universe).initiative)
+				phase.order.append(t.id)
+			phase.order.sort_custom(func(a, b): return phase.initiative[a] > phase.initiative[b])
+		_skip_out_of_combat()
+		_begin_turn()
+	var text := "Phase : %s. %s" % [rules.name, rules.rules]
+	if type == "combat" and not phase.order.is_empty():
+		var names: PackedStringArray = []
+		for id in phase.order:
+			names.append("%s (%d)" % [MapData.token(map, id).name, phase.initiative[id]])
+		text += " Initiative : " + ", ".join(names) + "."
+	_system_message(text)
+	_phase_changed()
+	if type == "combat" and previous != "combat" and music.auto_combat:
 		var fights := MusicLibrary.by_mood("Combat")
 		if not fights.is_empty():
 			_music_before_combat = {"track": music.track, "playing": music.playing}
 			mj_music(String(fights[_rng.randi_range(0, fights.size() - 1)].id), true)
-
-
-func mj_combat_next() -> void:
-	if not combat.active or combat.order.is_empty():
-		return
-	combat.turn += 1
-	if combat.turn >= combat.order.size():
-		combat.turn = 0
-		combat.round += 1
-	_combat_changed()
-
-
-func mj_combat_move(token_id: String, delta: int) -> void:
-	var i: int = combat.order.find(token_id)
-	if i < 0:
-		return
-	var j := clampi(i + delta, 0, combat.order.size() - 1)
-	combat.order.remove_at(i)
-	combat.order.insert(j, token_id)
-	_combat_changed()
-
-
-func mj_combat_toggle(token_id: String) -> void:
-	if not combat.active:
-		return
-	if combat.order.has(token_id):
-		combat.order.erase(token_id)
-	else:
-		combat.order.append(token_id)
-	combat.turn = clampi(combat.turn, 0, maxi(0, combat.order.size() - 1))
-	_combat_changed()
-
-
-func mj_combat_end() -> void:
-	if not combat.active:
-		return
-	combat = {"active": false, "order": [], "turn": 0, "round": 1}
-	_system_message("Le combat est terminé.")
-	_combat_changed()
-	if not _music_before_combat.is_empty():
+	elif previous == "combat" and type != "combat" and not _music_before_combat.is_empty():
 		mj_music(String(_music_before_combat.track), bool(_music_before_combat.playing))
 		_music_before_combat = {}
+
+
+## Passe au joueur suivant (fin de tour ou décision du MJ).
+func mj_next_turn() -> void:
+	if not Phases.def(phase.type).turns or phase.order.is_empty():
+		return
+	_advance_turn()
+
+
+func mj_turn_move(token_id: String, delta: int) -> void:
+	var i: int = phase.order.find(token_id)
+	if i < 0:
+		return
+	var current := _current_token()
+	var j := clampi(i + delta, 0, phase.order.size() - 1)
+	phase.order.remove_at(i)
+	phase.order.insert(j, token_id)
+	phase.turn = maxi(0, phase.order.find(current))
+	_phase_changed()
+
+
+func mj_turn_toggle(token_id: String) -> void:
+	if not Phases.def(phase.type).turns:
+		return
+	var current := _current_token()
+	if phase.order.has(token_id):
+		phase.order.erase(token_id)
+	else:
+		phase.order.append(token_id)
+	if phase.order.has(current):
+		phase.turn = phase.order.find(current)
+	else:
+		phase.turn = clampi(int(phase.turn), 0, maxi(0, phase.order.size() - 1))
+		_begin_turn()
+	_phase_changed()
+
+
+func _advance_turn() -> void:
+	var map: Dictionary = maps.get(active_map, {})
+	for i in phase.order.size():
+		phase.turn = int(phase.turn) + 1
+		if phase.turn >= phase.order.size():
+			phase.turn = 0
+			phase.round = int(phase.round) + 1
+		var t := MapData.token(map, _current_token())
+		if not t.is_empty() and not (int(t.get("hp_max", 0)) > 0 and int(t.get("hp", 1)) <= 0):
+			break
+	_begin_turn()
+	var t := MapData.token(map, _current_token())
+	if not t.is_empty() and not t.hidden:
+		_system_message("Au tour de %s." % t.name)
+	_phase_changed()
+
+
+func _skip_out_of_combat() -> void:
+	var map: Dictionary = maps.get(active_map, {})
+	for i in phase.order.size():
+		var t := MapData.token(map, _current_token())
+		if t.is_empty() or not (int(t.get("hp_max", 0)) > 0 and int(t.get("hp", 1)) <= 0):
+			return
+		phase.turn = (int(phase.turn) + 1) % phase.order.size()
+
+
+func _begin_turn() -> void:
+	var t := MapData.token(maps.get(active_map, {}), _current_token())
+	phase.action_used = false
+	phase.moves_left = int(Rules.derived(_sheet_for_token(t), session.universe).speed) if not t.is_empty() else 0
+	if int(t.get("speed", 0)) > 0:
+		phase.moves_left = int(t.speed)
+
+
+func _end_rest() -> void:
+	for id in characters:
+		var c: Dictionary = characters[id]
+		if c.owner == "":
+			continue
+		c.hp = mini(int(c.hp_max), int(c.hp) + maxi(1, int(c.hp_max) / 2))
+		c.res = int(c.res_max)
+		_sync_pawns_for(id)
+	_mark("characters")
+	characters_changed.emit()
+	_system_message("Fin du repos : chacun récupère la moitié de ses PV et toute son énergie.")
+
+
+func _current_token() -> String:
+	if not Phases.def(phase.type).turns or phase.order.is_empty():
+		return ""
+	return String(phase.order[clampi(int(phase.turn), 0, phase.order.size() - 1)])
+
+
+func _phase_changed() -> void:
+	_mark("phase")
+	_unsaved = true
+	phase_changed.emit()
+
+
+## Vue de la phase pour les joueurs : ordre limité aux pions visibles.
+func phase_view_for_player() -> Dictionary:
+	var map: Dictionary = maps.get(active_map, {})
+	var rules := Phases.def(phase.type)
+	var order: Array = []
+	for id in phase.order:
+		var t := MapData.token(map, id)
+		if not t.is_empty() and not t.hidden:
+			order.append(id)
+	var current := _current_token()
+	return {
+		"type": phase.type, "name": rules.name, "rules": rules.rules, "turns": rules.turns, "move": rules.move,
+		"order": order, "current": current if order.has(current) else "", "round": phase.round,
+		"moves_left": phase.moves_left, "action_used": phase.action_used,
+	}
+
+
+# --- Actions de tour (attaque, capacité, objet, fin de tour) ---
+
+func _cmd_turn(player: Dictionary, payload: Dictionary) -> String:
+	var map: Dictionary = maps.get(active_map, {})
+	var token := MapData.token(map, _current_token())
+	if token.is_empty() or token.owner != player.id:
+		return "Ce n'est pas votre tour."
+	return turn_action(token.id, payload)
+
+
+## Exécute une action pour le pion dont c'est le tour (joueur, ou MJ pour ses PNJ/monstres).
+## payload : {action: "end"|"attack"|"ability"|"item", target, index}
+func turn_action(token_id: String, payload: Dictionary) -> String:
+	var rules := Phases.def(phase.type)
+	if not rules.turns or _current_token() != token_id:
+		return "Ce n'est pas le tour de ce pion."
+	var action := String(payload.get("action", ""))
+	if action == "end":
+		_advance_turn()
+		return ""
+	if phase.action_used:
+		return "Vous avez déjà fait votre action ce tour-ci : terminez votre tour."
+	var map: Dictionary = maps.get(active_map, {})
+	var actor := MapData.token(map, token_id)
+	var sheet := _sheet_for_token(actor)
+	var target := MapData.token(map, String(payload.get("target", "")))
+	var index := int(payload.get("index", 0))
+	var error := ""
+	match action:
+		"attack":
+			var list := Rules.weapons(sheet)
+			error = _attack(actor, target, Rules.attack_profile(sheet, session.universe, list[clampi(index, 0, list.size() - 1)]), "")
+		"ability":
+			var abilities: Array = sheet.get("abilities", [])
+			if index < 0 or index >= abilities.size():
+				return "Capacité introuvable."
+			error = _use_ability(actor, sheet, abilities[index], target)
+		"item":
+			error = _use_item(actor, sheet, index, target)
+		_:
+			return "Action inconnue."
+	if error == "":
+		phase.action_used = true
+		_phase_changed()
+	return error
+
+
+func _attack(actor: Dictionary, target: Dictionary, profile: Dictionary, ability_name: String) -> String:
+	if target.is_empty() or target.id == actor.id:
+		return "Choisissez une cible."
+	var dist := Rules.distance(Vector2i(int(actor.x), int(actor.y)), Vector2i(int(target.x), int(target.y)))
+	if dist > int(profile.range):
+		return "Cible hors de portée (%d case%s maximum)." % [profile.range, "s" if int(profile.range) > 1 else ""]
+	var defense := int(Rules.derived(_sheet_for_token(target), session.universe).defense)
+	if int(target.get("defense", 0)) > 0 and _sheet_for_token(target).get("id", "") == "":
+		defense = int(target.defense)
+	defense -= int(profile.get("ignore_defense", 0))
+	var d20 := _rng.randi_range(1, 20)
+	var total := d20 + int(profile.to_hit)
+	var hit := d20 == 20 or (d20 != 1 and total >= defense)
+	var crit := hit and d20 >= int(profile.crit)
+	var damage := 0
+	var detail := "d20 = %d %+d = %d contre Défense %d" % [d20, profile.to_hit, total, defense]
+	if hit:
+		var r := Dice.roll(String(profile.damage), _rng)
+		damage = int(r.get("total", 1))
+		if crit:
+			damage += int(Dice.roll(String(profile.damage), _rng).get("total", 0))
+		damage = maxi(1, damage + int(profile.damage_mod))
+		_damage_token(target, damage)
+	var label := "%s attaque %s avec %s" % [actor.name, target.name, ability_name if ability_name != "" else profile.name]
+	var outcome := ("CRITIQUE ! " if crit else "Touché ! ") + "%d dégâts" % damage if hit else ("Échec critique !" if d20 == 1 else "Raté.")
+	_add_message({
+		"kind": Protocol.KIND_ROLL, "from": _owner_or_mj(actor), "from_name": String(actor.name), "to": Protocol.TO_ALL,
+		"text": "%s — %s" % [label, outcome],
+		"roll": {"expr": "d20%+d" % int(profile.to_hit), "detail": detail, "total": total, "difficulty": defense, "success": hit},
+	})
+	if hit and int(target.get("hp", 1)) <= 0:
+		_system_message("%s est hors de combat !" % target.name)
+	return ""
+
+
+func _use_ability(actor: Dictionary, sheet: Dictionary, ability: Dictionary, target: Dictionary) -> String:
+	var cost := int(ability.get("res_cost", 0))
+	var res := int(sheet.get("res", 0))
+	if cost > res and sheet.get("id", "") != "":
+		return "Pas assez d'énergie (%d nécessaires, %d restants)." % [cost, res]
+	var kind := String(ability.get("kind", "effect"))
+	var stat_mod := Rules.mod(Rules.stat(sheet, String(ability.get("stat", ""))))
+	var error := ""
+	match kind:
+		"attack":
+			var profile := {
+				"name": ability.name, "to_hit": stat_mod + int(Rules.derived(sheet, session.universe).attack_bonus),
+				"damage": String(ability.get("damage", "1d6")), "damage_mod": stat_mod,
+				"crit": 20, "range": maxi(1, int(ability.get("range", 1))),
+			}
+			error = _attack(actor, target, profile, String(ability.name))
+		"heal":
+			var who := target if not target.is_empty() else actor
+			var dist := Rules.distance(Vector2i(int(actor.x), int(actor.y)), Vector2i(int(who.x), int(who.y)))
+			if dist > maxi(0, int(ability.get("range", 0))):
+				return "Cible trop loin pour %s." % ability.name
+			var amount := maxi(1, int(Dice.roll(String(ability.get("heal", "1d6")), _rng).get("total", 1)) + stat_mod)
+			_heal_token(who, amount)
+			_system_message("%s utilise %s : %s récupère %d PV." % [actor.name, ability.name, who.name, amount])
+		_:
+			var on := (" sur " + String(target.name)) if not target.is_empty() else ""
+			_system_message("%s utilise %s%s : %s" % [actor.name, ability.name, on, ability.get("description", "")])
+	if error == "" and sheet.get("id", "") != "" and characters.has(sheet.id):
+		characters[sheet.id].res = maxi(0, res - cost)
+		_mark("characters")
+		characters_changed.emit()
+	return error
+
+
+func _use_item(actor: Dictionary, sheet: Dictionary, index: int, target: Dictionary) -> String:
+	var inv: Array = sheet.get("inventory", [])
+	if index < 0 or index >= inv.size() or not characters.has(String(sheet.get("id", ""))):
+		return "Objet introuvable."
+	var item: Dictionary = inv[index]
+	if String(item.get("category", "")) != "consommable" or int(item.get("qty", 1)) <= 0:
+		return "Cet objet ne s'utilise pas en action."
+	var who := target if not target.is_empty() else actor
+	if Rules.distance(Vector2i(int(actor.x), int(actor.y)), Vector2i(int(who.x), int(who.y))) > 1:
+		return "Il faut être au contact pour donner un objet."
+	var heal_dice := String(item.get("heal", ""))
+	if heal_dice != "" and heal_dice != "0":
+		var amount := maxi(1, int(Dice.roll(heal_dice, _rng).get("total", 1)))
+		_heal_token(who, amount)
+		_system_message("%s utilise %s : %s récupère %d PV." % [actor.name, item.name, who.name, amount])
+	else:
+		_system_message("%s utilise %s. %s" % [actor.name, item.name, item.get("description", "")])
+	item.qty = int(item.get("qty", 1)) - 1
+	if item.qty <= 0:
+		inv.remove_at(index)
+	_mark("characters")
+	characters_changed.emit()
+	return ""
+
+
+func _damage_token(t: Dictionary, amount: int) -> void:
+	_set_token_hp(t, maxi(0, int(t.get("hp", 0)) - amount))
+
+
+func _heal_token(t: Dictionary, amount: int) -> void:
+	_set_token_hp(t, mini(int(t.get("hp_max", 0)) if int(t.get("hp_max", 0)) > 0 else 9999, int(t.get("hp", 0)) + amount))
+
+
+func _set_token_hp(t: Dictionary, value: int) -> void:
+	t.hp = value
+	var cid: String = t.char_id if t.char_id != "" else t.owner
+	if characters.has(cid):
+		characters[cid].hp = value
+		_mark("characters")
+		characters_changed.emit()
+	map_changed(active_map, true)
+
+
+## Fiche associée à un pion ; pour un pion sans fiche, une fiche minimale tirée du pion.
+func _sheet_for_token(t: Dictionary) -> Dictionary:
+	if t.is_empty():
+		return {}
+	var cid: String = t.char_id if t.char_id != "" else t.owner
+	if characters.has(cid):
+		return characters[cid]
+	return {
+		"stats": [], "abilities": [], "speed": int(t.get("speed", 0)), "defense": int(t.get("defense", 0)),
+		"inventory": [{"name": "Attaque", "category": "arme", "damage": String(t.get("attack", "1d6")) if String(t.get("attack", "")) != "" else "1d6",
+			"stat": "", "crit": 20, "range": 1, "equipped": true}],
+	}
+
+
+func _owner_or_mj(t: Dictionary) -> String:
+	return String(t.owner) if String(t.get("owner", "")) != "" else Protocol.MJ_ID
 
 
 # --- Musique ---
@@ -850,29 +1140,6 @@ func music_view_for_player() -> Dictionary:
 	return {"track": music.track, "playing": music.playing, "started_at": music.started_at}
 
 
-func _current_combat_token() -> String:
-	if not combat.active or combat.order.is_empty():
-		return ""
-	return String(combat.order[clampi(combat.turn, 0, combat.order.size() - 1)])
-
-
-func _combat_changed() -> void:
-	_mark("combat")
-	combat_changed.emit()
-
-
-## Vue du combat pour les joueurs : uniquement les pions qu'ils peuvent voir.
-func combat_view_for_player() -> Dictionary:
-	var map: Dictionary = maps.get(active_map, {})
-	var order: Array = []
-	var current := _current_combat_token()
-	for id in combat.order:
-		var t := MapData.token(map, id)
-		if not t.is_empty() and not t.hidden:
-			order.append(id)
-	return {"active": combat.active, "order": order, "current": current if order.has(current) else "", "round": combat.round}
-
-
 # ---------------------------------------------------------------------------
 # Diffusion filtrée
 # ---------------------------------------------------------------------------
@@ -894,8 +1161,10 @@ func flush() -> void:
 		_broadcast_map()
 	elif dirty.has("tokens"):
 		_broadcast_tokens()
-	if dirty.has("combat"):
-		_broadcast_combat()
+	if dirty.has("phase"):
+		var view := phase_view_for_player()
+		for player in _accepted_online():
+			_send.call(player.peer_id, Protocol.EVT_PHASE, {"phase": view})
 	if dirty.has("music"):
 		var view := music_view_for_player()
 		for player in _accepted_online():
@@ -965,7 +1234,7 @@ func _send_welcome(player: Dictionary) -> void:
 		"messages": history,
 		"characters": characters_for(player.id),
 		"map": _map_view(),
-		"combat": combat_view_for_player(),
+		"phase": phase_view_for_player(),
 		"music": music_view_for_player(),
 	})
 
@@ -974,7 +1243,7 @@ func public_session() -> Dictionary:
 	return {
 		"id": session.id, "name": session.name, "mj_name": session.mj_name, "max_players": session.max_players,
 		"universe": session.universe, "description": session.get("description", ""),
-		"players_edit_sheets": session.players_edit_sheets,
+		"players_edit_sheets": session.players_edit_sheets, "started": session.get("started", false),
 	}
 
 
@@ -1014,12 +1283,6 @@ func _broadcast_tokens() -> void:
 	var view := _map_view()
 	for player in _accepted_online():
 		_send.call(player.peer_id, Protocol.EVT_TOKENS, {"map_id": view.get("id", ""), "tokens": view.get("tokens", [])})
-
-
-func _broadcast_combat() -> void:
-	var view := combat_view_for_player()
-	for player in _accepted_online():
-		_send.call(player.peer_id, Protocol.EVT_COMBAT, {"combat": view})
 
 
 func _broadcast_settings() -> void:

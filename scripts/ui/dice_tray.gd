@@ -20,6 +20,7 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	add_to_group("touch_block")
 	visible = false
 	_font = get_theme_font("font", "CodeLabel")
 	_rng.randomize()

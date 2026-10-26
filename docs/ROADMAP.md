@@ -2,7 +2,7 @@
 
 ## Fait
 
-**Réseau (phase 1)** — hôte autoritaire ENet/UDP, code de partie, validation par le MJ, anti-force brute, reconnexion automatique avec conservation du joueur, file d'envoi sans doublon, découverte facultative sur le Wi-Fi, fin de session propre. **N'importe quel appareil peut héberger** (PC ou Android).
+**Réseau (phase 1)** — hôte autoritaire ENet/UDP, connexion par simple adresse IP (sans code), validation facultative par le MJ, reconnexion automatique avec conservation du joueur, file d'envoi sans doublon, découverte facultative sur le Wi-Fi, fin de session propre. **N'importe quel appareil peut héberger** (PC ou Android).
 
 **Partie jouable (phases 2 à 4, version actuelle)**
 - Campagnes : création avec choix de l'univers, sauvegarde automatique (JSON, écriture sûre avec copie de secours), reprise.
@@ -17,6 +17,7 @@
 - Cartes illustrées (rendu précalculé), 4 grandes cartes pour les longues campagnes, 29 terrains, pions façon jeu de plateau, mises à jour légères des pions.
 - Packs de PNJ (47 fiches) importables.
 - Dés lancés par les joueurs eux-mêmes (plateau animé, jets demandés par le MJ avec difficulté, réussite/échec).
+- **Prise en main simplifiée** : assistant de création (classes prêtes à jouer, 12 points à répartir, équipement au choix), PV / défense / initiative calculés, salon d'attente et bouton « La partie commence ! », phases de jeu (récit libre, exploration, dialogue, combat, repos) au tour par tour avec attaques automatiques (critiques par arme et par classe), défilement tactile facile sur téléphone, saisie de l'IP au pavé numérique.
 - Bande originale de 14 morceaux composés pour le jeu, synchronisée sur les téléphones, musique de combat automatique.
 
 ## À valider par vous

@@ -185,8 +185,24 @@ PACKS = [
     ("bestiaire", "Bestiaire et adversaires", "*", "Monstres et adversaires génériques, pour tous les univers.", BESTIAIRE),
 ]
 
+def add_weapons(entry):
+    """Les capacités décrites par des dés (« 1d6+2 ») deviennent des armes utilisables en combat."""
+    import re
+    for a in entry["abilities"]:
+        m = re.match(r"^(\d*d\d+(?:[+-]\d+)?)", a["description"].replace(" ", ""))
+        if m:
+            reach = re.search(r"portée (\d+)", a["description"])
+            entry["inventory"].insert(0, {"name": a["name"], "category": "arme", "damage": m.group(1), "stat": "", "crit": 20,
+                                          "range": max(1, int(reach.group(1)) // 2) if reach else 1, "qty": 1, "equipped": True,
+                                          "description": a["description"]})
+    return entry
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
+    for _, _, _, _, npcs in PACKS:
+        for e in npcs:
+            add_weapons(e)
     for pid, name, universe, desc, npcs in PACKS:
         with open(os.path.join(OUT, pid + ".json"), "w", encoding="utf-8") as f:
             json.dump({"id": pid, "name": name, "universe": universe, "description": desc, "npcs": npcs}, f, ensure_ascii=False, indent=1)

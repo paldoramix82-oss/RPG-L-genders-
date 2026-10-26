@@ -12,6 +12,8 @@ signal move_requested(token_id: String, x: int, y: int)
 signal cell_tapped(x: int, y: int)
 signal paint_requested(x: int, y: int)
 signal paint_finished
+## Mode « choisir une cible » : le pion touché est renvoyé ici.
+signal target_picked(token_id: String)
 
 const CELL := 32.0
 const TAP_SLOP := 10.0
@@ -26,6 +28,10 @@ var combat_ids: Array = []
 var show_grid := true
 ## Pion sur lequel « Recentrer » se place (joueur : son propre pion).
 var focus_id := ""
+## Cases accessibles ce tour (surlignées) : {Vector2i: true}.
+var reachable := {}
+## Mode ciblage pour une attaque, une capacité ou un objet.
+var target_mode := false
 
 var zoom := 1.0
 var offset := Vector2.ZERO
@@ -141,6 +147,23 @@ func can_move(t: Dictionary) -> bool:
 	return is_mj or (t.get("owner", "") == my_id and my_id != "" and map.get("players_can_move", true))
 
 
+## Cases à portée de déplacement (même règle que l'hôte : distance en cases,
+## diagonales comprises, case libre et franchissable).
+func compute_reachable(from: Vector2i, moves: int) -> Dictionary:
+	var out := {}
+	if moves <= 0:
+		return out
+	var occupied := {}
+	for t in map.get("tokens", []):
+		occupied[Vector2i(int(t.x), int(t.y))] = true
+	for y in range(from.y - moves, from.y + moves + 1):
+		for x in range(from.x - moves, from.x + moves + 1):
+			var c := Vector2i(x, y)
+			if c != from and MapData.passable(map, x, y) and not occupied.has(c):
+				out[c] = true
+	return out
+
+
 func select(token_id: String) -> void:
 	selected = token_id
 	token_selected.emit(token_id)
@@ -171,7 +194,7 @@ func _process(delta: float) -> void:
 	for id in _display.keys():
 		if not seen.has(id):
 			_display.erase(id)
-	if moving or current_turn != "" or _dragging != "":
+	if moving or current_turn != "" or _dragging != "" or not reachable.is_empty():
 		queue_redraw()
 
 
@@ -211,6 +234,15 @@ func _draw() -> void:
 		var sp := cell_center(Vector2(float(map.spawn.x), float(map.spawn.y)))
 		draw_arc(sp, cs * 0.42, 0, TAU, 24, Palette.OK, 2.0, true)
 		_text(sp + Vector2(0, cs * 0.12), "départ", maxi(9, int(cs * 0.26)), Palette.OK)
+	if not reachable.is_empty():
+		var pulse := 0.16 + 0.06 * sin(_time * 3.0)
+		for c in reachable:
+			var r := Rect2(offset + Vector2(c) * cs, Vector2(cs, cs)).grow(-1)
+			draw_rect(r, Color(Palette.GOLD, pulse))
+			draw_rect(r, Color(Palette.GOLD, 0.45), false, 1.0)
+	if target_mode:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.6, 0.1, 0.1, 0.12))
+		draw_string(_font, Vector2(12, size.y - 14), "Touchez la cible", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Palette.DANGER.lightened(0.3))
 	if _hover.x >= 0 and tool != "move" and MapData.in_bounds(map, _hover.x, _hover.y):
 		draw_rect(Rect2(offset + Vector2(_hover) * cs, Vector2(cs, cs)), Color(1, 1, 1, 0.3), false, 2.0)
 	for l in map.get("labels", []):
@@ -263,6 +295,9 @@ func _draw_token(t: Dictionary, cell_pos: Vector2, cs: float, alpha: float) -> v
 	var hidden: bool = t.get("hidden", false)
 	if hidden:
 		alpha *= 0.5
+	var knocked_out := int(t.get("hp_max", 0)) > 0 and int(t.get("hp", 1)) <= 0
+	if knocked_out:
+		alpha *= 0.45
 	var color := Color(String(t.get("color", "#999999")))
 	color.a = alpha
 	var kind := String(t.get("kind", "npc"))
@@ -322,6 +357,9 @@ func _draw_token(t: Dictionary, cell_pos: Vector2, cs: float, alpha: float) -> v
 		var plate := Rect2(base + Vector2(-tw * 0.5 - 3, -fs * 0.55), Vector2(tw + 6, fs + 2))
 		draw_rect(plate, Color(0.08, 0.07, 0.1, 0.75 * alpha))
 		draw_string(_font, Vector2(plate.position.x + 3, plate.position.y + _font.get_ascent(fs)), initials, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Palette.TEXT, alpha))
+	if knocked_out:
+		draw_line(center + Vector2(-r, -r) * 0.7, center + Vector2(r, r) * 0.7, Palette.DANGER, maxf(2.0, cs * 0.08))
+		draw_line(center + Vector2(r, -r) * 0.7, center + Vector2(-r, r) * 0.7, Palette.DANGER, maxf(2.0, cs * 0.08))
 	var hp_max := int(t.get("hp_max", 0))
 	if hp_max > 0 and cs >= 18:
 		var ratio := clampf(float(t.get("hp", 0)) / hp_max, 0.0, 1.0)
@@ -430,7 +468,7 @@ func _begin(pos: Vector2) -> void:
 	_press_pos = pos
 	_drag_candidate = ""
 	var c := cell_at(pos)
-	if tool == "move":
+	if tool == "move" and not target_mode:
 		var t := MapData.token_at(map, c.x, c.y)
 		if can_move(t):
 			_drag_candidate = t.id
@@ -490,6 +528,11 @@ func _cancel_gesture() -> void:
 
 func _tap(c: Vector2i) -> void:
 	if not MapData.in_bounds(map, c.x, c.y):
+		return
+	if target_mode:
+		var target := MapData.token_at(map, c.x, c.y)
+		if not target.is_empty():
+			target_picked.emit(target.id)
 		return
 	if tool != "move":
 		cell_tapped.emit(c.x, c.y)

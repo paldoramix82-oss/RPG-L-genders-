@@ -6,7 +6,6 @@ extends Node
 ## Rôles : menu, host, join, player.
 
 const PORT := 17800
-const CODE := "VAL0MB"
 
 
 func _ready() -> void:

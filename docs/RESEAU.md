@@ -72,14 +72,14 @@ Aucune de ces permissions n'est « dangereuse » : Android ne demande rien au jo
 
 L'écran du MJ affiche :
 - **Adresse IP de ce PC** (ex. `192.168.1.20`). Si plusieurs adresses apparaissent (Ethernet + Wi-Fi, VPN, machine virtuelle), utiliser celle du réseau partagé avec les téléphones — en général celle qui commence comme l'adresse du téléphone (*Paramètres → Wi-Fi → réseau → Adresse IP* sur Android).
-- **Port** (`7777` par défaut).
-- **Code de la partie** (6 caractères, sans `0/O` ni `1/I/L` pour éviter les confusions). Il change à chaque nouvelle session : il empêche un appareil d'une autre table ou d'une autre campagne de se connecter par erreur.
+- **Port** (`7777` par défaut, caché côté joueur dans *Options avancées*).
+
+Il n'y a **pas de code de partie** : l'adresse IP suffit. Le champ IP est prérempli avec le début de l'adresse du téléphone (ex. `192.168.1.`) et se saisit avec un pavé numérique intégré.
 
 ## Sécurité et confidentialité
 
-- Un appareil doit présenter le **bon code** et la **même version** du protocole, sinon il est refusé *avant* de recevoir la moindre donnée.
-- Après 5 codes erronés, l'adresse IP est bloquée 30 secondes.
-- Par défaut, le MJ **valide chaque nouveau joueur** (case « Accepter automatiquement » désactivée).
+- Un appareil doit présenter la **même version** du protocole, sinon il est refusé *avant* de recevoir la moindre donnée.
+- Par défaut, les joueurs entrent directement. Pour filtrer, le MJ coche « Valider moi-même chaque nouveau joueur » : chaque demande attend alors son accord.
 - Les clients ne peuvent pas se parler directement (`server_relay = false`) : tout passe par le serveur.
 - Les messages privés ne sont **envoyés qu'aux destinataires autorisés** : un téléphone ne reçoit jamais une information qu'il n'a pas le droit de voir (le filtrage est fait sur le PC, pas par l'interface).
 - Chaque téléphone possède un identifiant secret (généré à la première ouverture) qui lui permet de retrouver son personnage après une coupure. Il n'est jamais transmis aux autres joueurs.
@@ -99,7 +99,6 @@ L'écran du MJ affiche :
 |---|---|
 | « Le PC du MJ ne répond pas » | Mauvaise IP ; téléphone en 4G ; PC et téléphone sur deux réseaux différents (ex. Wi-Fi 2,4 GHz *invité*) ; pare-feu Windows ; réseau « Public » sous Windows. |
 | Fonctionne sur la box, pas sur le partage de connexion | Isolation des clients du point d'accès. Essayer le partage d'un autre téléphone, ou le point d'accès mobile de Windows. |
-| « Code de partie invalide » | Code mal recopié, ou le MJ a relancé le serveur (nouveau code). |
 | « Version du jeu différente » | Le PC et le téléphone n'ont pas la même version : réinstaller l'APK correspondant. |
 | « Le nom est déjà utilisé » | Un autre appareil a pris ce nom. Si c'est le même joueur avec un nouveau téléphone, le MJ peut « Retirer » l'ancienne fiche. |
 | Impossible d'ouvrir le port | Une autre instance du jeu tourne déjà, ou le port est utilisé : en choisir un autre (ex. `7780`). |

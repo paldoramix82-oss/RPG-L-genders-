@@ -9,7 +9,7 @@ extends RefCounted
 ## décide quelles données envoyer à quel client.
 
 ## À incrémenter dès que le format des messages change de façon incompatible.
-const VERSION := 3
+const VERSION := 4
 const APP_ID := "legenders-rpg"
 
 const DEFAULT_PORT := 7777
@@ -54,6 +54,8 @@ const CMD_ROLL := "dice_roll"
 const CMD_CHAR_SAVE := "char_save"
 const CMD_PAWN_MOVE := "pawn_move"
 const CMD_ROLL_ANSWER := "roll_answer"
+## Action de tour : fin du tour, attaque, capacité, objet.
+const CMD_TURN := "turn"
 
 # --- Événements serveur -> client ---
 const EVT_JOIN_STATUS := "join_status"
@@ -66,7 +68,7 @@ const EVT_SESSION_CLOSED := "session_closed"
 const EVT_MSG_UPDATE := "msg_update"
 const EVT_CHARACTERS := "characters"
 const EVT_MAP := "map"
-const EVT_COMBAT := "combat"
+const EVT_PHASE := "phase"
 const EVT_SETTINGS := "settings"
 const EVT_TOKENS := "tokens"
 const EVT_MUSIC := "music"

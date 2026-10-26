@@ -71,7 +71,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Morsure",
+     "category": "arme",
+     "damage": "1d6+2",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d6+2"
+    }
+   ],
    "pawn": {
     "color": "#8a4a3c",
     "symbol": "LC"
@@ -149,7 +161,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Coup de dague",
+     "category": "arme",
+     "damage": "1d4+2",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d4+2"
+    }
+   ],
    "pawn": {
     "color": "#7a6a5a",
     "symbol": "BA"
@@ -222,7 +246,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Épée longue",
+     "category": "arme",
+     "damage": "1d8+3",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d8+3"
+    }
+   ],
    "pawn": {
     "color": "#5a3a2a",
     "symbol": "CH"
@@ -295,7 +331,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Fronde",
+     "category": "arme",
+     "damage": "1d4",
+     "stat": "",
+     "crit": 20,
+     "range": 7,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d4, portée 15 m"
+    }
+   ],
    "pawn": {
     "color": "#6b8f3a",
     "symbol": "GO"
@@ -368,7 +416,30 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Lancer de rocher",
+     "category": "arme",
+     "damage": "1d10+4",
+     "stat": "",
+     "crit": 20,
+     "range": 10,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d10+4, portée 20 m"
+    },
+    {
+     "name": "Massue",
+     "category": "arme",
+     "damage": "2d8+4",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "2d8+4"
+    }
+   ],
    "pawn": {
     "color": "#8a7a50",
     "symbol": "OG"
@@ -441,7 +512,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Lame rouillée",
+     "category": "arme",
+     "damage": "1d6+1",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d6+1"
+    }
+   ],
    "pawn": {
     "color": "#d9d4c4",
     "symbol": "SQ"
@@ -514,7 +597,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Toucher glacial",
+     "category": "arme",
+     "damage": "1d8",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d8 et affaiblit"
+    }
+   ],
    "pawn": {
     "color": "#9fc3d4",
     "symbol": "SP"
@@ -587,7 +682,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Morsure venimeuse",
+     "category": "arme",
+     "damage": "1d8",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d8 + poison"
+    }
+   ],
    "pawn": {
     "color": "#3f3a33",
     "symbol": "AR"
@@ -660,7 +767,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Poing de pierre",
+     "category": "arme",
+     "damage": "2d10",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "2d10"
+    }
+   ],
    "pawn": {
     "color": "#7d7a70",
     "symbol": "GP"
@@ -733,7 +852,30 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Griffes",
+     "category": "arme",
+     "damage": "1d10+3",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d10+3"
+    },
+    {
+     "name": "Souffle de feu",
+     "category": "arme",
+     "damage": "3d6",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "3d6 en cône"
+    }
+   ],
    "pawn": {
     "color": "#b0605a",
     "symbol": "DR"
@@ -806,7 +948,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Engloutir",
+     "category": "arme",
+     "damage": "1d6",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d6 d'acide par tour"
+    }
+   ],
    "pawn": {
     "color": "#5fb36a",
     "symbol": "SL"
@@ -879,7 +1033,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Braise",
+     "category": "arme",
+     "damage": "1d10",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d10 de feu"
+    }
+   ],
    "pawn": {
     "color": "#4a4543",
     "symbol": "EC"
@@ -945,7 +1111,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Hallebarde",
+     "category": "arme",
+     "damage": "1d10+1",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d10+1, allonge"
+    }
+   ],
    "pawn": {
     "color": "#6f7f9a",
     "symbol": "GA"
@@ -1011,7 +1189,19 @@
    "goals": "",
    "secret": "",
    "relations": "",
-   "inventory": [],
+   "inventory": [
+    {
+     "name": "Étreinte",
+     "category": "arme",
+     "damage": "2d6+4",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "2d6+4 et saisie"
+    }
+   ],
    "pawn": {
     "color": "#6b4a2a",
     "symbol": "OU"

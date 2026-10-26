@@ -34,7 +34,10 @@ var _token_tpl := {"kind": "monster", "name": "Monstre", "color": "#b0605a", "hp
 var _label_tpl := {"text": "", "hidden": false}
 var _inspector: VBoxContainer
 var _insp_widgets := {}
-var _combat_box: VBoxContainer
+var _phase_box: VBoxContainer
+var _lobby_bar: PanelContainer
+var _include_hidden := false
+var _mj_pending := {}
 
 # Récit
 var _feed: FeedView
@@ -81,7 +84,7 @@ func _on_resized() -> void:
 func _build_setup() -> void:
 	UIKit.clear(_root)
 	_tabs = null
-	var scroll := ScrollContainer.new()
+	var scroll := TouchScroll.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(scroll)
@@ -160,12 +163,12 @@ func _build_setup() -> void:
 	net.add_child(row2)
 	_inputs.port = UIKit.field(row2, "Port UDP", UIKit.spin(App.get_setting("host", "port", Protocol.DEFAULT_PORT), 1024, 65535))
 	_inputs.max_players = UIKit.field(row2, "Joueurs maximum", UIKit.spin(App.get_setting("host", "max_players", Protocol.DEFAULT_MAX_PLAYERS), 1, Protocol.MAX_PLAYERS_LIMIT))
-	var auto := CheckBox.new()
-	auto.text = "Accepter automatiquement les joueurs qui ont le code"
-	auto.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	auto.button_pressed = App.get_setting("host", "auto_accept", false)
-	net.add_child(auto)
-	_inputs.auto_accept = auto
+	var validate := CheckBox.new()
+	validate.text = "Valider moi-même chaque nouveau joueur"
+	validate.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	validate.button_pressed = not App.get_setting("host", "auto_accept", true)
+	net.add_child(validate)
+	_inputs.validate = validate
 	net.add_child(UIKit.label("PC Windows : au premier lancement, autorisez l'application sur les « Réseaux privés ». Téléphone hôte : gardez l'application ouverte et l'écran allumé pendant la partie.", "MutedLabel", true))
 	var gap := Control.new()
 	gap.custom_minimum_size.y = 24
@@ -176,7 +179,7 @@ func _network_settings() -> Dictionary:
 	var settings := {
 		"port": int((_inputs.port as SpinBox).value),
 		"max_players": int((_inputs.max_players as SpinBox).value),
-		"auto_accept": (_inputs.auto_accept as CheckBox).button_pressed,
+		"auto_accept": not (_inputs.validate as CheckBox).button_pressed,
 	}
 	for key in settings:
 		App.set_setting("host", key, settings[key])
@@ -235,7 +238,7 @@ func _build_dashboard() -> void:
 	_narrow = size.x < NARROW_WIDTH
 	var server := Net.server
 	for sig in [server.players_changed, server.message_added, server.message_updated, server.log_added,
-			server.characters_changed, server.maps_changed, server.combat_changed, server.saved]:
+			server.characters_changed, server.maps_changed, server.phase_changed, server.saved]:
 		for c in sig.get_connections():
 			if c.callable.get_object() == self:
 				sig.disconnect(c.callable)
@@ -246,6 +249,10 @@ func _build_dashboard() -> void:
 	outer.add_theme_constant_override("separation", 0)
 	_root.add_child(outer)
 	outer.add_child(_build_top_bar())
+	_lobby_bar = PanelContainer.new()
+	_lobby_bar.theme_type_variation = "HighlightPanel"
+	_lobby_bar.add_child(HBoxContainer.new())
+	outer.add_child(_lobby_bar)
 
 	_tabs = TabbedPages.new(_narrow, 12)
 	if _narrow:
@@ -280,7 +287,7 @@ func _build_dashboard() -> void:
 	server.log_added.connect(_add_log)
 	server.characters_changed.connect(_refresh_characters)
 	server.maps_changed.connect(_on_maps_changed)
-	server.combat_changed.connect(_refresh_combat)
+	server.phase_changed.connect(_refresh_phase)
 	server.saved.connect(_on_saved)
 
 	for entry in server.connection_log:
@@ -346,17 +353,13 @@ func _build_players_column(parent: Node) -> void:
 	card.add_child(grid)
 	grid.add_child(UIKit.label("Adresse IP", "MutedLabel"))
 	var ip_label := UIKit.label(ips[0] if not ips.is_empty() else "Pas de Wi-Fi", "CodeLabel")
-	ip_label.add_theme_font_size_override("font_size", 26)
+	ip_label.add_theme_font_size_override("font_size", 30)
+	ip_label.add_theme_color_override("font_color", Palette.GOLD)
 	grid.add_child(ip_label)
 	grid.add_child(UIKit.label("Port", "MutedLabel"))
 	var port := UIKit.label(str(server.session.port), "CodeLabel")
 	port.add_theme_font_size_override("font_size", 22)
 	grid.add_child(port)
-	grid.add_child(UIKit.label("Code", "MutedLabel"))
-	var code := UIKit.label(server.session.code, "CodeLabel")
-	code.add_theme_font_size_override("font_size", 30)
-	code.add_theme_color_override("font_color", Palette.GOLD)
-	grid.add_child(code)
 	if ips.size() > 1:
 		card.add_child(UIKit.label("Autres adresses : " + ", ".join(ips.slice(1)), "MutedLabel", true))
 	var players_card := UIKit.card(parent, "Joueurs")
@@ -365,6 +368,7 @@ func _build_players_column(parent: Node) -> void:
 
 
 func _on_players_changed() -> void:
+	_refresh_lobby_bar()
 	_refresh_players()
 	_refresh_composer_targets()
 	_refresh_characters()
@@ -456,7 +460,7 @@ func _refresh_live() -> void:
 		return
 	var online := server.count_online()
 	var pending := server.count_status(Protocol.STATUS_PENDING)
-	_count_label.text = "%d / %d joueurs connectés%s  ·  code %s" % [online, server.session.max_players, ("  ·  %d en attente" % pending) if pending > 0 else "", server.session.code]
+	_count_label.text = "%d / %d joueurs connectés%s  ·  phase : %s" % [online, server.session.max_players, ("  ·  %d en attente" % pending) if pending > 0 else "", Phases.def(server.phase.type).name]
 	if _net_labels.has("state"):
 		_net_labels.state.text = Net.state_label()
 		_net_labels.online.text = str(online)
@@ -505,9 +509,10 @@ func _build_table() -> Control:
 	_map_view.token_selected.connect(func(_id): _refresh_inspector())
 	_map_view.paint_requested.connect(func(x, y): Net.server.mj_paint(_edit_map, x, y, _paint_code, _brush))
 	_map_view.cell_tapped.connect(_on_cell_tapped)
+	_map_view.target_picked.connect(_on_mj_target)
 	page.add_child(_map_view)
 
-	var scroll := ScrollContainer.new()
+	var scroll := TouchScroll.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size.x = 0 if _narrow else 330
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -518,6 +523,8 @@ func _build_table() -> Control:
 	scroll.add_child(side)
 
 	# --- Musique ---
+	# Phase et tours en premier : c'est ce que le MJ manipule le plus pendant la partie.
+	_phase_box = UIKit.card(side, "", "HighlightPanel")
 	var music := UIKit.card(side, "Ambiance musicale")
 	_music_select = OptionButton.new()
 	_music_select.custom_minimum_size.y = UIKit.TOUCH_HEIGHT
@@ -575,7 +582,7 @@ func _build_table() -> Control:
 	mc.add_child(_map_status)
 	mc.add_child(UIKit.button("Montrer cette carte aux joueurs", "PrimaryButton", func():
 		Net.server.mj_set_active_map(_edit_map)
-		_refresh_combat()))
+		_refresh_phase()))
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 6)
 	row.add_theme_constant_override("v_separation", 6)
@@ -617,7 +624,6 @@ func _build_table() -> Control:
 	tc.add_child(_tool_options)
 
 	_inspector = UIKit.card(side, "")
-	_combat_box = UIKit.card(side, "")
 	_set_tool(_tool)
 	return page
 
@@ -664,7 +670,7 @@ func _load_edit_map() -> void:
 	_map_view.set_map(map)
 	_refresh_map_status()
 	_refresh_inspector()
-	_refresh_combat()
+	_refresh_phase()
 
 
 func _refresh_map_status() -> void:
@@ -885,6 +891,21 @@ func _refresh_inspector() -> void:
 				upd.call({"hp": int(cur.hp) + d}))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		quick.add_child(b)
+	var cid_check: String = t.char_id if t.char_id != "" else t.owner
+	if not Net.server.characters.has(cid_check):
+		# Pion sans fiche : valeurs de combat simples.
+		var combat_row := HBoxContainer.new()
+		_inspector.add_child(combat_row)
+		var def := UIKit.spin(int(t.get("defense", 10)) if int(t.get("defense", 0)) > 0 else 10, 1, 40)
+		def.prefix = "Déf."
+		def.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		def.value_changed.connect(func(v): upd.call({"defense": int(v)}))
+		combat_row.add_child(def)
+		var atk := UIKit.line_edit(String(t.get("attack", "1d6")) if String(t.get("attack", "")) != "" else "1d6", "Dégâts")
+		atk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		atk.text_submitted.connect(func(v): upd.call({"attack": v}))
+		atk.focus_exited.connect(func(): upd.call({"attack": atk.text}))
+		combat_row.add_child(atk)
 	var hidden := CheckBox.new()
 	hidden.text = "Caché aux joueurs"
 	hidden.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -906,9 +927,9 @@ func _refresh_inspector() -> void:
 		actions.add_child(_small_button("Fiche", "", func():
 			_tabs.show_page("chars")
 			_select_character(cid)))
-	if Net.server.combat.active and _edit_map == Net.server.active_map:
-		actions.add_child(_small_button("Retirer du combat" if Net.server.combat.order.has(tid) else "Ajouter au combat", "", func():
-			Net.server.mj_combat_toggle(tid)
+	if Phases.def(Net.server.phase.type).turns and _edit_map == Net.server.active_map:
+		actions.add_child(_small_button("Retirer des tours" if Net.server.phase.order.has(tid) else "Ajouter aux tours", "", func():
+			Net.server.mj_turn_toggle(tid)
 			_refresh_inspector()))
 	if t.kind != "pc":
 		actions.add_child(_small_button("Supprimer", "DangerButton", func():
@@ -931,31 +952,44 @@ func _sync_inspector() -> void:
 	(_insp_widgets.hp_max as SpinBox).set_value_no_signal(int(t.hp_max))
 
 
-# --- Combat ---
+# --- Phases et tours ---
 
-func _refresh_combat() -> void:
-	if _combat_box == null:
+func _refresh_phase() -> void:
+	if _phase_box == null:
 		return
 	var server := Net.server
-	UIKit.clear(_combat_box)
-	_combat_box.add_child(UIKit.label("Combat", "HeadingLabel"))
+	UIKit.clear(_phase_box)
+	_phase_box.add_child(UIKit.label("Phase de jeu", "HeadingLabel"))
 	var on_active := _edit_map == server.active_map
-	var combat: Dictionary = server.combat
-	_map_view.current_turn = server._current_combat_token() if (combat.active and on_active) else ""
+	var phase: Dictionary = server.phase
+	var rules := Phases.def(phase.type)
+	_map_view.current_turn = server._current_token() if on_active else ""
 	_map_view.queue_redraw()
+	_refresh_lobby_bar()
+	var buttons := HFlowContainer.new()
+	buttons.add_theme_constant_override("h_separation", 6)
+	buttons.add_theme_constant_override("v_separation", 6)
+	_phase_box.add_child(buttons)
+	for type in Phases.LIST:
+		var b := _small_button(Phases.def(type).name, "PrimaryButton" if type == phase.type else "", func(): server.mj_set_phase(type, _include_hidden))
+		buttons.add_child(b)
+	var hidden := CheckBox.new()
+	hidden.text = "Inclure les pions cachés dans le combat"
+	hidden.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hidden.button_pressed = _include_hidden
+	hidden.toggled.connect(func(on): _include_hidden = on)
+	_phase_box.add_child(hidden)
+	_phase_box.add_child(UIKit.label(String(rules.rules), "MutedLabel", true))
 	if not on_active:
-		_combat_box.add_child(UIKit.label("Le combat se joue sur la carte affichée aux joueurs.", "MutedLabel", true))
+		_phase_box.add_child(UIKit.label("Les tours se jouent sur la carte affichée aux joueurs.", "MutedLabel", true))
 		return
-	if not combat.active:
-		_combat_box.add_child(UIKit.label("Combat au tour par tour avec les pions visibles de la carte. L'initiative (d20) est tirée automatiquement ; vous pouvez réordonner.", "MutedLabel", true))
-		_combat_box.add_child(UIKit.button("Démarrer le combat", "PrimaryButton", func(): server.mj_combat_start(false)))
-		_combat_box.add_child(_small_button("Démarrer en incluant les pions cachés", "", func(): server.mj_combat_start(true)))
+	if not rules.turns:
 		return
-	_combat_box.add_child(UIKit.chip("Tour %d" % combat.round, Palette.DANGER))
+	_phase_box.add_child(UIKit.chip("Tour %d" % int(phase.round), Palette.GOLD))
 	var map: Dictionary = server.maps[server.active_map]
-	var current := server._current_combat_token()
-	var initiative: Dictionary = combat.get("initiative", {})
-	for id in combat.order:
+	var current := server._current_token()
+	var initiative: Dictionary = phase.get("initiative", {})
+	for id in phase.order:
 		var t := MapData.token(map, id)
 		if t.is_empty():
 			continue
@@ -964,6 +998,8 @@ func _refresh_combat() -> void:
 		var text := String(t.name)
 		if initiative.has(id):
 			text += "  (%d)" % initiative[id]
+		if int(t.get("hp_max", 0)) > 0:
+			text += "  ·  %d/%d PV" % [int(t.hp), int(t.hp_max)]
 		var n := UIKit.label(("› " if id == current else "") + text, "StrongLabel" if id == current else "")
 		if id == current:
 			n.add_theme_color_override("font_color", Palette.GOLD)
@@ -971,22 +1007,105 @@ func _refresh_combat() -> void:
 		n.clip_text = true
 		row.add_child(n)
 		var tid: String = id
-		var up := _small_button("▲", "", func(): server.mj_combat_move(tid, -1))
+		var up := _small_button("▲", "", func(): server.mj_turn_move(tid, -1))
 		up.custom_minimum_size.x = 38
 		row.add_child(up)
-		var down := _small_button("▼", "", func(): server.mj_combat_move(tid, 1))
+		var down := _small_button("▼", "", func(): server.mj_turn_move(tid, 1))
 		down.custom_minimum_size.x = 38
 		row.add_child(down)
-		var x := _small_button("×", "DangerButton", func(): server.mj_combat_toggle(tid))
+		var x := _small_button("×", "DangerButton", func(): server.mj_turn_toggle(tid))
 		x.custom_minimum_size.x = 38
 		row.add_child(x)
-		_combat_box.add_child(row)
-	var actions := HBoxContainer.new()
-	_combat_box.add_child(actions)
-	var next := UIKit.button("Tour suivant", "PrimaryButton", func(): server.mj_combat_next())
-	next.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions.add_child(next)
-	actions.add_child(UIKit.button("Terminer", "DangerButton", func(): server.mj_combat_end()))
+		_phase_box.add_child(row)
+	var current_token := MapData.token(map, current)
+	if not current_token.is_empty() and current_token.kind != "pc":
+		# C'est au tour d'un PNJ ou d'un monstre : le MJ le joue.
+		var npc := UIKit.card(_phase_box, "", "HighlightPanel")
+		npc.add_child(UIKit.label("À vous de jouer %s" % current_token.name, "StrongLabel", true))
+		var info := "Action : %s" % ("faite" if phase.action_used else "disponible")
+		if rules.move == "limit":
+			info = "Déplacement : %d cases (vous pouvez aussi le déplacer librement)  ·  " % int(phase.moves_left) + info
+		npc.add_child(UIKit.label(info, "MutedLabel", true))
+		var acts := HFlowContainer.new()
+		acts.add_theme_constant_override("h_separation", 6)
+		acts.add_theme_constant_override("v_separation", 6)
+		npc.add_child(acts)
+		var sheet := server._sheet_for_token(current_token)
+		var weapons := Rules.weapons(sheet)
+		for i in weapons.size():
+			var wi := i
+			var b := _small_button("Attaque : " + String(weapons[i].name), "PrimaryButton", func(): _mj_target({"action": "attack", "index": wi}))
+			b.disabled = phase.action_used
+			acts.add_child(b)
+		var abilities: Array = sheet.get("abilities", [])
+		for i in abilities.size():
+			var ai := i
+			var a: Dictionary = abilities[i]
+			if String(a.get("kind", "")) == "":
+				continue
+			var b := _small_button(String(a.name), "", func(): _mj_target({"action": "ability", "index": ai}))
+			b.disabled = phase.action_used
+			acts.add_child(b)
+		if not _mj_pending.is_empty():
+			npc.add_child(UIKit.label("Touchez la cible sur la carte.", "StrongLabel", true))
+			npc.add_child(_small_button("Annuler", "", func():
+				_mj_pending = {}
+				_map_view.target_mode = false
+				_refresh_phase()))
+	elif not current_token.is_empty():
+		_phase_box.add_child(UIKit.label("Au tour de %s (joueur)." % current_token.name, "MutedLabel", true))
+	var next := UIKit.button("Tour suivant  ›", "PrimaryButton", func(): server.mj_next_turn())
+	_phase_box.add_child(next)
+
+
+func _mj_target(action: Dictionary) -> void:
+	_mj_pending = action
+	_map_view.target_mode = true
+	_map_view.queue_redraw()
+	_refresh_phase()
+
+
+func _on_mj_target(token_id: String) -> void:
+	var action := _mj_pending
+	_mj_pending = {}
+	_map_view.target_mode = false
+	if action.is_empty():
+		return
+	var err := Net.server.turn_action(Net.server._current_token(), {"action": action.action, "index": action.index, "target": token_id})
+	if err != "":
+		_map_status.text = err
+		_map_status.add_theme_color_override("font_color", Palette.DANGER)
+	_refresh_phase()
+
+
+## Bandeau « Préparation » tant que la partie n'est pas lancée.
+func _refresh_lobby_bar() -> void:
+	if _lobby_bar == null:
+		return
+	var server := Net.server
+	var started: bool = server.session.get("started", false)
+	_lobby_bar.visible = not started
+	if started:
+		return
+	var body := _lobby_bar.get_child(0) as HBoxContainer
+	UIKit.clear(body)
+	var accepted := server.players.values().filter(func(p): return p.status == Protocol.STATUS_ACCEPTED)
+	var ready := accepted.filter(func(p): return server.characters.has(p.id))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 0)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(col)
+	col.add_child(UIKit.label("Préparation : %d/%d joueurs ont créé leur personnage" % [ready.size(), accepted.size()], "StrongLabel", true))
+	var names: PackedStringArray = []
+	for p in accepted:
+		names.append(("%s (prêt)" if server.characters.has(p.id) else "%s (en création)") % p.name)
+	col.add_child(UIKit.label(", ".join(names) if not names.is_empty() else "En attente des joueurs… Donnez-leur l'adresse IP affichée à gauche.", "MutedLabel", true))
+	var go := UIKit.button("La partie commence !", "PrimaryButton", func():
+		server.mj_start_game("exploration")
+		_refresh_phase())
+	go.custom_minimum_size = Vector2(240, 56)
+	go.disabled = ready.is_empty()
+	body.add_child(go)
 
 
 # --- Dialogues de carte ---
@@ -1064,7 +1183,7 @@ func _build_characters() -> Control:
 	_char_list.add_theme_constant_override("v_separation", 6)
 	page.add_child(_char_list)
 	page.add_child(HSeparator.new())
-	var scroll := ScrollContainer.new()
+	var scroll := TouchScroll.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	page.add_child(scroll)
@@ -1086,6 +1205,7 @@ func _select_character(id: String) -> void:
 
 
 func _refresh_characters() -> void:
+	_refresh_lobby_bar()
 	if _char_list == null:
 		return
 	var server := Net.server

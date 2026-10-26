@@ -132,11 +132,13 @@ func _build_theme() -> Theme:
 	t.set_constant("v_separation", "PopupMenu", 12)
 
 	# --- Barres de défilement fines ---
+	# Sur téléphone, barres plus larges pour être attrapées au doigt.
+	var bar_margin := 8.0 if App.is_mobile() else 3.0
 	for type in ["VScrollBar", "HScrollBar"]:
-		t.set_stylebox("scroll", type, _box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 4, 3))
-		t.set_stylebox("grabber", type, _box(Palette.VIOLET_DIM, Color(0, 0, 0, 0), 0, 4, 3))
-		t.set_stylebox("grabber_highlight", type, _box(Palette.VIOLET, Color(0, 0, 0, 0), 0, 4, 3))
-		t.set_stylebox("grabber_pressed", type, _box(Palette.GOLD_DIM, Color(0, 0, 0, 0), 0, 4, 3))
+		t.set_stylebox("scroll", type, _box(Color(1, 1, 1, 0.04), Color(0, 0, 0, 0), 0, 6, bar_margin))
+		t.set_stylebox("grabber", type, _box(Palette.VIOLET_DIM, Color(0, 0, 0, 0), 0, 6, bar_margin))
+		t.set_stylebox("grabber_highlight", type, _box(Palette.VIOLET, Color(0, 0, 0, 0), 0, 6, bar_margin))
+		t.set_stylebox("grabber_pressed", type, _box(Palette.GOLD_DIM, Color(0, 0, 0, 0), 0, 6, bar_margin))
 
 	t.set_stylebox("separator", "HSeparator", _line(Palette.BORDER))
 	t.set_constant("separation", "HSeparator", 12)

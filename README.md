@@ -42,7 +42,7 @@ Mode d'emploi : [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md).
    godot --path . -- --profile=joueur1 --force-mobile   # interface téléphone
    godot --path . -- --profile=joueur2 --force-mobile
    ```
-   Les joueurs se connectent à `127.0.0.1`, port `7777`, avec le code affiché par le MJ.
+   Les joueurs se connectent simplement à l'adresse `127.0.0.1` (aucun code).
 
 Contenu généré par des scripts (les fichiers produits sont versionnés, les scripts ne servent qu'à les recréer) :
 - cartes : `tools/generate_maps.py` → `data/maps/*.json` (numpy + scipy) ;

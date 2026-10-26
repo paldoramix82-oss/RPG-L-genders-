@@ -1,15 +1,15 @@
 extends Node
 ## Pilote de captures : joue une petite scène réelle (hôte + joueur en réseau)
 ## puis photographie l'onglet demandé.
-## Arguments : --shot=menu|join|host|player  --tab=<onglet>  --out=<png>
+## Arguments : --shot=menu|join|host|player  --tab=<onglet>  --phase=none|exploration|combat  --out=<png>
 
 const PORT := 17800
-const CODE := "VALMBR"
 
 var shot := "menu"
 var tab := ""
 var map_template := "ile_test"
 var out := "user://shot.png"
+var phase := "combat"
 
 
 func _ready() -> void:
@@ -20,6 +20,8 @@ func _ready() -> void:
 			tab = arg.get_slice("=", 1)
 		elif arg.begins_with("--map="):
 			map_template = arg.get_slice("=", 1)
+		elif arg.begins_with("--phase="):
+			phase = arg.get_slice("=", 1)
 		elif arg.begins_with("--out="):
 			out = arg.get_slice("=", 1)
 	match shot:
@@ -40,7 +42,7 @@ func _ready() -> void:
 
 
 func _host() -> void:
-	Net.host({"name": "Légenders — Le test de la magie", "mj_name": "Le Conteur", "port": PORT, "max_players": 4, "code": CODE, "universe": "legenders", "auto_accept": true})
+	Net.host({"name": "Légenders — Le test de la magie", "mj_name": "Le Conteur", "port": PORT, "max_players": 4, "universe": "legenders", "auto_accept": true})
 	var server := Net.server
 	for id in server.map_order:
 		if server.maps[id].get("template", "") == map_template:
@@ -60,40 +62,59 @@ func _host() -> void:
 			var t := server.mj_place_character(id)
 			server.mj_update_token(map_id, t.id, {"hidden": false})
 	server.mj_music("poing_de_braise", true)
-	server.mj_combat_start(false)
+	if phase != "none":
+		server.mj_start_game("exploration")
+		if phase == "combat":
+			server.mj_set_phase("combat")
+			# Le joueur commence, pour montrer son panneau de tour.
+			var pawns := server.players.keys().map(func(id): return "pawn_" + String(id))
+			for i in server.phase.order.size():
+				if pawns.has(server.phase.order[i]):
+					server.phase.turn = i
+					server._begin_turn()
+					server._phase_changed()
+					break
 	await get_tree().create_timer(1.0).timeout
 	var screen := get_tree().current_scene
 	if tab != "" and screen.get("_tabs"):
 		screen._tabs.show_page(tab)
-	await get_tree().create_timer(1.0).timeout
+	# Laisse le téléphone se photographier avant que l'hôte ne ferme.
+	await get_tree().create_timer(4.0).timeout
 
 
 func _player() -> void:
 	Net.joined.connect(func(): App.goto(App.SCENE_PLAYER))
 	await get_tree().create_timer(1.0).timeout
-	Net.join("127.0.0.1", PORT, CODE, "Camille")
+	Net.join("127.0.0.1", PORT, "Camille")
 	await get_tree().create_timer(1.5).timeout
 	var c := Net.client
 	if c == null:
 		return
-	c.save_character({
-		"name": "Shin", "concept": "Gardien du Dragon (débutant)", "species": "Humain", "origin": "RAC (Mako)", "age": "17",
-		"appearance": "Cheveux en bataille, cicatrice de brûlure sur l'avant-bras.", "rank": "B",
-		"magic": {"category": "Renforcement", "name": "Renforcement des flammes", "origin": "Imposition par un Légender (Gardien)",
-			"description": "Se recouvre de flammes pour gagner en résistance, en vitesse et en dégâts.", "limits": "S'emballe vite ; épuisant au-delà de quelques minutes.", "public": true},
-		"abilities": [{"name": "Poing de Sol'fyr", "description": "Un coup chargé de flammes.", "cost": "3 AEC", "range": "Contact"}],
-		"stats": [{"name": "Force", "value": 14}, {"name": "Agilité", "value": 12}, {"name": "Endurance", "value": 13}, {"name": "Intelligence", "value": 8}, {"name": "Perception", "value": 10}, {"name": "Charisme", "value": 11}],
-		"skills": [{"name": "Combat", "value": 3}, {"name": "Survie", "value": 1}],
-		"inventory": [{"name": "Ration de survie", "qty": 3, "description": "Volée par des ombrés ?"}],
-		"hp": 17, "hp_max": 20, "res": 8, "res_max": 10, "goals": "Devenir mage d'État et réveiller Sol'fyr pour de bon.",
-		"pawn": {"color": "#b0605a", "symbol": "SH"},
-	})
+	var screen := get_tree().current_scene
+	if tab.begins_with("wizard"):
+		# Assistant de création : wizard1..wizard4.
+		screen._open_wizard()
+		var wizard: CreationWizard = screen._creation.get_child(0)
+		wizard.class_id = "briseur"
+		wizard.alloc = Rules.get_class_def("legenders", "briseur").recommended.duplicate()
+		wizard.step = int(tab.substr(6)) - 1
+		wizard.identity.name = "Shin"
+		wizard._show_step()
+		await get_tree().create_timer(1.0).timeout
+		return
+	var base := CharacterData.create(c.universe, c.me.id, c.me.id, "Shin")
+	var sheet := Rules.build_sheet(base, "legenders", "briseur", Rules.get_class_def("legenders", "briseur").recommended, [0])
+	sheet.concept = "Gardien du Dragon (débutant)"
+	sheet.species = "Humain"
+	sheet.pawn.color = "#b0605a"
+	sheet.magic.name = "Renforcement des flammes"
+	sheet.goals = "Devenir mage d'État et réveiller Sol'fyr pour de bon."
+	c.save_character(sheet)
 	await get_tree().create_timer(1.0).timeout
 	c.declare_action(Protocol.TO_ALL, "J'escalade le pic central pour repérer le point de rendez-vous.")
 	c.roll("d20+2", Protocol.TO_ALL, "Escalade")
 	c.send_chat(Protocol.TO_MJ, "Je garde une flamme allumée dans ma main, discrètement.")
 	await get_tree().create_timer(2.5).timeout
-	var screen := get_tree().current_scene
 	if tab == "dice":
 		screen._roll(Protocol.TO_ALL, "2d6+3", "Escalade")
 		await get_tree().create_timer(0.5).timeout
@@ -104,7 +125,7 @@ func _player() -> void:
 		return
 	if tab == "editor":
 		screen._tabs.show_page("sheet")
-		screen._open_editor()
+		screen._open_editor(screen._sheet_box)
 	elif tab != "" and screen.get("_tabs"):
 		screen._tabs.show_page(tab)
 	await get_tree().create_timer(1.0).timeout
