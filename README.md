@@ -21,7 +21,7 @@ Moteur : **Godot 4.4** (GDScript), rendu *Compatibility* (OpenGL) pour fonctionn
 - **Sauvegarde automatique** et reprise de campagne ; reconnexion automatique des joueurs.
 - Interface soignée et adaptée : colonnes sur PC, onglets sur téléphone.
 
-Mode d'emploi : [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md).
+Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUIDE_DEBUTANT.md). Mode d'emploi complet : [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md).
 
 ## État
 
@@ -53,12 +53,14 @@ Les univers sont dans `data/universes/*.json`.
 
 ## Documentation
 
+- [docs/GUIDE_DEBUTANT.md](docs/GUIDE_DEBUTANT.md) — première partie pas à pas, pour ceux qui n'ont jamais joué.
 - [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md) — comment jouer (joueurs et MJ).
 - [docs/COMPILATION.md](docs/COMPILATION.md) — exporter le `.exe` Windows et l'`.apk` Android, installer l'APK.
 - [docs/RESEAU.md](docs/RESEAU.md) — pare-feu Windows, permissions Android, Wi-Fi / partage de connexion, dépannage.
 - [docs/TEST_PHASE1.md](docs/TEST_PHASE1.md) — protocole de test sur appareils réels.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — organisation du code et du protocole réseau.
 - [docs/ROADMAP.md](docs/ROADMAP.md) — phases de développement et ce qui reste à faire.
+- [docs/PLAN_REFONTE.md](docs/PLAN_REFONTE.md) — audit et plan de la refonte (combat à points d'action, progression, butin, nouvelle interface).
 
 ## Tests automatisés
 
