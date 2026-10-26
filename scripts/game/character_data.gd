@@ -15,13 +15,13 @@ const PAWN_COLORS := ["#c9a96e", "#b0605a", "#6f9fc9", "#8fb28a", "#a07cc9", "#d
 const TEXT_FIELDS := {
 	"name": SHORT, "age": 20, "species": SHORT, "origin": SHORT, "concept": SHORT,
 	"appearance": LONG, "background": LONG, "personality": LONG, "goals": LONG,
-	"relations": LONG, "notes": LONG, "secret": LONG, "status": SHORT, "rank": 10, "kind": 10, "class_id": 60, "species_id": 60,
+	"relations": LONG, "notes": LONG, "secret": LONG, "status": SHORT, "rank": 10, "kind": 10, "class_id": 60, "species_id": 60, "monster_id": 60,
 	"res_name": 20, "loot": 60, "side": 12,
 }
 ## Champs narratifs qu'un joueur peut modifier lui-même (le reste : règles, calculé par l'hôte).
 const NARRATIVE_FIELDS := ["name", "age", "species", "origin", "concept", "appearance", "background", "personality",
 	"goals", "relations", "notes", "secret"]
-const INT_FIELDS := ["level", "xp", "hp", "hp_max", "res", "res_max", "defense", "speed", "gold", "ult", "xp_reward", "defense_bonus", "schema"]
+const INT_FIELDS := ["level", "xp", "hp", "hp_max", "res", "res_max", "defense", "speed", "gold", "ult", "xp_reward", "defense_bonus", "schema", "aggro"]
 ## Champs visibles par les autres joueurs (le reste : propriétaire + MJ).
 const PUBLIC_FIELDS := ["id", "owner", "name", "species", "origin", "concept", "appearance", "rank", "level", "hp", "hp_max",
 	"res", "res_max", "res_name", "pawn", "portrait", "status", "class_id", "species_id", "effects", "kind"]

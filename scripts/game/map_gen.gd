@@ -34,7 +34,21 @@ static func generate(kind: String, w: int, h: int, seed_value: int) -> Dictionar
 			_island(g, rng)
 		_:
 			_forest(g, rng)
+	_fix_spawn(g)
 	return {"cells": "".join(g.cells), "w": w, "h": h, "spawn": {"x": g.spawn.x, "y": g.spawn.y}, "labels": g.labels}
+
+
+## Le départ doit être praticable : sinon, la case praticable la plus proche.
+static func _fix_spawn(g: Dictionary) -> void:
+	var s: Vector2i = g.spawn
+	for r in maxi(int(g.w), int(g.h)):
+		for y in range(s.y - r, s.y + r + 1):
+			for x in range(s.x - r, s.x + r + 1):
+				if maxi(absi(x - s.x), absi(y - s.y)) != r:
+					continue
+				if MapData.TERRAINS.get(_at(g, x, y), ["", "", false])[2] and x >= 0 and y >= 0 and x < int(g.w) and y < int(g.h):
+					g.spawn = Vector2i(x, y)
+					return
 
 
 static func _put(g: Dictionary, x: int, y: int, code: String) -> void:

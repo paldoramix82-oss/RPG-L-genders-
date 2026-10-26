@@ -419,7 +419,7 @@ func _check_eli() -> void:
 	_expect(not dana.has("secret") and not dana.has("stats"), "la fiche de Dana vue par Eli ne contient ni secret ni détails")
 	_expect(dana.get("magic", {}).get("name", "") == "Flammes", "Eli voit le nom public de la magie de Dana")
 	_expect(errors.any(func(e): return String(e).contains("propre pion")), "Eli ne peut pas déplacer le pion de Dana")
-	_expect(errors.any(func(e): return String(e) == "Ce n'est pas votre tour."), "Eli ne peut pas bouger pendant le tour de Dana")
+	_expect(errors.any(func(e): return String(e) == "Ce n'est pas votre tour."), "Eli ne peut pas bouger pendant le tour de Dana %s" % [errors])
 	var labels := c.messages.map(func(m): return m.get("text", ""))
 	_expect(not labels.has("jet pour Dana"), "Eli ne voit pas le jet montré à Dana")
 	_expect(labels.has("Je force la porte."), "Eli voit l'action publique de Dana")

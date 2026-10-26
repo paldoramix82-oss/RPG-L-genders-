@@ -92,6 +92,24 @@ Le MJ choisit la phase (*Combat* dans la colonne d'outils) :
 | **Combat** | tous les combattants visibles, par initiative | 1 PA par déplacement | **2 PA** par tour (voir ci-dessous) |
 | **Repos** | non | aucun | à la fin : 50 % des PV et toute la ressource récupérés |
 
+### Exploration libre et combats locaux
+
+Par défaut (règle *Monstres agressifs*), la partie commence en **Récit libre** : chacun explore à son rythme, parle aux PNJ, ouvre des coffres, fait ses quêtes.
+
+- **Agressivité** : un monstre visible attaque le héros qui entre dans son **périmètre** (4 cases, ligne de vue nécessaire ; réglable par monstre et dans *Créer › Règles*). Le mouvement s'arrête dès que l'on est repéré. C'est une **embuscade** : les monstres jouent en premier. Sa meute (monstres à 6 cases ou moins) le suit.
+- **Combat local** : seul le héros repéré (et ceux qui sont tout près) passe en combat. Les autres joueurs restent libres ; ils peuvent rejoindre le combat en s'approchant. Plusieurs combats peuvent avoir lieu en même temps.
+- **Attaquer** : toucher un monstre (8 cases au plus, vue dégagée) → *Attaquer (engager le combat)* ; le joueur joue en premier.
+- **Fuir** (1 PA) : d20 + Dextérité contre 10, +3 par ennemi au contact. Réussi : on quitte le combat et les monstres vous laissent tranquille quelques secondes.
+- **Monstres automatiques** : ils jouent seuls après 2 secondes (le temps de voir les dés). Le MJ peut reprendre la main sur un combat (*Combat › Combats en cours › Je joue les monstres*), passer un tour ou le terminer.
+- **Déplacement libre** limité à 2 × la vitesse par mouvement (réglable). Délai de tour des joueurs : désactivé par défaut (*Créer › Règles*).
+- Fin du combat : XP pour les participants seulement, butin pour celui qui a vaincu.
+- La phase **Combat** générale du MJ fonctionne comme avant (tout le monde) et met fin aux combats locaux.
+
+### Quêtes automatiques et PNJ
+
+- Objectifs automatiques : **Vaincre** (ex. 3 loups), **Atteindre un lieu** (case + rayon), **Obtenir un objet**, **Parler à un PNJ**. Ils se cochent tout seuls ; quand tout est fait, la quête se termine et les récompenses tombent (option *Terminer la quête toute seule*).
+- Une quête qui a un PNJ « Confiée par » est **proposée** par ce PNJ : en le touchant (2 cases au plus), on lit sa quête et on l'accepte. Une quête principale concerne le groupe ; une quête secondaire acceptée est **personnelle**. Le journal liste les quêtes proposées.
+
 ### Le combat
 
 | Action | Coût |

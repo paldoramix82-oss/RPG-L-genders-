@@ -46,16 +46,28 @@
    "description": "Des bruits montent de la cave chaque nuit. Bertrand jure qu'il n'y a que des tonneaux en bas.",
    "objectives": [
     {
-     "text": "Écouter Bertrand"
+     "text": "Écouter Bertrand",
+     "kind": "talk",
+     "target": "Bertrand le tavernier"
     },
     {
-     "text": "Descendre à la cave"
+     "text": "Descendre à la cave",
+     "kind": "reach",
+     "x": 17,
+     "y": 13,
+     "radius": 2
     },
     {
-     "text": "Découvrir la trappe cachée"
+     "text": "Chasser les contrebandiers",
+     "kind": "kill",
+     "target": "bandit",
+     "count": 2
     },
     {
-     "text": "Chasser les contrebandiers"
+     "text": "Vaincre leur chef",
+     "kind": "kill",
+     "target": "chef_bandit",
+     "count": 1
     }
    ],
    "rewards": {
@@ -76,7 +88,9 @@
    "description": "Le voyageur vous confie une lettre scellée à porter au temple de Valombre. Il insiste : ne l'ouvrez pas.",
    "objectives": [
     {
-     "text": "Porter la lettre à Sœur Aveline"
+     "text": "Remettre la lettre à Sœur Aveline (à Valombre)",
+     "kind": "talk",
+     "target": "Sœur Aveline"
     }
    ],
    "rewards": {
@@ -111,7 +125,7 @@
   {
    "title": "Les contrebandiers",
    "narration": "Sous la trappe, trois hommes déchargent des caisses à la lueur d'une lanterne. Leur chef dégaine : « Mauvaise soirée pour être curieux. »",
-   "tips": "Révélez les bandits et lancez le combat.",
+   "tips": "Les bandits sont révélés : ils attaquent ceux qui descendent à la cave.",
    "action": {
     "type": "reveal_combat"
    }

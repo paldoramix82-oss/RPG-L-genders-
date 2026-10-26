@@ -58,9 +58,16 @@ func _host() -> void:
 	var pawn := MapData.token(server.maps[map_id], "pawn_" + String(player_ids[0])) if not player_ids.is_empty() else {}
 	var px := int(pawn.get("x", 12))
 	var py := int(pawn.get("y", 10))
-	server.mj_spawn_monster("loup", px + 1, py, false)
-	server.mj_spawn_monster("loup_alpha", px + 2, py + 1, false)
-	server.mj_spawn_monster("bandit", px + 3, py - 1, true)
+	if phase == "libre_npc":
+		# Un PNJ à côté du joueur, qui propose une quête.
+		var cell := MapData.free_cell_near(server.maps[map_id], px + 1, py)
+		server.mj_add_token(map_id, {"kind": "npc", "name": "Garde", "x": cell.x, "y": cell.y})
+		server.mj_quest_save({"title": "La meute du col", "kind": "side", "giver": "Garde", "description": "Des loups attaquent les voyageurs du col.",
+			"objectives": [{"text": "Vaincre 3 loups", "kind": "kill", "target": "Loup", "count": 3}], "rewards": {"xp": 60, "gold": 20}})
+	else:
+		server.mj_spawn_monster("loup", px + 1, py, false)
+		server.mj_spawn_monster("loup_alpha", px + 2, py + 1, false)
+		server.mj_spawn_monster("bandit", px + 3, py - 1, true)
 	server.mj_quest_save({"title": "Survivre dix jours", "kind": "main", "description": "Atteindre le point de rendez-vous avant la fin du test.",
 		"objectives": [{"text": "Trouver de l'eau douce"}, {"text": "Rejoindre le pic central"}], "rewards": {"xp": 200, "gold": 50, "items": [{"item": "amulette_vie", "qty": 1}]}, "give": true})
 	server.mj_quest_save({"title": "Le candidat disparu", "kind": "side", "objectives": [{"text": "Retrouver Mako"}], "rewards": {"xp": 80}, "give": true})
@@ -71,7 +78,7 @@ func _host() -> void:
 		server.mj_give_item(String(id), "bottes_vent", 1, false)
 		server.mj_give_item(String(id), "livre_second_souffle", 1, false)
 	if phase != "none":
-		server.mj_start_game("exploration")
+		server.mj_start_game("libre" if phase.begins_with("libre") else "exploration")
 		if phase == "combat":
 			server.mj_set_phase("combat")
 			# Le joueur commence, pour montrer son panneau de tour.
@@ -120,7 +127,7 @@ func _host() -> void:
 			for ed in screen.find_children("*", "ContentEditor", true, false):
 				ed.show_preview()
 		"quest_editor":
-			screen._open_quest_editor(server.quests[0])
+			screen._open_quest_editor(server.quests[-1] if phase == "libre_npc" else server.quests[0])
 		"ambush":
 			screen._event_ambush()
 		"adventure":
@@ -201,6 +208,11 @@ func _player() -> void:
 		"chat":
 			screen._show_view("map")
 			screen._open_chat()
+		"npc":
+			screen._show_view("map")
+			for t in c.map.get("tokens", []):
+				if String(t.get("name", "")) == "Garde":
+					screen._on_token_selected(String(t.id))
 		"ability":
 			var abilities := Rules.usable_abilities(c.my_character(), c.content)
 			if not abilities.is_empty():

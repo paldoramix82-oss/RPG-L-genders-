@@ -59,16 +59,30 @@
    "description": "On dit qu'une relique dort sous l'autel. Des cultistes pensent la même chose.",
    "objectives": [
     {
-     "text": "Franchir le portail effondré"
+     "text": "Franchir le portail effondré",
+     "kind": "reach",
+     "x": 14,
+     "y": 3,
+     "radius": 2
     },
     {
-     "text": "Chasser les cultistes"
+     "text": "Chasser les cultistes",
+     "kind": "kill",
+     "target": "cultiste",
+     "count": 2
     },
     {
-     "text": "Vaincre le gardien de pierre"
+     "text": "Vaincre le gardien de pierre",
+     "kind": "kill",
+     "target": "Gardien de pierre",
+     "count": 1
     },
     {
-     "text": "Trouver la relique"
+     "text": "Trouver la relique (au fond de la crypte)",
+     "kind": "reach",
+     "x": 14,
+     "y": 17,
+     "radius": 2
     }
    ],
    "rewards": {
@@ -92,7 +106,7 @@
   {
    "title": "Les cultistes",
    "narration": "Des silhouettes en robe psalmodient devant l'autel fendu. L'une d'elles se retourne : « Vous n'auriez pas dû venir. »",
-   "tips": "Révélez les monstres et lancez le combat.",
+   "tips": "Les cultistes et squelettes sont révélés : ils attaquent ceux qui s'approchent.",
    "action": {
     "type": "reveal_combat"
    }

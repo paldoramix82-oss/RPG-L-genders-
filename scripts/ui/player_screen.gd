@@ -87,6 +87,10 @@ var _inventory_tab := "bag"
 # Suivi
 var _pending := {}
 var _was_my_turn := false
+## Dernier instant (ms) où ce joueur était en combat : les bandeaux Victoire /
+## Défaite ne s'affichent qu'aux participants d'un combat local.
+var _combat_seen_ms := -100000
+var _was_combat := false
 var _was_started := false
 var _wizard_open := false
 var _last_level := 0
@@ -836,9 +840,11 @@ func _on_message(m: Dictionary) -> void:
 		Input.vibrate_handheld(120)
 	match String(m.get("banner", "")) if _client.game_started() and not _wizard_open else "":
 		"victory":
-			_splash("Victoire !", Palette.ULT)
+			if _was_in_combat():
+				_splash("Victoire !", Palette.ULT)
 		"defeat":
-			_splash("Défaite…", Palette.DANGER)
+			if _was_in_combat():
+				_splash("Défaite…", Palette.DANGER)
 		"quest_new":
 			_splash("Nouvelle quête", Palette.GOLD)
 		"quest_done":
@@ -1066,9 +1072,21 @@ func _refresh_map() -> void:
 	_refresh_timeline()
 
 
+func _was_in_combat() -> bool:
+	return String(_client.phase.get("type", "")) == "combat" or Time.get_ticks_msec() - _combat_seen_ms < 6000
+
+
 func _refresh_phase() -> void:
 	var phase := _client.phase
 	_map_view.current_turn = String(phase.get("current", ""))
+	var combat := String(phase.get("type", "")) == "combat"
+	if combat:
+		_combat_seen_ms = Time.get_ticks_msec()
+		if not _was_combat and phase.has("encounter") and _client.game_started():
+			Input.vibrate_handheld(300)
+			_splash("Combat !", Palette.DANGER)
+			_show_view("map")
+	_was_combat = combat
 	var mine := _client.is_my_turn()
 	if mine and not _was_my_turn:
 		Input.vibrate_handheld(250)
@@ -1184,6 +1202,8 @@ func _refresh_turn_bar() -> void:
 	if not phase.get("turns", false):
 		var move: String = {"free": "Déplacement libre : touchez une case pour y aller.", "none": "Pas de déplacement pendant cette phase."}.get(String(phase.get("move", "free")), "")
 		_turn_bar.add_child(UIKit.label("%s — %s" % [phase.get("name", ""), move], "MutedLabel", true))
+		if phase.get("move", "free") == "free":
+			_turn_bar.add_child(GameUI.hint("Touchez un monstre pour l'attaquer, un PNJ pour lui parler. Attention : un monstre qui vous voit attaque."))
 		_turn_bar.add_child(_dice_row())
 		return
 	if not _client.is_my_turn():
@@ -1238,6 +1258,12 @@ func _refresh_turn_bar() -> void:
 		item.disabled = ap < int(r.item_ap) or busy
 		item.tooltip_text = "Ouvrir le sac pour boire une potion ou utiliser un objet."
 		buttons.append(item)
+		if phase.has("encounter"):
+			var flee_ap := int(r.move_ap)
+			var flee := UIKit.button("Fuir · %d PA" % flee_ap, "", func(): _client.turn_action("flee"))
+			flee.disabled = ap < flee_ap or busy
+			flee.tooltip_text = "Jet de Dextérité contre 10 (+3 par ennemi au contact). Réussi : vous quittez ce combat."
+			buttons.append(flee)
 	for b in buttons:
 		b.custom_minimum_size.y = 42 if not _landscape else 38
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1486,10 +1512,25 @@ func _open_ability(a: Dictionary) -> void:
 ## Toucher un coffre : l'ouvrir s'il est à côté (le butin va dans le sac).
 func _on_token_selected(token_id: String) -> void:
 	var t := MapData.token(_client.map, token_id)
-	if t.is_empty() or String(t.get("kind", "")) != "object" or String(t.get("loot", "")) == "":
+	if t.is_empty() or not _pending.is_empty():
 		return
 	var me := _client.my_token()
-	var near := not me.is_empty() and Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))) <= 1
+	if me.is_empty() or String(t.id) == String(me.id):
+		return
+	var dist := Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y)))
+	match String(t.get("kind", "")):
+		"object":
+			if String(t.get("loot", "")) != "":
+				_open_chest_panel(t, dist <= 1)
+		"npc":
+			_open_npc_panel(t, dist)
+		"monster":
+			_open_monster_panel(t, dist)
+	_map_view.selected = String(me.get("id", ""))
+
+
+func _open_chest_panel(t: Dictionary, near: bool) -> void:
+	var token_id := String(t.id)
 	var panel := _open_overlay("chest", String(t.get("name", "Coffre")), "chest")
 	panel.body.add_child(UIKit.label("Un coffre fermé. Qui sait ce qu'il contient ?", "", true))
 	if near:
@@ -1498,7 +1539,85 @@ func _on_token_selected(token_id: String) -> void:
 			_client.open_chest(token_id)))
 	else:
 		panel.body.add_child(GameUI.hint("Approchez-vous (case voisine) pour l'ouvrir."))
-	_map_view.selected = String(me.get("id", ""))
+
+
+## Hors combat, on peut engager un monstre (ou un PNJ hostile) : le combat ne
+## concerne que vous et ceux qui sont tout près. Pendant un combat, rien à faire
+## ici : on attaque avec les boutons du tour.
+func _can_engage(t: Dictionary) -> bool:
+	var phase := _client.phase
+	return not phase.get("turns", false) and phase.get("move", "free") == "free" and Content.rule(_client.content, "auto_aggro")
+
+
+func _open_monster_panel(t: Dictionary, dist: int) -> void:
+	if not _can_engage(t):
+		return
+	var token_id := String(t.id)
+	var panel := _open_overlay("monster", String(t.get("name", "Monstre")), "sword")
+	var hp_max := int(t.get("hp_max", 0))
+	if hp_max > 0:
+		panel.body.add_child(UIKit.label("PV : %d / %d" % [int(t.get("hp", 0)), hp_max], "MutedLabel"))
+	panel.body.add_child(UIKit.label("Attaquer lance un combat qui ne concerne que vous et les héros tout proches. Vous jouez en premier.", "", true))
+	if dist > 8:
+		panel.body.add_child(GameUI.hint("Trop loin : approchez-vous (8 cases au plus, avec la vue dégagée)."))
+		return
+	panel.body.add_child(UIKit.button("Attaquer (engager le combat)", "DangerButton", func():
+		_close_overlay()
+		_client.engage(token_id)))
+
+
+func _open_npc_panel(t: Dictionary, dist: int) -> void:
+	var token_id := String(t.id)
+	var name := String(t.get("name", "PNJ"))
+	var panel := _open_overlay("npc", name, "chat")
+	var near := dist <= 2
+	if String(t.get("description", "")) != "":
+		panel.body.add_child(UIKit.label(String(t.description), "", true))
+	if not near:
+		panel.body.add_child(GameUI.hint("Approchez-vous (2 cases au plus) pour lui parler ou accepter ses quêtes."))
+	var talk := UIKit.button("Parler", "PrimaryButton", func():
+		_close_overlay()
+		_client.talk_to(token_id)
+		_show_view("story")
+		_composer.start_action("Je parle à %s : " % name))
+	talk.disabled = not near
+	panel.body.add_child(talk)
+	var offers: Array = _client.quests.filter(func(q): return q.status == "offer" and String(q.get("giver", "")).to_lower() == name.to_lower())
+	if not offers.is_empty():
+		panel.body.add_child(GameUI.section_title("Quêtes proposées"))
+	for q in offers:
+		var card := UIKit.card(panel.body, String(q.title), "CardPanel")
+		card.add_child(UIKit.chip("Quête principale (tout le groupe)" if q.kind == "main" else "Quête secondaire (pour vous)", Palette.GOLD))
+		if String(q.get("description", "")) != "":
+			card.add_child(UIKit.label(String(q.description), "", true))
+		for o in q.get("objectives", []):
+			card.add_child(UIKit.label("◇  " + String(o.text), "", true))
+		var reward := _reward_text(q.get("rewards", {}))
+		if reward != "":
+			var l := UIKit.label("Récompense : " + reward, "StrongLabel", true)
+			l.add_theme_color_override("font_color", Palette.ULT)
+			card.add_child(l)
+		var quest_id := String(q.id)
+		var accept := UIKit.button("Accepter", "PrimaryButton", func():
+			_close_overlay()
+			_client.accept_quest(quest_id))
+		accept.disabled = not near
+		card.add_child(accept)
+	if String(t.get("side", "")) == "enemies" and _can_engage(t):
+		panel.body.add_child(UIKit.button("Attaquer", "DangerButton", func():
+			_close_overlay()
+			_client.engage(token_id)))
+
+
+func _reward_text(rw: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	if int(rw.get("xp", 0)) > 0:
+		parts.append("%d XP" % int(rw.xp))
+	if int(rw.get("gold", 0)) > 0:
+		parts.append("%d or" % int(rw.gold))
+	for it in rw.get("items", []):
+		parts.append(String(it.get("def", {}).get("name", "objet")) if it.has("def") else "un objet")
+	return ", ".join(parts)
 
 
 func _start_target(action: Dictionary) -> void:
@@ -1648,7 +1767,13 @@ func _fill_journal() -> void:
 
 
 func _journal_quests(body: VBoxContainer) -> void:
-	var quests := _client.quests.duplicate()
+	var quests := _client.quests.filter(func(q): return q.status != "offer")
+	var offers := _client.quests.filter(func(q): return q.status == "offer")
+	if not offers.is_empty():
+		var oc := UIKit.card(body, "Quêtes proposées par des PNJ", "InsetPanel")
+		for q in offers:
+			oc.add_child(UIKit.label("◇  %s — auprès de %s" % [q.title, q.giver], "", true))
+		oc.add_child(GameUI.hint("Allez voir le PNJ et touchez-le pour accepter."))
 	if quests.is_empty():
 		body.add_child(UIKit.label("Aucune quête pour l'instant. Le MJ vous en confiera au fil de l'aventure.", "MutedLabel", true))
 		return
@@ -1674,16 +1799,9 @@ func _journal_quests(body: VBoxContainer) -> void:
 			var l := UIKit.label(("◆  " if o.done else "◇  ") + String(o.text), "", true)
 			l.add_theme_color_override("font_color", Palette.OK if o.done else Palette.TEXT)
 			card.add_child(l)
-		var rw: Dictionary = q.get("rewards", {})
-		var parts: PackedStringArray = []
-		if int(rw.get("xp", 0)) > 0:
-			parts.append("%d XP" % int(rw.xp))
-		if int(rw.get("gold", 0)) > 0:
-			parts.append("%d or" % int(rw.gold))
-		for it in rw.get("items", []):
-			parts.append(String(it.get("def", {}).get("name", "objet")) if it.has("def") else "un objet")
-		if not parts.is_empty():
-			var l := UIKit.label("Récompense : " + ", ".join(parts), "StrongLabel", true)
+		var reward := _reward_text(q.get("rewards", {}))
+		if reward != "":
+			var l := UIKit.label("Récompense : " + reward, "StrongLabel", true)
 			l.add_theme_color_override("font_color", Palette.ULT)
 			card.add_child(l)
 

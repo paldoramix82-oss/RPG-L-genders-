@@ -27,6 +27,7 @@ Moteur : **Godot 4.4** (GDScript), rendu *Compatibility* (OpenGL) pour fonctionn
 - **6 aventures prêtes à jouer** (carte, PNJ, monstres cachés, coffres, quêtes, scènes à raconter avec conseils) et **générateur de cartes** en un clic (forêt, village, donjon, grotte, plaine, île) avec outils Remplir, Rectangle, Pièce et Annuler.
 - **Brouillard de guerre** : chacun ne voit la carte qu'autour de son personnage, selon sa vision (Dextérité) ; murs et forêts cachent ce qu'il y a derrière ; l'exploration est mémorisée.
 - **Téléphone en portrait ou en paysage**, musique dans les menus avant la partie.
+- **Jeu automatisé, chacun son aventure** : les monstres attaquent quand on entre dans leur périmètre, les **combats sont locaux** (seuls les héros présents y passent, les autres continuent d'explorer), les monstres jouent seuls, on peut **attaquer** ou **fuir** ; les PNJ **proposent leurs quêtes**, les objectifs (vaincre, atteindre, obtenir, parler) se cochent et la quête se termine toute seule. Le MJ garde la main (*Combats en cours*).
 - **Interface fantasy sombre** pensée pour le téléphone : PV, mana et capacités toujours visibles, panneaux superposés, frise des tours, chiffres flottants, portraits et icônes ; tableau du MJ en quatre zones sur PC. Aide intégrée pour les débutants.
 
 Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUIDE_DEBUTANT.md). Mode d'emploi complet : [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md).

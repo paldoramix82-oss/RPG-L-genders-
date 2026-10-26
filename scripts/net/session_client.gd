@@ -110,6 +110,19 @@ func item_action(action: String, uid: String, extra: Dictionary = {}) -> String:
 	return send_command(Protocol.CMD_ITEM, payload)
 
 
+func talk_to(token_id: String) -> String:
+	return send_command(Protocol.CMD_TALK, {"token": token_id})
+
+
+func accept_quest(quest_id: String) -> String:
+	return send_command(Protocol.CMD_QUEST_ACCEPT, {"quest": quest_id})
+
+
+## Attaquer un monstre hors combat : un combat local commence (vous agissez en premier).
+func engage(token_id: String) -> String:
+	return turn_action("engage", token_id)
+
+
 func open_chest(token_id: String) -> String:
 	return send_command(Protocol.CMD_OPEN, {"token": token_id})
 

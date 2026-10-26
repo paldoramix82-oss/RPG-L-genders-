@@ -44,6 +44,8 @@ var _label_tpl := {"text": "", "hidden": false}
 var _inspector: VBoxContainer
 var _insp_widgets := {}
 var _phase_box: VBoxContainer
+var _encounters_box: VBoxContainer
+var _phase_refresh_queued := false
 var _lobby_bar: PanelContainer
 var _include_hidden := false
 var _mj_pending := {}
@@ -386,7 +388,7 @@ func _build_dashboard() -> void:
 	server.characters_changed.connect(_refresh_characters)
 	server.characters_changed.connect(_refresh_players)
 	server.maps_changed.connect(_on_maps_changed)
-	server.phase_changed.connect(_refresh_phase)
+	server.phase_changed.connect(_queue_phase_refresh)
 	server.saved.connect(_on_saved)
 
 	for entry in server.connection_log:
@@ -762,6 +764,7 @@ func _side_scroll() -> Array:
 func _build_combat_tools() -> Control:
 	var parts := _side_scroll()
 	var side: VBoxContainer = parts[1]
+	_encounters_box = UIKit.card(side, "")
 	_phase_box = UIKit.card(side, "", "HighlightPanel")
 	_inspector = UIKit.card(side, "")
 	var loot := UIKit.card(side, "Coffre du groupe")
@@ -1266,7 +1269,66 @@ func _sync_inspector() -> void:
 
 # --- Phases et tours ---
 
+## Le serveur signale un changement de phase parfois au milieu d'une action de
+## combat local (le combat lui est alors « prêté ») : on rafraîchit après coup,
+## une seule fois par image.
+func _queue_phase_refresh() -> void:
+	if _phase_refresh_queued:
+		return
+	_phase_refresh_queued = true
+	(func():
+		_phase_refresh_queued = false
+		_refresh_phase()).call_deferred()
+
+
+## Combats locaux en cours : qui se bat, à qui le tour, et de quoi reprendre la main.
+func _refresh_encounters() -> void:
+	if _encounters_box == null:
+		return
+	var server := Net.server
+	UIKit.clear(_encounters_box)
+	_encounters_box.visible = not server.encounters.is_empty() or Content.rule(server.content, "auto_aggro")
+	_encounters_box.add_child(UIKit.label("Combats en cours", "HeadingLabel"))
+	if server.encounters.is_empty():
+		_encounters_box.add_child(UIKit.label("Aucun. Un combat commence tout seul quand un monstre voit un héros, ou quand un joueur attaque. Il ne concerne que les héros présents ; les autres continuent leur aventure.", "MutedLabel", true))
+		return
+	var map: Dictionary = server.maps.get(server.active_map, {})
+	for enc in server.encounters.values():
+		var card := UIKit.card(_encounters_box, "", "InsetPanel")
+		var heroes: PackedStringArray = []
+		var foes: PackedStringArray = []
+		for id in enc.order:
+			var t := MapData.token(map, String(id))
+			if t.is_empty():
+				continue
+			if String(t.kind) == "pc":
+				heroes.append(String(t.name))
+			else:
+				foes.append("%s %d/%d" % [t.name, int(t.get("hp", 0)), int(t.get("hp_max", 0))])
+		card.add_child(UIKit.label(", ".join(heroes) + "  contre  " + ", ".join(foes), "StrongLabel", true))
+		var current := String(enc.order[clampi(int(enc.turn), 0, enc.order.size() - 1)]) if not enc.order.is_empty() else ""
+		var ct := MapData.token(map, current)
+		var info := "Tour %d" % int(enc.get("round", 1))
+		if not ct.is_empty():
+			info += "  ·  au tour de %s" % ct.name
+		if enc.get("manual", false):
+			info += "  ·  monstres joués par vous"
+		card.add_child(UIKit.label(info, "MutedLabel", true))
+		var row := HFlowContainer.new()
+		row.add_theme_constant_override("h_separation", 6)
+		row.add_theme_constant_override("v_separation", 6)
+		card.add_child(row)
+		var eid := String(enc.id)
+		if not ct.is_empty() and String(ct.kind) != "pc":
+			row.add_child(_small_button("Jouer ce tour", "PrimaryButton", func(): server.mj_encounter_auto(eid)))
+		row.add_child(_small_button("Tour suivant", "", func(): server.mj_encounter_next(eid)))
+		var manual: bool = enc.get("manual", false)
+		row.add_child(_small_button("Monstres automatiques" if manual else "Je joue les monstres", "", func(): server.mj_encounter_manual(eid, not manual)))
+		row.add_child(_small_button("Terminer", "DangerButton", func(): server.mj_encounter_end(eid)))
+
+
 func _refresh_phase() -> void:
+	_refresh_encounters()
 	if _phase_box == null:
 		return
 	var server := Net.server
@@ -1450,7 +1512,8 @@ func _refresh_lobby_bar() -> void:
 		names.append(("%s (prêt)" if server.characters.has(p.id) else "%s (en création)") % p.name)
 	col.add_child(UIKit.label(", ".join(names) if not names.is_empty() else "En attente des joueurs… Donnez-leur l'adresse IP affichée à gauche.", "MutedLabel", true))
 	var go := UIKit.button("La partie commence !", "PrimaryButton", func():
-		server.mj_start_game("exploration")
+		# Monstres agressifs : chacun explore librement, les combats se déclenchent seuls.
+		server.mj_start_game("libre" if Content.rule(server.content, "auto_aggro") else "exploration")
 		_refresh_phase())
 	go.custom_minimum_size = Vector2(240, 56)
 	go.disabled = ready.is_empty()

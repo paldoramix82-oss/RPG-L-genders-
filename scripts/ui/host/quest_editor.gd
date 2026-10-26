@@ -17,6 +17,8 @@ var _desc: TextEdit
 var _objectives: VBoxContainer
 var _players := {}
 var _xp: SpinBox
+var _offer: CheckBox
+var _auto: CheckBox
 var _gold: SpinBox
 var _items: VBoxContainer
 var _custom_items: Array = []
@@ -46,8 +48,17 @@ func _init(data: Dictionary) -> void:
 	_objectives = VBoxContainer.new()
 	obj.add_child(_objectives)
 	for o in quest.get("objectives", []):
-		_add_objective(String(o.text), bool(o.get("done", false)))
-	obj.add_child(UIKit.button("+ Ajouter un objectif", "", func(): _add_objective("", false)))
+		_add_objective(o)
+	obj.add_child(UIKit.button("+ Ajouter un objectif", "", func(): _add_objective({})))
+	obj.add_child(UIKit.label("Un objectif automatique se coche tout seul : monstres vaincus, lieu atteint, objet obtenu, PNJ à qui l'on a parlé.", "MutedLabel", true))
+	_auto = CheckBox.new()
+	_auto.text = "Terminer la quête toute seule quand tout est fait (récompenses données)"
+	_auto.button_pressed = bool(quest.get("auto", true))
+	obj.add_child(_auto)
+	_offer = CheckBox.new()
+	_offer.text = "Le PNJ qui la confie la propose aux joueurs qui lui parlent"
+	_offer.button_pressed = bool(quest.get("offer", true))
+	obj.add_child(_offer)
 	var who := UIKit.card(self, "Pour qui ?")
 	who.add_child(UIKit.label("Aucun joueur coché : la quête est pour tout le groupe.", "MutedLabel", true))
 	for p in server.players.values():
@@ -114,14 +125,47 @@ func _refresh_custom() -> void:
 		_items.add_child(row)
 
 
-func _add_objective(text: String, done: bool) -> void:
+func _add_objective(o: Dictionary) -> void:
+	var box := VBoxContainer.new()
 	var row := HBoxContainer.new()
-	var e := UIKit.line_edit(text, "Ex. : Trouver la tanière")
+	box.add_child(row)
+	var kind := OptionButton.new()
+	for k in SessionServer.OBJECTIVE_KINDS:
+		kind.add_item(String(SessionServer.OBJECTIVE_NAMES[k]))
+		kind.set_item_metadata(kind.item_count - 1, k)
+		if k == String(o.get("kind", "manual")):
+			kind.select(kind.item_count - 1)
+	row.add_child(kind)
+	var e := UIKit.line_edit(String(o.get("text", "")), "Ex. : Trouver la tanière")
 	e.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(e)
-	row.add_child(UIKit.button("×", "DangerButton", func(): row.queue_free()))
-	row.set_meta("get", func(): return {"text": e.text, "done": done})
-	_objectives.add_child(row)
+	row.add_child(UIKit.button("×", "DangerButton", func(): box.queue_free()))
+	var params := HFlowContainer.new()
+	params.add_theme_constant_override("h_separation", 8)
+	box.add_child(params)
+	var target := UIKit.line_edit(String(o.get("target", "")), "Nom du monstre, de l'objet ou du PNJ")
+	target.custom_minimum_size.x = 220
+	var target_f: Control = UIKit.field(params, "Cible", target).get_parent()
+	var count := UIKit.spin(int(o.get("count", 1)), 1, 99)
+	var count_f: Control = UIKit.field(params, "Nombre", count).get_parent()
+	var x := UIKit.spin(int(o.get("x", 0)), 0, 999)
+	var y := UIKit.spin(int(o.get("y", 0)), 0, 999)
+	var rad := UIKit.spin(int(o.get("radius", 2)), 0, 20)
+	var place: Array = [UIKit.field(params, "Case X", x).get_parent(), UIKit.field(params, "Case Y", y).get_parent(), UIKit.field(params, "Rayon", rad).get_parent()]
+	var update := func() -> void:
+		var k := String(kind.get_item_metadata(kind.selected))
+		params.visible = k != "manual"
+		target_f.visible = k in ["kill", "item", "talk"]
+		count_f.visible = k in ["kill", "item"]
+		for f: Control in place:
+			f.visible = k == "reach"
+	kind.item_selected.connect(func(_i): update.call())
+	update.call()
+	var done := bool(o.get("done", false))
+	var progress := int(o.get("progress", 0))
+	box.set_meta("get", func(): return {"text": e.text, "done": done, "kind": String(kind.get_item_metadata(kind.selected)),
+		"target": target.text, "count": int(count.value), "progress": progress, "x": int(x.value), "y": int(y.value), "radius": int(rad.value)})
+	_objectives.add_child(box)
 
 
 func _add_item(id: String, qty: int) -> void:
@@ -162,5 +206,5 @@ func collect() -> Dictionary:
 				items.append(it)
 	items.append_array(_custom_items)
 	return {"id": String(quest.get("id", "")), "title": _title.text, "kind": "main" if _kind.selected == 0 else "side",
-		"giver": _giver.text, "description": _desc.text, "objectives": objectives, "assigned": assigned,
+		"giver": _giver.text, "description": _desc.text, "objectives": objectives, "auto": _auto.button_pressed, "offer": _offer.button_pressed, "assigned": assigned,
 		"rewards": {"xp": int(_xp.value), "gold": int(_gold.value), "items": items}}

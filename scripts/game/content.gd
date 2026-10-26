@@ -43,6 +43,8 @@ const DEFAULT_RULES := {
 	"rest_hp_pct": 50, "start_gold": 20, "max_ability_rank": 3,
 	"vision_base": 3, "vision_dex_div": 2, "shared_vision": false,
 	"loot_to_killer": true, "remove_dead": true,
+	"auto_aggro": true, "aggro_radius": 4, "encounter_radius": 6, "auto_monsters": true, "monster_delay": 2,
+	"turn_timeout": 0, "free_move_mult": 2,
 }
 ## Réglages des règles exposés au MJ : [clé, libellé, min, max].
 const RULE_FIELDS := [
@@ -72,6 +74,11 @@ const RULE_FIELDS := [
 	["max_ability_rank", "Rang maximum d'une capacité", 1, 5],
 	["vision_base", "Vision de base (cases, avant la Dextérité)", 0, 20],
 	["vision_dex_div", "Vision : +1 case tous les N points de Dextérité", 1, 10],
+	["aggro_radius", "Périmètre d'un monstre : il attaque à cette distance (cases)", 0, 20],
+	["encounter_radius", "Rayon d'un combat local : meute et joueurs proches s'y joignent", 1, 20],
+	["monster_delay", "Délai avant qu'un monstre joue seul (secondes)", 0, 30],
+	["turn_timeout", "Tour d'un joueur passé après N secondes (0 : jamais)", 0, 600],
+	["free_move_mult", "Déplacement libre : N × vitesse par mouvement (0 : illimité)", 0, 10],
 ]
 
 static var _defaults := {}
@@ -519,7 +526,7 @@ static func sanitize_monster(input: Dictionary, content: Dictionary) -> Dictiona
 		"abilities": abilities, "xp": _int(input.get("xp", 20), 0, 999999, 20), "loot": _text(input.get("loot", ""), 60),
 		"defense_bonus": _int(input.get("defense_bonus", 0), -10, 30), "boss": bool(input.get("boss", false)),
 		"speed": _int(input.get("speed", 5), 1, 20, 5), "res": _int(input.get("res", 10), 0, 999, 10),
-		"power": _int(input.get("power", 2), 0, 99, 2),
+		"power": _int(input.get("power", 2), 0, 99, 2), "aggro": _int(input.get("aggro", 0), 0, 20),
 	}
 
 

@@ -141,6 +141,13 @@ L'état de l'hôte est fait de dictionnaires simples, sérialisés en JSON dans 
 - **Aventures** : `SessionServer.mj_load_adventure` crée la carte, importe les PNJ (`NpcLibrary.find`), place monstres, coffres et étiquettes, enregistre les quêtes en brouillon ; `adventure` (scènes, quêtes, scènes jouées) est sauvegardé avec la campagne ; `mj_play_scene` raconte et exécute l'action de la scène.
 - **Cartes** : `MapGen.generate(kind, w, h, seed)` ; `mj_fill`, `mj_paint_rect` (rectangle / pièce), `mj_snapshot` / `mj_undo` (20 étapes par carte, non sauvegardées).
 
+## Combats locaux et quêtes automatiques
+
+- `SessionServer.encounters` : combats locaux de la même forme que `phase` (+ `local`, `players`, `map_id`, `manual`, `timer`). `_with(enc, f)` **prête** le combat comme phase le temps d'un appel : `Combat`, les tours, l'IA, le butin et la victoire sont réutilisés. `phase_view_for_player` envoie à chaque joueur la phase de son combat (champ `encounter`).
+- `tick(delta)` (appelé par `Net._process`) : fin des combats terminés, monstres automatiques (`monster_delay`, sauf `manual`), délai de tour (`turn_timeout`), agressivité (`_scan_aggro` toutes les 0,5 s ; `_after_move` après chaque déplacement libre ; `_first_spotted_cell` arrête le mouvement).
+- Commandes : `turn_action("engage", cible)` hors combat, `turn_action("flee")` en combat ; `CMD_TALK`, `CMD_QUEST_ACCEPT`. MJ : `mj_encounter_next/auto/manual/end`, `mj_engage_party`.
+- Quêtes : objectifs `kind` (`manual`, `kill`, `reach`, `item`, `talk`) avec `target`/`count`/`progress` (et `x`/`y`/`radius`) ; `quest_event` les met à jour (appelé par `Combat._on_defeated`, les déplacements, les objets reçus, `CMD_TALK`) et termine la quête si `auto`. `quests_for` ajoute les quêtes proposées (`status: "offer"`) par leur PNJ.
+
 ## Brouillard de guerre
 
 `Vision` calcule, pour chaque pion de joueur, les cases à moins de « vision » cases (`Rules.derived().vision` = base + Dextérité ÷ diviseur + bonus `vision`) dont la ligne de vue (Bresenham) ne traverse pas de terrain opaque. `SessionServer._map_view(player_id)` construit la carte envoyée à **ce** joueur : pions limités aux cases visibles (plus les siens), étiquettes limitées aux cases explorées, et `fog = {explored, visible}` (chaînes de « 0 »/« 1 »). L'exploration est stockée dans `map.explored[player_id]` et donc sauvegardée avec la carte. `EVT_TOKENS` transporte aussi `fog` et `labels` quand le brouillard est actif ; les retours visuels (`EVT_FX`) sont filtrés de la même façon. Désactivable par carte (`map.fog_of_war`), vision partagée par règle (`shared_vision`).

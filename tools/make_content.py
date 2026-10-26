@@ -642,6 +642,10 @@ LOOT = [
 ]
 
 
+# aggro : périmètre (en cases) où le monstre attaque de lui-même ; 0 = règle de la campagne.
+AGGRO = {"loup": 5, "loup_alpha": 6, "araignee": 3, "golem": 2, "ours": 3, "jeune_dragon": 7, "gobelin_archer": 6, "chef_bandit": 5}
+
+
 def monster(id_, name, color, desc, stats, hp, weapon_, abilities=(), xp=20, loot="", defense_bonus=0, boss=False, speed=5,
             statuses_immune=(), res=10, icon="skull", power=None):
     full = {s["name"]: 5 for s in STATS}
@@ -650,7 +654,7 @@ def monster(id_, name, color, desc, stats, hp, weapon_, abilities=(), xp=20, loo
         power = 4 if boss else 2
     return {"id": id_, "name": name, "color": color, "description": desc, "stats": full, "hp": round(hp * 1.3), "power": power,
             "weapon": weapon_, "abilities": list(abilities), "xp": xp, "loot": loot, "defense_bonus": defense_bonus,
-            "boss": boss, "speed": speed, "res": res, "icon": icon}
+            "boss": boss, "speed": speed, "res": res, "icon": icon, "aggro": AGGRO.get(id_, 0)}
 
 
 ab("morsure", "Morsure", "fang", "1d6 + Force, 30 % de saignement.", 0, 1, 1, "enemy", [dmg("1d6"), st("saignement", 2, 30)], "Force")

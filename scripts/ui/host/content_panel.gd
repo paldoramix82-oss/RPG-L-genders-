@@ -240,8 +240,19 @@ func _rules() -> void:
 	dead.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dead.button_pressed = bool(rules.get("remove_dead", true))
 	card.add_child(dead)
+	var aggro := CheckBox.new()
+	aggro.text = "Monstres agressifs : un monstre visible attaque le héros qui entre dans son périmètre (combat local, les autres joueurs restent libres)"
+	aggro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	aggro.button_pressed = bool(rules.get("auto_aggro", true))
+	card.add_child(aggro)
+	var auto_m := CheckBox.new()
+	auto_m.text = "Les monstres jouent leur tour tout seuls (le MJ peut reprendre la main sur un combat)"
+	auto_m.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	auto_m.button_pressed = bool(rules.get("auto_monsters", true))
+	card.add_child(auto_m)
 	card.add_child(UIKit.button("Appliquer les règles", "PrimaryButton", func():
-		var values := {"swap_in_combat": swap.button_pressed, "shared_vision": shared.button_pressed, "loot_to_killer": killer.button_pressed, "remove_dead": dead.button_pressed}
+		var values := {"swap_in_combat": swap.button_pressed, "shared_vision": shared.button_pressed, "loot_to_killer": killer.button_pressed, "remove_dead": dead.button_pressed,
+			"auto_aggro": aggro.button_pressed, "auto_monsters": auto_m.button_pressed}
 		for k in spins:
 			values[k] = int(spins[k].value)
 		server.mj_set_rules(values)

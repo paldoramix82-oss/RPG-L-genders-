@@ -21,6 +21,7 @@ func _ready() -> void:
 	_test_species()
 	_test_adventures()
 	_test_map_tools()
+	_test_encounters()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -455,7 +456,7 @@ func _test_adventures() -> void:
 	_expect(s._cmd_open(p, {"token": chest.id}) == "" and ((c.inventory as Array).size() > before_items or int(c.gold) > before_gold), "le coffre ouvert remplit le sac de celui qui l'ouvre")
 	_expect(s._cmd_open(p, {"token": chest.id}) != "", "un coffre ne s'ouvre qu'une fois")
 	s.mj_play_scene(3)
-	_expect(s.phase.type == "combat" and not (map.tokens as Array).any(func(t): return String(t.kind) == "monster" and t.hidden), "scène « La crypte » : monstres révélés, combat lancé")
+	_expect(s.phase.type != "combat" and not (map.tokens as Array).any(func(t): return String(t.kind) == "monster" and t.hidden), "scène « La crypte » : monstres révélés, ils attaqueront ceux qui approchent (pas de combat général)")
 
 
 func _test_map_tools() -> void:
@@ -463,15 +464,16 @@ func _test_map_tools() -> void:
 	var s := _server()
 	var all_ok := true
 	for kind in MapGen.KINDS:
-		var m := s.mj_generate_map(kind, "moyenne", "")
-		var valid := String(m.cells).length() == int(m.w) * int(m.h)
-		for ch in String(m.cells):
-			if not MapData.TERRAINS.has(ch):
-				valid = false
-				break
-		if not valid or not MapData.passable(m, int(m.spawn.x), int(m.spawn.y)):
-			all_ok = false
-			print("    carte « %s » invalide" % kind)
+		for seed_value in [1, 2, 3, 4, 5, 6, 7, 8]:
+			var m := s.mj_generate_map(kind, "moyenne", "", seed_value)
+			var valid := String(m.cells).length() == int(m.w) * int(m.h)
+			for ch in String(m.cells):
+				if not MapData.TERRAINS.has(ch):
+					valid = false
+					break
+			if not valid or not MapData.passable(m, int(m.spawn.x), int(m.spawn.y)):
+				all_ok = false
+				print("    carte « %s » invalide" % kind)
 	_expect(all_ok, "6 types de cartes générés, terrains valides, départ praticable")
 	var m := s.mj_create_map("Test", 10, 8)
 	s.mj_fill(m.id, 0, 0, "s")
@@ -480,3 +482,109 @@ func _test_map_tools() -> void:
 	_expect(MapData.cell(m, 2, 2) == "#" and MapData.cell(m, 4, 3) == "d", "Pièce : murs autour, sol à l'intérieur")
 	s.mj_undo(m.id)
 	_expect(MapData.cell(m, 2, 2) == "s" and String(m.cells) == "s".repeat(80), "Annuler : la pièce disparaît")
+
+
+func _test_encounters() -> void:
+	print("\n— Combats locaux, monstres agressifs, quêtes automatiques")
+	var s := _server()
+	var a := _add_player(s, "Aria")
+	var b := _add_player(s, "Bram")
+	s._cmd_char_create(a, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Aria"}})
+	s._cmd_char_create(b, {"class_id": "mage", "alloc": Rules.get_class_def(s.content, "mage").recommended, "choices": [0], "identity": {"name": "Bram"}})
+	var m := s.mj_create_map("Plaine", 44, 20)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	var map: Dictionary = s.maps[s.active_map]
+	var pa := MapData.token(map, "pawn_" + a.id)
+	var pb := MapData.token(map, "pawn_" + b.id)
+	pa.x = 5
+	pa.y = 10
+	pb.x = 34
+	pb.y = 10
+	var q := s.mj_quest_save({"title": "Chasse", "kind": "side", "assigned": [a.id], "objectives": [{"text": "Vaincre 2 loups", "kind": "kill", "target": "loup", "count": 2}],
+		"rewards": {"xp": 50}, "give": true})
+	_expect(q.auto, "quête avec objectif automatique : fin automatique activée")
+	var w1 := s.mj_spawn_monster("loup", 12, 10, false)
+	var w2 := s.mj_spawn_monster("loup", 13, 11, false)
+	_expect(s.encounters.is_empty(), "rien ne se passe tant que personne n'entre dans le périmètre")
+	_expect(s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 6, "y": 10}) == "" and s.encounters.is_empty(), "déplacement libre hors du périmètre (5 cases pour un loup)")
+	_expect(s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 30, "y": 10}) != "", "déplacement libre limité (2 × vitesse)")
+	s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 9, "y": 10})
+	var enc := s.encounter_of(pa.id)
+	_expect(not enc.is_empty() and (enc.order as Array).has(w1.id) and (enc.order as Array).has(w2.id), "entrer dans le périmètre : les loups attaquent (combat local)")
+	_expect(s.encounter_of(pb.id).is_empty() and String(s.phase.type) == "libre", "l'autre joueur n'est pas concerné")
+	_expect(String(s.phase_view_for_player(a.id).type) == "combat" and String(s.phase_view_for_player(b.id).type) == "libre", "chacun voit sa propre phase")
+	_expect(s._cmd_pawn_move(b, {"map_id": m.id, "token_id": pb.id, "x": 36, "y": 10}) == "", "l'autre joueur continue d'explorer librement")
+	_expect(s.combat.side(MapData.token(map, s._with(enc, s._current_token))) != "players", "embuscade : les monstres agissent en premier")
+	var guard := 0
+	while s._with(enc, s._current_token) != pa.id and guard < 20 and s.encounters.has(enc.id):
+		s.tick(2.5)
+		guard += 1
+	_expect(s._with(enc, s._current_token) == pa.id, "les monstres jouent seuls, puis la main revient au joueur (%d étapes)" % guard)
+	var xp_b := int(s.characters[b.id].xp)
+	var spots := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
+	var k := 0
+	for w in [w1, w2]:
+		w.hp = 1
+		w.x = -50
+		w.y = -50
+	for w in [w1, w2]:
+		while not MapData.token_at(map, int(pa.x) + spots[k].x, int(pa.y) + spots[k].y).is_empty():
+			k += 1
+		w.x = int(pa.x) + spots[k].x
+		w.y = int(pa.y) + spots[k].y
+		k += 1
+	guard = 0
+	while s.encounters.has(enc.id) and guard < 40:
+		var cur: String = s._with(enc, s._current_token)
+		if cur == pa.id:
+			enc.ap = 2
+			var foe := ""
+			for id in enc.order:
+				var t := MapData.token(map, String(id))
+				if not t.is_empty() and String(t.kind) == "monster" and not s.combat.is_ko(t):
+					foe = String(id)
+			s._cmd_turn(a, {"action": "quick", "target": foe})
+		s.tick(2.5)
+		guard += 1
+	_expect(not s.encounters.has(enc.id) and MapData.token(map, w1.id).is_empty() and MapData.token(map, w2.id).is_empty(), "victoire : combat terminé, loups retirés")
+	_expect(int(s.characters[b.id].xp) == xp_b and int(s.characters[a.id].xp) > 0, "XP pour les participants seulement")
+	_expect(String(s._quest(q.id).status) == "done", "quête « 2 loups » terminée toute seule")
+	# Un joueur proche rejoint le combat d'un autre.
+	var w3 := s.mj_spawn_monster("loup", 39, 10, true)
+	s.mj_reveal_monsters()
+	s.tick(0.6)
+	var enc2 := s.encounter_of(pb.id)
+	_expect(not enc2.is_empty() and s.encounter_of(pa.id).is_empty(), "un monstre révélé attaque le joueur à portée")
+	pa.x = 35
+	pa.y = 12
+	s._check_join(pa)
+	_expect(s.encounter_of(pa.id) == enc2, "un allié qui arrive rejoint le combat")
+	# Fuite.
+	guard = 0
+	while not s.encounter_of(pb.id).is_empty() and guard < 25:
+		enc2.turn = (enc2.order as Array).find(pb.id)
+		enc2.ap = 2
+		s._cmd_turn(b, {"action": "flee"})
+		guard += 1
+	_expect(s.encounter_of(pb.id).is_empty() and s.encounter_of(pa.id) == enc2, "fuir : on quitte le combat, l'allié reste")
+	s.mj_encounter_end(enc2.id)
+	# Engager un combat soi-même.
+	var bear := s.mj_spawn_monster("ours", int(pa.x) - 3, int(pa.y), false)
+	bear.calm_until = Time.get_unix_time_from_system() + 100.0
+	_expect(s._cmd_turn(a, {"action": "engage", "target": bear.id}) == "", "attaquer un monstre : combat engagé")
+	var enc3 := s.encounter_of(pa.id)
+	_expect(not enc3.is_empty() and s._with(enc3, s._current_token) == pa.id, "celui qui engage agit en premier")
+	s.mj_encounter_end(enc3.id)
+	# PNJ : quête proposée, acceptée sur place, objectifs automatiques.
+	var dorn := s.mj_add_token(s.active_map, {"kind": "npc", "name": "Dorn", "x": int(pb.x) + 1, "y": int(pb.y)})
+	var q2 := s.mj_quest_save({"title": "Le minerai", "kind": "side", "giver": "Dorn", "objectives": [{"text": "Parler à Dorn", "kind": "talk", "target": "Dorn"},
+		{"text": "Avoir une potion", "kind": "item", "target": "potion_soin", "count": 1}, {"text": "Aller au puits", "kind": "reach", "x": 20, "y": 3, "radius": 1}], "rewards": {"xp": 30}})
+	_expect(s.quests_for(b.id).any(func(x): return x.id == q2.id and x.status == "offer"), "le PNJ propose sa quête au joueur")
+	_expect(s._cmd_quest_accept(b, {"quest": q2.id}) == "" and s._quest(q2.id).assigned == [b.id], "quête secondaire acceptée : personnelle")
+	var objs: Array = s._quest(q2.id).objectives
+	_expect(objs[0].done and objs[1].done and not objs[2].done, "« parler » et « obtenir » cochés automatiquement")
+	pb.x = 20
+	pb.y = 4
+	s._after_move(pb)
+	_expect(String(s._quest(q2.id).status) == "done", "lieu atteint : quête terminée et récompensée seule")

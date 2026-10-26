@@ -12,7 +12,7 @@ const LIST := ["libre", "exploration", "dialogue", "combat", "repos"]
 const DEFS := {
 	"libre": {
 		"name": "Récit libre", "turns": false, "who": "", "move": "free", "action": false,
-		"rules": "Tout le monde peut parler, agir et se déplacer librement. Le MJ raconte et tranche.",
+		"rules": "Tout le monde peut parler, agir et se déplacer librement. Les monstres qui voient un héros l'attaquent (combat local). Le MJ raconte et tranche.",
 	},
 	"exploration": {
 		"name": "Exploration", "turns": true, "who": "players", "move": "limit", "action": true,

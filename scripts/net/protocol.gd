@@ -68,6 +68,9 @@ const CMD_LEVEL := "level"
 const CMD_ABILITY_EQUIP := "ability_equip"
 ## Ouvrir un coffre posé sur la carte (il faut être à côté) : le butin va dans le sac.
 const CMD_OPEN := "open_chest"
+## Parler à un PNJ voisin (objectifs « parler à ») et accepter une quête qu'il propose.
+const CMD_TALK := "talk"
+const CMD_QUEST_ACCEPT := "quest_accept"
 
 # --- Événements serveur -> client ---
 const EVT_JOIN_STATUS := "join_status"

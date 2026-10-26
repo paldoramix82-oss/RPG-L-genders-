@@ -86,13 +86,15 @@
    "description": "Youri accueille les recrues : présentations, puis entraînement contre le golem.",
    "objectives": [
     {
-     "text": "Se présenter à Youri"
+     "text": "Se présenter à Youri",
+     "kind": "talk",
+     "target": "Youri"
     },
     {
-     "text": "Battre le golem d'entraînement"
-    },
-    {
-     "text": "Recevoir son badge"
+     "text": "Battre le golem d'entraînement",
+     "kind": "kill",
+     "target": "golem",
+     "count": 1
     }
    ],
    "rewards": {
@@ -113,13 +115,22 @@
    "description": "Des cristaux d'AEC noir circulent dans la division. Midori veut savoir qui les fait entrer.",
    "objectives": [
     {
-     "text": "Interroger les recrues"
+     "text": "Interroger Kenji",
+     "kind": "talk",
+     "target": "Kenji"
     },
     {
-     "text": "Trouver la cachette"
+     "text": "Trouver la cachette derrière le terrain",
+     "kind": "reach",
+     "x": 30,
+     "y": 18,
+     "radius": 2
     },
     {
-     "text": "Arrêter le contrebandier"
+     "text": "Arrêter le contrebandier",
+     "kind": "kill",
+     "target": "Sabbas",
+     "count": 1
     }
    ],
    "rewards": {
@@ -142,7 +153,7 @@
   {
    "title": "Le golem",
    "narration": "Sur le terrain d'entraînement, un golem de pierre se redresse. Midori sourit : « Ne vous inquiétez pas. Il ne tape qu'à moitié. »",
-   "tips": "Combat d'entraînement contre le golem (déjà visible).",
+   "tips": "Combat d'entraînement : le golem attaque ceux qui approchent (ou un joueur l'engage en le touchant).",
    "action": {
     "type": "start_combat"
    }
@@ -150,7 +161,7 @@
   {
    "title": "L'odeur du cristal brûlé",
    "narration": "Derrière le terrain, une odeur âcre. Des éclats de cristal noir traînent entre les rochers.",
-   "tips": "Révélez Sabbas et ses complices.",
+   "tips": "Les complices de Sabbas sont révélés et attaquent ceux qui s'approchent. Sabbas lui-même est un PNJ : on l'arrête en l'engageant (le toucher › Attaquer).",
    "action": {
     "type": "reveal_combat"
    }

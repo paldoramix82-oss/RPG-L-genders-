@@ -161,6 +161,13 @@ Le MJ choisit le rythme de la partie. Il est écrit en haut de l'écran.
 
 Quand c'est à vous, **votre téléphone vibre** et affiche **« C'est votre tour ! »**.
 
+**En exploration libre** (le cas le plus courant), vous vivez votre propre aventure :
+- **Touchez un PNJ** à côté de vous : *Parler*, et accepter ses quêtes.
+- **Touchez un monstre** : *Attaquer*. Attention, un monstre qui vous **voit** vous attaque tout seul quand vous approchez (« Combat ! »).
+- Le combat ne concerne **que vous** (et les amis tout proches) : les autres continuent leur route, ou viennent vous aider.
+- Ça tourne mal ? **Fuir · 1 PA** pendant votre tour.
+- Les objectifs de quête se cochent tout seuls (monstres vaincus, lieu atteint, objet trouvé, PNJ à qui l'on a parlé).
+
 ### Votre tour de combat, pas à pas
 En haut de la carte, la **frise** montre qui joue maintenant (encadré doré) et qui suit, avec leurs PV.
 
@@ -238,6 +245,8 @@ Les séparations entre les zones se **déplacent à la souris** : agrandissez la
 4. **Pour un combat** : *Événement rapide › Embuscade* (choisissez des monstres, le combat démarre tout seul), ou *Créer › Monstres › Placer*, puis la phase **Combat**. Quand c'est le tour d'un monstre, la carte **Phase de jeu** propose ses attaques et capacités, ou **Jouer automatiquement**.
 5. **Après la victoire** : XP, or et butin sont distribués tout seuls. Passez en **Repos** ou en **Récit libre**.
 6. **Quête accomplie** : *Réussie : distribuer*. Les récompenses sont données une seule fois.
+
+**Le jeu fait le gros du travail** : les monstres attaquent et jouent seuls, les combats ne concernent que ceux qui y sont, les quêtes avancent et se terminent seules. Votre rôle : raconter, répondre aux actions, et surveiller **Combat › Combats en cours** (reprendre la main sur un combat, passer un tour, le terminer). Pour tout faire à la main, décochez *Monstres agressifs* et *Monstres automatiques* dans *Créer › Règles*.
 
 ### Improviser
 - Un joueur trouve un trésor inattendu ? *Créer un objet* (nom, rareté, effets) puis donnez-le directement.

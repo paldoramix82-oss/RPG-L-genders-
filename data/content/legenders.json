@@ -4230,7 +4230,8 @@
    "boss": false,
    "speed": 7,
    "res": 10,
-   "icon": "paw"
+   "icon": "paw",
+   "aggro": 5
   },
   "loup_alpha": {
    "id": "loup_alpha",
@@ -4264,7 +4265,8 @@
    "boss": false,
    "speed": 7,
    "res": 10,
-   "icon": "paw"
+   "icon": "paw",
+   "aggro": 6
   },
   "gobelin": {
    "id": "gobelin",
@@ -4295,7 +4297,8 @@
    "boss": false,
    "speed": 5,
    "res": 10,
-   "icon": "skull"
+   "icon": "skull",
+   "aggro": 0
   },
   "gobelin_archer": {
    "id": "gobelin_archer",
@@ -4328,7 +4331,8 @@
    "boss": false,
    "speed": 5,
    "res": 10,
-   "icon": "skull"
+   "icon": "skull",
+   "aggro": 6
   },
   "bandit": {
    "id": "bandit",
@@ -4359,7 +4363,8 @@
    "boss": false,
    "speed": 5,
    "res": 10,
-   "icon": "skull"
+   "icon": "skull",
+   "aggro": 0
   },
   "chef_bandit": {
    "id": "chef_bandit",
@@ -4392,7 +4397,8 @@
    "boss": true,
    "speed": 5,
    "res": 10,
-   "icon": "skull"
+   "icon": "skull",
+   "aggro": 5
   },
   "squelette": {
    "id": "squelette",
@@ -4423,7 +4429,8 @@
    "boss": false,
    "speed": 5,
    "res": 10,
-   "icon": "skull"
+   "icon": "skull",
+   "aggro": 0
   },
   "araignee": {
    "id": "araignee",
@@ -4457,7 +4464,8 @@
    "boss": false,
    "speed": 6,
    "res": 10,
-   "icon": "skull"
+   "icon": "skull",
+   "aggro": 3
   },
   "ours": {
    "id": "ours",
@@ -4490,7 +4498,8 @@
    "boss": false,
    "speed": 5,
    "res": 10,
-   "icon": "paw"
+   "icon": "paw",
+   "aggro": 3
   },
   "cultiste": {
    "id": "cultiste",
@@ -4524,7 +4533,8 @@
    "boss": false,
    "speed": 5,
    "res": 10,
-   "icon": "skull"
+   "icon": "skull",
+   "aggro": 0
   },
   "golem": {
    "id": "golem",
@@ -4557,7 +4567,8 @@
    "boss": false,
    "speed": 3,
    "res": 10,
-   "icon": "skull"
+   "icon": "skull",
+   "aggro": 2
   },
   "ombre_errante": {
    "id": "ombre_errante",
@@ -4590,7 +4601,8 @@
    "boss": false,
    "speed": 5,
    "res": 10,
-   "icon": "skull"
+   "icon": "skull",
+   "aggro": 0
   },
   "jeune_dragon": {
    "id": "jeune_dragon",
@@ -4624,7 +4636,8 @@
    "boss": true,
    "speed": 6,
    "res": 10,
-   "icon": "dragon"
+   "icon": "dragon",
+   "aggro": 7
   }
  },
  "species": {

@@ -76,16 +76,27 @@
    "description": "Atteindre le point de rendez-vous avant la fin du test.",
    "objectives": [
     {
-     "text": "Trouver de l'eau douce"
+     "text": "Trouver de l'eau douce (le MJ coche)"
     },
     {
-     "text": "Rejoindre le pic central"
+     "text": "Rejoindre le pic central",
+     "kind": "reach",
+     "x": 20,
+     "y": 9,
+     "radius": 2
     },
     {
-     "text": "Retrouver les autres candidats"
+     "text": "Survivre aux loups de l'île",
+     "kind": "kill",
+     "target": "loup",
+     "count": 2
     },
     {
-     "text": "Atteindre le point de rendez-vous"
+     "text": "Atteindre le point de rendez-vous",
+     "kind": "reach",
+     "x": 25,
+     "y": 15,
+     "radius": 2
     }
    ],
    "rewards": {
@@ -102,11 +113,15 @@
   {
    "title": "Le candidat disparu",
    "kind": "side",
-   "giver": "",
-   "description": "Mako, un candidat, n'a pas répondu à l'appel du deuxième jour.",
+   "giver": "Examinateur Dorrow",
+   "description": "Mako, un candidat, n'a pas répondu à l'appel du deuxième jour. Il aurait laissé une cache près du rendez-vous.",
    "objectives": [
     {
-     "text": "Retrouver Mako"
+     "text": "Trouver la cache de Mako",
+     "kind": "reach",
+     "x": 26,
+     "y": 16,
+     "radius": 1
     }
    ],
    "rewards": {
@@ -122,10 +137,12 @@
    "description": "Quelqu'un vole les provisions la nuit. Des petites traces de pas, et une odeur d'ombre.",
    "objectives": [
     {
-     "text": "Prendre le voleur sur le fait"
+     "text": "Prendre le voleur sur le fait (parler à Nib)",
+     "kind": "talk",
+     "target": "Nib"
     },
     {
-     "text": "Décider de son sort"
+     "text": "Décider de son sort (le MJ coche)"
     }
    ],
    "rewards": {
@@ -149,7 +166,7 @@
   {
    "title": "Les loups de l'île",
    "narration": "Des yeux brillent dans les fourrés. L'île n'est pas déserte.",
-   "tips": "Révélez les monstres proches et lancez le combat.",
+   "tips": "Les bêtes de l'île sont révélées : elles attaquent quiconque s'approche.",
    "action": {
     "type": "reveal_combat"
    }

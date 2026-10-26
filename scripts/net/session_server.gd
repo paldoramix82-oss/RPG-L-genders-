@@ -54,6 +54,11 @@ var _rate := {}  # peer_id -> Array[float]
 var _auth_failures := {}  # ip -> {count, until}
 var _next_message := 1
 var _rng := RandomNumberGenerator.new()
+## Combats locaux en cours : id -> rencontre (même forme qu'une phase de combat,
+## plus « local », « players », « map_id », « timer », « manual »). Seuls les
+## participants y sont ; les autres joueurs restent libres.
+var encounters := {}
+var _aggro_left := 0.5
 ## Aventure prête chargée : {id, name, tagline, description, length, music, scenes, map_id, quest_ids}.
 var adventure := {}
 var _undo := {}  # map_id -> [cells…] (annuler les retouches de terrain)
@@ -261,6 +266,10 @@ func handle_command(peer_id: int, cmd: Variant, payload: Variant) -> void:
 			error = _cmd_ability_equip(player, payload)
 		Protocol.CMD_OPEN:
 			error = _cmd_open(player, payload)
+		Protocol.CMD_TALK:
+			error = _cmd_talk(player, payload)
+		Protocol.CMD_QUEST_ACCEPT:
+			error = _cmd_quest_accept(player, payload)
 		_:
 			error = "Commande inconnue."
 
@@ -432,27 +441,57 @@ func _cmd_pawn_move(player: Dictionary, payload: Dictionary) -> String:
 		return "Vous ne pouvez déplacer que votre propre pion."
 	var x := int(payload.get("x", -1))
 	var y := int(payload.get("y", -1))
+	# Au tour par tour, on dit d'abord si ce n'est pas son tour.
+	var in_fight := encounter_of(String(t.id))
+	var current: String = _with(in_fight, _current_token) if not in_fight.is_empty() else (_current_token() if Phases.def(phase.type).turns else String(t.id))
+	if current != String(t.id):
+		return "Ce n'est pas votre tour."
 	if not MapData.passable(map, x, y):
 		return "Case infranchissable."
-	var rules := Phases.def(phase.type)
-	if rules.move == "none":
-		return "Pas de déplacement pendant la phase « %s »." % rules.name
 	var other := MapData.token_at(map, x, y)
 	if not other.is_empty() and other.id != t.id:
 		return "Case occupée."
+	# Engagé dans un combat local : on joue selon ses règles (tour, PA).
+	var enc := encounter_of(String(t.id))
+	if not enc.is_empty():
+		return _with(enc, func(): return _move_in_turn(t, x, y))
+	var rules := Phases.def(phase.type)
+	if rules.move == "none":
+		return "Pas de déplacement pendant la phase « %s »." % rules.name
 	if rules.turns:
-		if _current_token() != t.id:
-			return "Ce n'est pas votre tour."
-		var error := _spend_move(t, x, y)
-		if error != "":
-			return error
-	elif combat.has_flag(t, "root"):
+		return _move_in_turn(t, x, y)
+	if combat.has_flag(t, "root"):
 		return "Vous êtes immobilisé."
+	# Déplacement libre : limité par la vitesse, et interrompu si un monstre
+	# repère le personnage en chemin.
+	var mult := int(Content.rule(content, "free_move_mult"))
+	var dist := Rules.distance(Vector2i(int(t.x), int(t.y)), Vector2i(x, y))
+	var limit := int(combat.stats_of(t).speed) * mult
+	if mult > 0 and dist > limit:
+		return "Trop loin : %d cases au plus par déplacement." % limit
+	var dest := _first_spotted_cell(map, t, Vector2i(x, y))
+	t.x = dest.x
+	t.y = dest.y
+	_mark("tokens")
+	_unsaved = true
+	maps_changed.emit()
+	_after_move(t)
+	return ""
+
+
+## Déplacement au tour par tour (phase générale ou combat local prêté).
+func _move_in_turn(t: Dictionary, x: int, y: int) -> String:
+	if _current_token() != t.id:
+		return "Ce n'est pas votre tour."
+	var error := _spend_move(t, x, y)
+	if error != "":
+		return error
 	t.x = x
 	t.y = y
 	_mark("tokens")
 	_unsaved = true
 	maps_changed.emit()
+	quest_event("reach", {"x": x, "y": y}, [String(t.owner)])
 	return ""
 
 
@@ -785,6 +824,8 @@ func mj_delete_map(map_id: String) -> void:
 func mj_set_active_map(map_id: String) -> void:
 	if not maps.has(map_id):
 		return
+	for enc in encounters.values():
+		_end_encounter(enc)
 	active_map = map_id
 	_ensure_player_pawns(maps[map_id])
 	if Phases.def(phase.type).turns:
@@ -859,6 +900,367 @@ func mj_paint(map_id: String, x: int, y: int, code: String, radius: int = 0) -> 
 	return changed
 
 
+# --- Combats locaux : agressivité, rencontres, monstres automatiques ---
+
+## Rencontre qui contient ce pion ({} s'il n'est dans aucun combat local).
+func encounter_of(token_id: String) -> Dictionary:
+	if token_id == "":
+		return {}
+	for enc in encounters.values():
+		if (enc.order as Array).has(token_id):
+			return enc
+	return {}
+
+
+## Joue une fonction avec ce combat local « prêté » comme phase courante : tout le
+## moteur existant (tours, PA, déplacements, IA, victoire) s'applique tel quel.
+func _with(enc: Dictionary, f: Callable) -> Variant:
+	var saved := phase
+	phase = enc
+	var result: Variant = f.call()
+	phase = saved
+	return result
+
+
+static func _clock() -> float:
+	return Time.get_unix_time_from_system()
+
+
+## Monstres qui repèrent un personnage placé sur cette case (périmètre et ligne de vue).
+func _spotters(map: Dictionary, cell: Vector2i, pawn: Dictionary) -> Array:
+	var out: Array = []
+	if not bool(Content.rule(content, "auto_aggro")) or Phases.def(phase.type).turns:
+		return out
+	if float(pawn.get("safe_until", 0.0)) > _clock():
+		return out
+	var cells := String(map.get("cells", ""))
+	var w := int(map.get("w", 0))
+	for m in map.get("tokens", []):
+		if not _can_aggro(m):
+			continue
+		var sh := combat.sheet_of(m) if combat.has_sheet(m) else {}
+		var r := int(m.get("aggro", sh.get("aggro", 0)))
+		if r <= 0:
+			r = int(Content.rule(content, "aggro_radius"))
+		var mp := Vector2i(int(m.x), int(m.y))
+		if Rules.distance(mp, cell) <= r and Vision._line_clear(cells, w, mp, cell):
+			out.append(m)
+	return out
+
+
+func _can_aggro(m: Dictionary) -> bool:
+	return String(m.get("kind", "")) == "monster" and not m.get("hidden", false) and not combat.is_ko(m) \
+		and combat.side(m) != "players" and float(m.get("calm_until", 0.0)) <= _clock() and encounter_of(String(m.id)).is_empty()
+
+
+## Case où s'arrête un déplacement libre : la première où l'on est repéré.
+func _first_spotted_cell(map: Dictionary, t: Dictionary, dest: Vector2i) -> Vector2i:
+	var a := Vector2i(int(t.x), int(t.y))
+	if a == dest or not bool(Content.rule(content, "auto_aggro")):
+		return dest
+	var n := maxi(absi(dest.x - a.x), absi(dest.y - a.y))
+	for i in range(1, n + 1):
+		var p := Vector2i(roundi(lerpf(a.x, dest.x, float(i) / n)), roundi(lerpf(a.y, dest.y, float(i) / n)))
+		if p == dest:
+			break
+		var other := MapData.token_at(map, p.x, p.y)
+		if not MapData.passable(map, p.x, p.y) or (not other.is_empty() and other.id != t.id):
+			continue
+		if not _spotters(map, p, t).is_empty():
+			return p
+	return dest
+
+
+## Après un déplacement libre : repéré par un monstre ? à portée d'un combat en cours ?
+func _after_move(t: Dictionary) -> void:
+	quest_event("reach", {"x": int(t.x), "y": int(t.y)}, [String(t.owner)])
+	if String(t.get("kind", "")) != "pc" or not encounter_of(String(t.id)).is_empty():
+		return
+	var map: Dictionary = maps.get(active_map, {})
+	var spot := _spotters(map, Vector2i(int(t.x), int(t.y)), t)
+	if not spot.is_empty():
+		start_encounter(spot, [String(t.owner)], true)
+	else:
+		_check_join(t)
+
+
+## Rejoindre un combat proche (un allié se bat à côté).
+func _check_join(t: Dictionary) -> bool:
+	if Phases.def(phase.type).turns or float(t.get("safe_until", 0.0)) > _clock():
+		return false
+	var map: Dictionary = maps.get(active_map, {})
+	var radius := int(Content.rule(content, "encounter_radius"))
+	var cells := String(map.get("cells", ""))
+	for enc in encounters.values():
+		for id in enc.order:
+			var f := MapData.token(map, String(id))
+			if f.is_empty() or combat.is_ko(f) or combat.side(f) == "players":
+				continue
+			var fp := Vector2i(int(f.x), int(f.y))
+			var tp := Vector2i(int(t.x), int(t.y))
+			if Rules.distance(fp, tp) <= radius and Vision._line_clear(cells, int(map.w), fp, tp):
+				enc.order.append(String(t.id))
+				enc.initiative[String(t.id)] = _rng.randi_range(1, 20) + int(combat.stats_of(t).initiative)
+				if String(t.owner) != "" and not (enc.players as Array).has(String(t.owner)):
+					enc.players.append(String(t.owner))
+				_system_message("%s rejoint le combat !" % t.name)
+				_phase_changed()
+				return true
+	return false
+
+
+## Lance un combat local autour de ces monstres : leur meute les suit, les joueurs
+## proches s'y joignent. ambush : les monstres agissent en premier.
+func start_encounter(monsters: Array, seed_players: Array, ambush: bool) -> Dictionary:
+	var map: Dictionary = maps.get(active_map, {})
+	if map.is_empty() or monsters.is_empty():
+		return {}
+	var radius := int(Content.rule(content, "encounter_radius"))
+	var group: Array = monsters.duplicate()
+	var i := 0
+	while i < group.size():
+		var g: Dictionary = group[i]
+		for m in map.tokens:
+			if not group.has(m) and _can_aggro(m) and Rules.distance(Vector2i(int(g.x), int(g.y)), Vector2i(int(m.x), int(m.y))) <= radius:
+				group.append(m)
+		i += 1
+	var heroes: Array = []
+	for t in map.tokens:
+		if String(t.get("kind", "")) != "pc" or t.get("hidden", false) or combat.is_ko(t) or not encounter_of(String(t.id)).is_empty():
+			continue
+		var near := seed_players.has(String(t.owner))
+		if not near and float(t.get("safe_until", 0.0)) <= _clock():
+			for g in group:
+				if Rules.distance(Vector2i(int(g.x), int(g.y)), Vector2i(int(t.x), int(t.y))) <= radius:
+					near = true
+					break
+		if near:
+			heroes.append(t)
+	if heroes.is_empty():
+		return {}
+	var enc := {"id": "enc_" + Protocol.random_hex(3), "type": "combat", "local": true, "order": [], "turn": 0, "round": 1,
+		"moves_left": 0, "ap": 0, "action_used": false, "initiative": {}, "result": "", "players": [], "map_id": active_map,
+		"timer": 0.0, "manual": false, "turn_key": ""}
+	for t in group + heroes:
+		enc.initiative[String(t.id)] = _rng.randi_range(1, 20) + int(combat.stats_of(t).initiative)
+		enc.order.append(String(t.id))
+	for h in heroes:
+		enc.players.append(String(h.owner))
+	var foes_first := ambush
+	enc.order.sort_custom(func(a, b):
+		var fa: bool = combat.side(MapData.token(map, a)) != "players"
+		var fb: bool = combat.side(MapData.token(map, b)) != "players"
+		if fa != fb:
+			return fa if foes_first else fb
+		return int(enc.initiative[a]) > int(enc.initiative[b]))
+	encounters[enc.id] = enc
+	var hn: PackedStringArray = []
+	for h in heroes:
+		hn.append(String(h.name))
+	var mn: PackedStringArray = []
+	for g in group:
+		mn.append(String(g.name))
+	_system_message(("Embuscade ! %s attaque%s %s." if ambush else "Combat ! %s affronte%s %s.") % [", ".join(mn if ambush else hn),
+		"nt" if (mn.size() if ambush else hn.size()) > 1 else "", ", ".join(hn if ambush else mn)])
+	_with(enc, func(): _start_turn_loop())
+	_phase_changed()
+	_mark("tokens")
+	return enc
+
+
+## Un joueur attaque un monstre (ou un PNJ) hors combat : un combat local commence,
+## et c'est lui qui agit en premier.
+func _engage(player: Dictionary, own: Dictionary, target_id: String) -> String:
+	if own.is_empty():
+		return "Votre pion n'est pas sur la carte."
+	if Phases.def(phase.type).turns:
+		return "Un tour par tour est déjà en cours pour tout le monde."
+	var map: Dictionary = maps.get(active_map, {})
+	var target := MapData.token(map, target_id)
+	if target.is_empty() or target.get("hidden", false) or String(target.get("kind", "")) in ["pc", "object"] or combat.is_ko(target):
+		return "Cible invalide."
+	var tp := Vector2i(int(target.x), int(target.y))
+	var op := Vector2i(int(own.x), int(own.y))
+	if Rules.distance(tp, op) > 8 or not Vision._line_clear(String(map.cells), int(map.w), op, tp):
+		return "Trop loin, ou hors de vue."
+	var busy := encounter_of(target_id)
+	if not busy.is_empty():
+		_check_join(own)
+		return "" if not encounter_of(String(own.id)).is_empty() else "Ce combat est trop loin pour le rejoindre."
+	if String(target.get("kind", "")) == "npc" and String(target.get("side", "")) == "":
+		target.side = "enemies"
+	target.calm_until = 0.0
+	var enc := start_encounter([target], [player.id], false)
+	return "" if not enc.is_empty() else "Impossible d'engager le combat."
+
+
+## Fuir : jet d'Agilité (d20 + Dextérité) contre 10 + 3 par ennemi au contact. 1 PA.
+func _flee(player: Dictionary, own: Dictionary) -> String:
+	if own.is_empty() or _current_token() != String(own.id):
+		return "Ce n'est pas votre tour."
+	var cost := int(Content.rule(content, "move_ap"))
+	if int(phase.get("ap", 0)) < cost:
+		return "Pas assez de points d'action pour fuir."
+	phase.ap = int(phase.ap) - cost
+	var map: Dictionary = maps.get(active_map, {})
+	var adjacent := 0
+	for id in phase.order:
+		var f := MapData.token(map, String(id))
+		if not f.is_empty() and combat.side(f) != "players" and not combat.is_ko(f) and Rules.distance(Vector2i(int(f.x), int(f.y)), Vector2i(int(own.x), int(own.y))) <= 1:
+			adjacent += 1
+	var d20 := _rng.randi_range(1, 20)
+	var dex := Rules.stat(characters.get(player.id, {}), "Dextérité", content) if characters.has(player.id) else 5
+	var dc := 10 + 3 * adjacent
+	if d20 + dex < dc:
+		_system_message("%s tente de fuir… raté (d20 = %d + %d = %d contre %d)." % [own.name, d20, dex, d20 + dex, dc])
+		_phase_changed()
+		return ""
+	_system_message("%s prend la fuite ! (d20 = %d + %d = %d contre %d)" % [own.name, d20, dex, d20 + dex, dc])
+	var was_turn := int(phase.turn)
+	phase.order.erase(String(own.id))
+	phase.players.erase(player.id)
+	own.safe_until = _clock() + 12.0
+	if phase.players.is_empty():
+		phase.result = "fled"
+	elif not phase.order.is_empty():
+		phase.turn = clampi(was_turn, 0, phase.order.size() - 1)
+		_start_turn_loop()
+	_phase_changed()
+	return ""
+
+
+## Fin d'un combat local : nettoyage des effets de combat, invocations retirées,
+## les monstres restants se calment un moment.
+func _end_encounter(enc: Dictionary) -> void:
+	if not encounters.has(String(enc.get("id", ""))):
+		return
+	encounters.erase(String(enc.id))
+	var map: Dictionary = maps.get(String(enc.get("map_id", active_map)), {})
+	var ids: Array = enc.order.duplicate()
+	if String(enc.get("map_id", "")) == active_map:
+		combat.end_combat(ids)
+	var now := _clock()
+	for id in ids:
+		var t := MapData.token(map, String(id))
+		if not t.is_empty() and String(t.get("kind", "")) == "monster":
+			t.calm_until = now + 8.0
+	if String(enc.get("result", "")) in ["", "fled"]:
+		_system_message("Le combat prend fin.")
+	_phase_changed()
+	_mark("tokens")
+
+
+## Horloge de l'hôte (appelée chaque image) : monstres automatiques, combats
+## terminés, délai de tour des joueurs, agressivité des monstres.
+func tick(delta: float) -> void:
+	for id in encounters.keys():
+		var enc: Dictionary = encounters.get(id, {})
+		if not enc.is_empty():
+			_tick_encounter(enc, delta)
+	_aggro_left -= delta
+	if _aggro_left <= 0.0:
+		_aggro_left = 0.5
+		_scan_aggro()
+
+
+func _tick_encounter(enc: Dictionary, delta: float) -> void:
+	if String(enc.get("map_id", "")) != active_map:
+		_end_encounter(enc)
+		return
+	if String(enc.result) == "":
+		_with(enc, func(): combat.check_end())
+	if String(enc.result) != "":
+		_end_encounter(enc)
+		return
+	var map: Dictionary = maps.get(active_map, {})
+	var cur_id: String = _with(enc, _current_token)
+	var key := "%d:%d" % [int(enc.round), int(enc.turn)]
+	if key != String(enc.get("turn_key", "")):
+		enc.turn_key = key
+		enc.timer = 0.0
+	var cur := MapData.token(map, cur_id)
+	if cur.is_empty() or combat.is_ko(cur):
+		_with(enc, func(): _advance_turn())
+		return
+	enc.timer = float(enc.timer) + delta
+	var human := String(cur.get("kind", "")) == "pc"
+	if not human:
+		if bool(Content.rule(content, "auto_monsters")) and not enc.get("manual", false) and float(enc.timer) >= float(Content.rule(content, "monster_delay")):
+			enc.timer = 0.0
+			_with(enc, func():
+				turn_action(cur_id, {"action": "auto"})
+				if String(phase.result) == "" and _current_token() == cur_id:
+					turn_action(cur_id, {"action": "end"}))
+	else:
+		var limit := int(Content.rule(content, "turn_timeout"))
+		if limit > 0 and float(enc.timer) >= limit:
+			_system_message("%s passe son tour (temps écoulé)." % cur.name)
+			_with(enc, func(): _advance_turn())
+
+
+func _scan_aggro() -> void:
+	if not bool(Content.rule(content, "auto_aggro")) or Phases.def(phase.type).turns or not session.get("started", false):
+		return
+	var map: Dictionary = maps.get(active_map, {})
+	for t in map.get("tokens", []):
+		if String(t.get("kind", "")) != "pc" or t.get("hidden", false) or combat.is_ko(t) or not encounter_of(String(t.id)).is_empty():
+			continue
+		var spot := _spotters(map, Vector2i(int(t.x), int(t.y)), t)
+		if not spot.is_empty():
+			start_encounter(spot, [String(t.owner)], true)
+		else:
+			_check_join(t)
+
+
+## MJ : commandes sur un combat local.
+func mj_encounter_next(enc_id: String) -> void:
+	var enc: Dictionary = encounters.get(enc_id, {})
+	if not enc.is_empty():
+		_with(enc, func(): _advance_turn())
+
+
+func mj_encounter_auto(enc_id: String) -> void:
+	var enc: Dictionary = encounters.get(enc_id, {})
+	if enc.is_empty():
+		return
+	var cur: String = _with(enc, _current_token)
+	_with(enc, func():
+		turn_action(cur, {"action": "auto"})
+		if String(phase.result) == "" and _current_token() == cur:
+			turn_action(cur, {"action": "end"}))
+
+
+func mj_encounter_manual(enc_id: String, manual: bool) -> void:
+	var enc: Dictionary = encounters.get(enc_id, {})
+	if not enc.is_empty():
+		enc.manual = manual
+		_phase_changed()
+
+
+func mj_encounter_end(enc_id: String) -> void:
+	var enc: Dictionary = encounters.get(enc_id, {})
+	if not enc.is_empty():
+		_end_encounter(enc)
+
+
+## Les joueurs qui ne sont pas encore en combat engagent les monstres visibles les
+## plus proches (scènes d'aventure « révéler et combattre »).
+func mj_engage_party() -> int:
+	var map: Dictionary = maps.get(active_map, {})
+	var n := 0
+	for t in map.get("tokens", []):
+		if String(t.get("kind", "")) != "pc" or combat.is_ko(t) or not encounter_of(String(t.id)).is_empty():
+			continue
+		var best := {}
+		for m in map.tokens:
+			if _can_aggro(m) and Rules.distance(Vector2i(int(m.x), int(m.y)), Vector2i(int(t.x), int(t.y))) <= 12:
+				if best.is_empty() or Rules.distance(Vector2i(int(m.x), int(m.y)), Vector2i(int(t.x), int(t.y))) < Rules.distance(Vector2i(int(best.x), int(best.y)), Vector2i(int(t.x), int(t.y))):
+					best = m
+		if not best.is_empty() and not start_encounter([best], [String(t.owner)], true).is_empty():
+			n += 1
+	return n
+
+
 # --- Aventures prêtes à jouer ---
 
 ## Charge une aventure : nouvelle carte (affichée aux joueurs), PNJ, monstres
@@ -892,7 +1294,9 @@ func mj_load_adventure(adv_id: String) -> String:
 		var t := MapData.add_token(map, {"kind": "object", "name": String(c.get("name", "Coffre")), "x": p.x, "y": p.y,
 			"color": "#8a6a3a", "hidden": bool(c.get("hidden", false)), "note": "Coffre : à ouvrir sur place (butin « %s »)." % c.get("loot", "")})
 		if not t.is_empty():
-			t["loot"] = String(c.get("loot", "coffre"))
+			t["loot"] = String(c.get("loot", "")) if String(c.get("loot", "")) != "" else "objets"
+			if c.get("items") is Array:
+				t["chest_items"] = (c.items as Array).duplicate(true)
 	for l in adv.get("labels", []):
 		MapData.add_label(map, int(l.x), int(l.y), String(l.text), bool(l.get("hidden", false)))
 	var qids: Array = []
@@ -931,11 +1335,12 @@ func mj_play_scene(index: int) -> String:
 				mj_quest_give(String(ids[qi]))
 		"group_check":
 			mj_event("group_check", {"stat": action.get("stat", "Esprit"), "difficulty": action.get("difficulty", 12), "text": action.get("title", "Épreuve")})
-		"reveal_combat":
+		"reveal_combat", "start_combat":
+			# Combats locaux : les monstres révélés attaquent ceux qui sont à portée.
 			mj_reveal_monsters()
-			mj_set_phase("combat")
-		"start_combat":
-			mj_set_phase("combat")
+			if Phases.def(phase.type).turns:
+				mj_set_phase("libre")
+			mj_engage_party()
 	_unsaved = true
 	adventure_changed.emit()
 	return ""
@@ -962,7 +1367,12 @@ func open_chest(token_id: String, player_id: String = "") -> String:
 	if t.is_empty() or String(t.get("kind", "")) != "object" or String(t.get("loot", "")) == "":
 		return "Rien à ouvrir ici."
 	var drop := Inventory.roll_loot(content, String(t.loot), _rng)
+	for it in t.get("chest_items", []):
+		var inst := Content.item_instance(content, String(it.get("item", "")), int(it.get("qty", 1)))
+		if not inst.is_empty():
+			drop.items.append(inst)
 	t.erase("loot")
+	t.erase("chest_items")
 	t.name = "%s (vide)" % t.name
 	var who := String(characters.get(player_id, {}).get("name", "Le groupe"))
 	var lines := give_drop(player_id, drop, String(t.name).trim_suffix(" (vide)"))
@@ -1166,6 +1576,10 @@ func mj_set_phase(type: String, include_hidden: bool = false) -> void:
 	if not Phases.DEFS.has(type):
 		return
 	var previous := String(phase.type)
+	if type == "combat":
+		# Un combat général remplace les combats locaux.
+		for enc in encounters.values():
+			_end_encounter(enc)
 	if previous == "repos" and type != "repos":
 		_end_rest()
 	if previous == "combat" and type != "combat":
@@ -1317,8 +1731,19 @@ func _phase_changed() -> void:
 	phase_changed.emit()
 
 
+## Phase vue par un joueur : celle de son combat local s'il est engagé, sinon la
+## phase générale.
+func phase_view_for_player(player_id: String = "") -> Dictionary:
+	var enc := encounter_of(_pawn_id(player_id)) if player_id != "" else {}
+	if not enc.is_empty():
+		var v: Dictionary = _with(enc, _phase_view)
+		v["encounter"] = String(enc.id)
+		return v
+	return _phase_view()
+
+
 ## Vue de la phase pour les joueurs : ordre limité aux pions visibles.
-func phase_view_for_player() -> Dictionary:
+func _phase_view() -> Dictionary:
 	var map: Dictionary = maps.get(active_map, {})
 	var rules := Phases.def(phase.type)
 	var order: Array = []
@@ -1348,6 +1773,19 @@ func _visible_initiative(order: Array) -> Dictionary:
 
 func _cmd_turn(player: Dictionary, payload: Dictionary) -> String:
 	var map: Dictionary = maps.get(active_map, {})
+	var own_id := _pawn_id(player.id)
+	var enc := encounter_of(own_id)
+	if not enc.is_empty():
+		if String(payload.get("action", "")) == "flee":
+			return _with(enc, func(): return _flee(player, MapData.token(map, own_id)))
+		return _with(enc, func(): return _cmd_turn_phase(player, payload))
+	if String(payload.get("action", "")) == "engage":
+		return _engage(player, MapData.token(map, own_id), String(payload.get("target", "")))
+	return _cmd_turn_phase(player, payload)
+
+
+func _cmd_turn_phase(player: Dictionary, payload: Dictionary) -> String:
+	var map: Dictionary = maps.get(active_map, {})
 	if not Phases.def(phase.type).turns:
 		# Hors tour par tour : capacités et objets utilisables librement par son propre pion.
 		var own := MapData.token(map, _pawn_id(player.id))
@@ -1367,6 +1805,9 @@ func _cmd_turn(player: Dictionary, payload: Dictionary) -> String:
 ## Exécute une action pour le pion dont c'est le tour (joueur, ou MJ pour ses PNJ / monstres).
 ## payload : {action: end|quick|power|defend|ability|item|auto, target, index, id, uid, x, y}
 func turn_action(token_id: String, payload: Dictionary) -> String:
+	var enc := encounter_of(token_id)
+	if not enc.is_empty() and not is_same(enc, phase):
+		return _with(enc, func(): return turn_action(token_id, payload))
 	var rules := Phases.def(phase.type)
 	if not rules.turns or _current_token() != token_id:
 		return "Ce n'est pas le tour de ce pion."
@@ -1380,6 +1821,9 @@ func turn_action(token_id: String, payload: Dictionary) -> String:
 
 ## Action du MJ hors tour (ex. faire agir un PNJ pendant le récit libre).
 func mj_token_action(token_id: String, payload: Dictionary) -> String:
+	var enc := encounter_of(token_id)
+	if not enc.is_empty() and not is_same(enc, phase):
+		return _with(enc, func(): return mj_token_action(token_id, payload))
 	if Phases.def(phase.type).turns and _current_token() == token_id:
 		return turn_action(token_id, payload)
 	var error := combat.action(token_id, payload)
@@ -1541,6 +1985,9 @@ func _learn(c: Dictionary, ability_id: String) -> String:
 
 ## Équiper / retirer une capacité de la barre rapide.
 func _cmd_ability_equip(player: Dictionary, payload: Dictionary) -> String:
+	var enc := encounter_of(_pawn_id(player.id))
+	if not enc.is_empty() and not Content.rule(content, "swap_in_combat"):
+		return "Le MJ n'autorise pas à changer de capacités en combat."
 	if phase.type == "combat" and not Content.rule(content, "swap_in_combat"):
 		return "Le MJ n'autorise pas à changer de capacités en combat."
 	return set_ability_equipped(player.id, String(payload.get("id", "")), bool(payload.get("equipped", true)))
@@ -1570,6 +2017,9 @@ func set_ability_equipped(char_id: String, ability_id: String, equipped: bool) -
 
 ## {action: equip|unequip|use|drop|give|read, uid, to}
 func _cmd_item(player: Dictionary, payload: Dictionary) -> String:
+	var enc := encounter_of(_pawn_id(player.id))
+	if not enc.is_empty() and not is_same(enc, phase):
+		return _with(enc, func(): return _cmd_item(player, payload))
 	var c: Dictionary = characters.get(player.id, {})
 	if c.is_empty():
 		return "Créez d'abord votre personnage."
@@ -1664,6 +2114,8 @@ func give_drop(player_id: String, drop: Dictionary, source: String) -> Array:
 				for h in heroes:
 					h.gold = int(h.get("gold", 0)) + maxi(1, gold / heroes.size())
 				lines.append({"t": "gold", "text": "%d pièces d'or partagées" % gold})
+	if player_id != "":
+		quest_event("item", {}, [player_id])
 	if not names.is_empty():
 		var log: Array = phase.get("loot_log", [])
 		log.append_array(Array(names))
@@ -1706,6 +2158,7 @@ func give_loot_to(uid: String, char_id: String) -> String:
 				return "Inventaire plein."
 			loot.remove_at(i)
 			_system_message("%s prend %s dans le coffre du groupe." % [c.name, entry.name])
+			quest_event("item", {}, [char_id])
 			_mark("loot")
 			_mark("characters")
 			_unsaved = true
@@ -1772,6 +2225,7 @@ func mj_give_item(char_id: String, source: Variant, qty: int = 1, announce: bool
 		return "Objet introuvable."
 	if Inventory.add(c, inst).is_empty():
 		return "Inventaire plein."
+	quest_event("item", {}, [char_id])
 	if announce:
 		_reward_message(char_id, "%s reçoit %s%s." % [c.name, inst.name, (" ×%d" % qty) if qty > 1 else ""],
 			[{"t": "loot", "text": inst.name, "rarity": String(inst.get("rarity", "commun"))}])
@@ -1920,6 +2374,8 @@ func mj_create_monster(monster_id: String) -> Dictionary:
 	sheet.defense_bonus = int(m.get("defense_bonus", 0))
 	sheet.xp_reward = int(m.get("xp", 0))
 	sheet.loot = String(m.get("loot", ""))
+	sheet.monster_id = monster_id
+	sheet.aggro = int(m.get("aggro", 0))
 	sheet.concept = "Boss" if m.get("boss", false) else "Monstre"
 	sheet.pawn = {"color": String(m.get("color", "#8a6a4a")), "symbol": ""}
 	var abilities: Array = []
@@ -1996,7 +2452,7 @@ func mj_set_rules(values: Dictionary) -> void:
 	for spec in Content.RULE_FIELDS:
 		if values.has(spec[0]):
 			content.rules[spec[0]] = clampi(int(values[spec[0]]), int(spec[2]), int(spec[3]))
-	for key in ["swap_in_combat", "loot_to_killer", "remove_dead"]:
+	for key in ["swap_in_combat", "loot_to_killer", "remove_dead", "auto_aggro", "auto_monsters"]:
 		if values.has(key):
 			content.rules[key] = bool(values[key])
 	if values.has("shared_vision"):
@@ -2052,10 +2508,27 @@ func mj_quest_save(data: Dictionary) -> Dictionary:
 	quest.description = Protocol.sanitize_text(data.get("description", quest.get("description", "")), 2000)
 	quest.giver = Protocol.sanitize_text(data.get("giver", quest.get("giver", "")), 60)
 	var objectives: Array = []
+	var automatic := false
 	for o in data.get("objectives", quest.get("objectives", [])):
 		if o is Dictionary and String(o.get("text", "")).strip_edges() != "" and objectives.size() < 12:
-			objectives.append({"text": Protocol.sanitize_text(o.text, 200), "done": bool(o.get("done", false))})
+			var kind := String(o.get("kind", "manual"))
+			if kind not in OBJECTIVE_KINDS:
+				kind = "manual"
+			var clean := {"text": Protocol.sanitize_text(o.text, 200), "done": bool(o.get("done", false)), "kind": kind}
+			if kind != "manual":
+				automatic = true
+				clean.target = Protocol.sanitize_text(o.get("target", ""), 60)
+				clean.count = clampi(int(o.get("count", 1)), 1, 99)
+				clean.progress = clampi(int(o.get("progress", 0)), 0, 99)
+				if kind == "reach":
+					clean.x = int(o.get("x", 0))
+					clean.y = int(o.get("y", 0))
+					clean.radius = clampi(int(o.get("radius", 2)), 0, 20)
+			objectives.append(clean)
 	quest.objectives = objectives
+	# Fin automatique quand tous les objectifs sont remplis (par défaut si au moins un est automatique).
+	quest.auto = bool(data.get("auto", quest.get("auto", automatic)))
+	quest.offer = bool(data.get("offer", quest.get("offer", true)))
 	var assigned: Array = []
 	for p in data.get("assigned", quest.get("assigned", [])):
 		if players.has(String(p)):
@@ -2188,14 +2661,130 @@ func _quest_heroes(q: Dictionary) -> Array:
 	return out
 
 
+## Quêtes d'un joueur, plus les quêtes que les PNJ lui proposent (status « offer ») :
+## brouillons confiés à un PNJ, et quêtes secondaires déjà prises par d'autres.
 func quests_for(player_id: String) -> Array:
 	var out: Array = []
 	for q in quests:
+		var assigned: Array = q.get("assigned", [])
 		if q.status == "draft":
+			if String(q.get("giver", "")) != "" and q.get("offer", true):
+				out.append(_offer_view(q))
 			continue
-		if (q.get("assigned", []) as Array).is_empty() or q.assigned.has(player_id):
+		if assigned.is_empty() or assigned.has(player_id):
 			out.append(q)
+		elif q.status == "active" and String(q.get("giver", "")) != "" and q.get("offer", true):
+			out.append(_offer_view(q))
 	return out
+
+
+func _offer_view(q: Dictionary) -> Dictionary:
+	return {"id": q.id, "title": q.title, "kind": q.kind, "giver": q.get("giver", ""), "description": q.get("description", ""),
+		"objectives": q.get("objectives", []).map(func(o): return {"text": o.text, "done": false}), "rewards": q.get("rewards", {}), "status": "offer"}
+
+
+const OBJECTIVE_KINDS := ["manual", "kill", "reach", "item", "talk"]
+const OBJECTIVE_NAMES := {"manual": "Coché par le MJ", "kill": "Vaincre", "reach": "Atteindre un lieu", "item": "Obtenir un objet", "talk": "Parler à un PNJ"}
+
+
+## Objectifs automatiques. kill : data {monster_id, name} ; reach : {x, y} ;
+## item : (compte dans les sacs) ; talk : {name}. Une quête dont tous les
+## objectifs sont remplis se termine seule (récompenses distribuées une fois).
+func quest_event(kind: String, data: Dictionary, player_ids: Array) -> void:
+	var changed := false
+	for q in quests.duplicate():
+		if String(q.status) != "active":
+			continue
+		var assigned: Array = q.get("assigned", [])
+		if not assigned.is_empty() and not player_ids.any(func(p): return assigned.has(p)):
+			continue
+		var who: Array = player_ids if assigned.is_empty() else player_ids.filter(func(p): return assigned.has(p))
+		for o in q.objectives:
+			if o.get("done", false) or String(o.get("kind", "manual")) != kind:
+				continue
+			var hit := false
+			match kind:
+				"kill":
+					var target := String(o.get("target", "")).to_lower()
+					if target != "" and target != String(data.get("monster_id", "")).to_lower() and target != String(data.get("name", "")).to_lower():
+						continue
+					o.progress = int(o.get("progress", 0)) + 1
+					hit = int(o.progress) >= int(o.get("count", 1))
+					changed = true
+				"reach":
+					hit = Rules.distance(Vector2i(int(o.get("x", 0)), int(o.get("y", 0))), Vector2i(int(data.get("x", -99)), int(data.get("y", -99)))) <= int(o.get("radius", 2))
+				"item":
+					var n := 0
+					for pid in who:
+						for it in characters.get(pid, {}).get("inventory", []):
+							if String(it.get("item_id", it.get("id", ""))) == String(o.get("target", "")):
+								n += int(it.get("qty", 1))
+					if n != int(o.get("progress", 0)):
+						o.progress = n
+						changed = true
+					hit = n >= int(o.get("count", 1))
+				"talk":
+					hit = String(o.get("target", "")).to_lower() == String(data.get("name", "")).to_lower()
+			if hit:
+				o.done = true
+				changed = true
+				for to in (_quest_recipients(q) if assigned.is_empty() else assigned):
+					_add_message({"kind": Protocol.KIND_REWARD, "from": Protocol.MJ_ID, "from_name": "Quête", "to": to,
+						"text": "Objectif accompli : %s" % o.text, "lines": [{"t": "quest", "text": q.title}]})
+		if q.get("auto", false) and not (q.objectives as Array).is_empty() and (q.objectives as Array).all(func(o): return o.get("done", false)):
+			mj_quest_complete(String(q.id))
+	if changed:
+		_quests_changed()
+
+
+## Parler à un PNJ (case voisine ou presque) : objectifs « parler à ».
+func _cmd_talk(player: Dictionary, payload: Dictionary) -> String:
+	var npc := _npc_near(player, String(payload.get("token", "")))
+	if npc.is_empty():
+		return "Approchez-vous de ce personnage pour lui parler."
+	quest_event("talk", {"name": String(npc.name)}, [player.id])
+	return ""
+
+
+## Accepter une quête proposée par un PNJ. Quête principale : pour tout le groupe ;
+## quête secondaire : personnelle (d'autres peuvent la prendre aussi).
+func _cmd_quest_accept(player: Dictionary, payload: Dictionary) -> String:
+	var q := _quest(String(payload.get("quest", "")))
+	if q.is_empty() or String(q.get("giver", "")) == "" or q.status in ["done", "failed"]:
+		return "Quête introuvable."
+	var map: Dictionary = maps.get(active_map, {})
+	var giver := {}
+	for t in map.get("tokens", []):
+		if String(t.name).to_lower() == String(q.giver).to_lower() and not t.get("hidden", false):
+			giver = t
+	if not giver.is_empty() and _npc_near(player, String(giver.id)).is_empty():
+		return "Approchez-vous de %s pour accepter." % q.giver
+	if q.status == "draft":
+		q.status = "active"
+		q.given = Protocol.now()
+		q.assigned = [] if q.kind == "main" else [player.id]
+		_announce_quest(q, "Nouvelle quête")
+	elif not (q.get("assigned", []) as Array).is_empty() and not (q.assigned as Array).has(player.id):
+		q.assigned.append(player.id)
+		_add_message({"kind": Protocol.KIND_REWARD, "from": Protocol.MJ_ID, "from_name": "Quête", "to": player.id,
+			"text": "Nouvelle quête : %s" % q.title, "lines": [{"t": "quest", "text": "Confiée par %s" % q.giver}], "banner": "quest_new", "quest": q.id})
+	else:
+		return "Vous avez déjà cette quête."
+	_quests_changed()
+	quest_event("talk", {"name": String(q.giver)}, [player.id])
+	quest_event("item", {}, [player.id])
+	return ""
+
+
+func _npc_near(player: Dictionary, token_id: String) -> Dictionary:
+	var map: Dictionary = maps.get(active_map, {})
+	var npc := MapData.token(map, token_id)
+	var me := MapData.token(map, _pawn_id(player.id))
+	if npc.is_empty() or me.is_empty() or npc.get("hidden", false) or String(npc.get("kind", "")) not in ["npc", "monster"]:
+		return {}
+	if Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(npc.x), int(npc.y))) > 2:
+		return {}
+	return npc
 
 
 func _quests_changed() -> void:
@@ -2363,9 +2952,8 @@ func flush() -> void:
 	elif dirty.has("tokens"):
 		_broadcast_tokens()
 	if dirty.has("phase"):
-		var view := phase_view_for_player()
 		for player in _accepted_online():
-			_send.call(player.peer_id, Protocol.EVT_PHASE, {"phase": view})
+			_send.call(player.peer_id, Protocol.EVT_PHASE, {"phase": phase_view_for_player(player.id)})
 	if dirty.has("music"):
 		var view := music_view_for_player()
 		for player in _accepted_online():
@@ -2445,7 +3033,7 @@ func _send_welcome(player: Dictionary) -> void:
 		"messages": history,
 		"characters": characters_for(player.id),
 		"map": _map_view(player.id),
-		"phase": phase_view_for_player(),
+		"phase": phase_view_for_player(player.id),
 		"music": music_view_for_player(),
 		"content": Content.for_player(content),
 		"quests": quests_for(player.id),

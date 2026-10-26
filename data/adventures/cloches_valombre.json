@@ -104,7 +104,39 @@
    "x": 29,
    "y": 16,
    "loot": "brigand",
-   "hidden": false
+   "hidden": false,
+   "items": [
+    {
+     "item": "minerai_fer",
+     "qty": 2
+    }
+   ]
+  },
+  {
+   "name": "Touffes d'herbes",
+   "x": 27,
+   "y": 16,
+   "loot": "",
+   "hidden": false,
+   "items": [
+    {
+     "item": "herbes_medicinales",
+     "qty": 3
+    }
+   ]
+  },
+  {
+   "name": "Sac oublié",
+   "x": 4,
+   "y": 9,
+   "loot": "",
+   "hidden": false,
+   "items": [
+    {
+     "item": "lettre_scellee",
+     "qty": 1
+    }
+   ]
   }
  ],
  "labels": [
@@ -123,16 +155,29 @@
    "description": "Les cloches sonnent seules chaque nuit depuis l'incendie du champ. Sœur Aveline craint que quelque chose se soit réveillé sous le temple.",
    "objectives": [
     {
-     "text": "Interroger les habitants sur les cloches"
+     "text": "Écouter Sœur Aveline",
+     "kind": "talk",
+     "target": "Sœur Aveline"
     },
     {
-     "text": "Examiner le champ calciné"
+     "text": "Examiner le champ calciné",
+     "kind": "reach",
+     "x": 28,
+     "y": 6,
+     "radius": 2
     },
     {
-     "text": "Trouver l'entrée de la crypte"
+     "text": "Trouver l'entrée de la crypte (sous l'autel)",
+     "kind": "reach",
+     "x": 14,
+     "y": 6,
+     "radius": 1
     },
     {
-     "text": "Faire taire ce qui sonne les cloches"
+     "text": "Faire taire les ombres qui sonnent les cloches",
+     "kind": "kill",
+     "target": "ombre_errante",
+     "count": 2
     }
    ],
    "rewards": {
@@ -150,10 +195,13 @@
    "title": "Le minerai de Dorn",
    "kind": "side",
    "giver": "Dorn",
-   "description": "Le forgeron manque de fer depuis que la route de la forêt n'est plus sûre.",
+   "description": "Le forgeron manque de fer depuis que la route de la forêt n'est plus sûre. Une caisse aurait été abandonnée près du marais.",
    "objectives": [
     {
-     "text": "Rapporter du minerai de fer à Dorn"
+     "text": "Trouver 2 minerais de fer",
+     "kind": "item",
+     "target": "minerai_fer",
+     "count": 2
     }
    ],
    "rewards": {
@@ -174,10 +222,17 @@
    "description": "L'herboriste n'ose plus aller cueillir au marais : des lueurs y dansent la nuit.",
    "objectives": [
     {
-     "text": "Cueillir des herbes médicinales au marais"
+     "text": "Aller au marais",
+     "kind": "reach",
+     "x": 28,
+     "y": 15,
+     "radius": 2
     },
     {
-     "text": "Découvrir l'origine des lueurs"
+     "text": "Cueillir 3 herbes médicinales",
+     "kind": "item",
+     "target": "herbes_medicinales",
+     "count": 3
     }
    ],
    "rewards": {
@@ -195,24 +250,24 @@
    "title": "Une ardoise bien chargée",
    "kind": "side",
    "giver": "Bertrand",
-   "description": "Un client est parti sans payer… en laissant un sac étrange derrière lui.",
+   "description": "Un client est parti sans payer… en laissant un sac près de l'entrée de la taverne.",
    "objectives": [
     {
-     "text": "Retrouver le mauvais payeur"
+     "text": "Retrouver le sac (la lettre scellée)",
+     "kind": "item",
+     "target": "lettre_scellee",
+     "count": 1
     },
     {
-     "text": "Ouvrir (ou rendre) le sac"
+     "text": "Interroger le Voyageur encapuchonné",
+     "kind": "talk",
+     "target": "Le Voyageur encapuchonné"
     }
    ],
    "rewards": {
     "xp": 60,
     "gold": 15,
-    "items": [
-     {
-      "item": "lettre_scellee",
-      "qty": 1
-     }
-    ]
+    "items": []
    }
   }
  ],
@@ -245,7 +300,7 @@
   {
    "title": "La crypte",
    "narration": "Sous l'autel fendu, un escalier descend dans le noir. L'air sent la cire froide. Quelque chose cliquette en bas… comme des os qui s'entrechoquent au rythme des cloches.",
-   "tips": "Révélez les monstres cachés près du temple et lancez le combat. Le coffre du sonneur est dans la crypte.",
+   "tips": "Les monstres cachés près du temple sont révélés : ils attaquent quiconque entre dans leur périmètre (combat local, automatique). Le coffre du sonneur est dans la crypte.",
    "action": {
     "type": "reveal_combat"
    }

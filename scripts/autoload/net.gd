@@ -57,6 +57,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if role != Role.HOST or server == null:
 		return
+	server.tick(delta)
 	server.flush()
 	_autosave_left -= delta
 	if _autosave_left <= 0.0:

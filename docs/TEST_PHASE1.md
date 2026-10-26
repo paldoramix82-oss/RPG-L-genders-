@@ -99,6 +99,15 @@ Cocher chaque ligne et noter les remarques.
 - [ ] K5. Nouvelle campagne avec *Les cloches de Valombre* : carte, PNJ, quêtes en brouillon ; jouer les scènes depuis l'onglet Aventure.
 - [ ] K6. Monde › Générer… une carte de chaque type ; Remplir, Rectangle, Pièce, puis Annuler.
 
+### L. Jeu automatisé : combats locaux, quêtes automatiques
+- [ ] L1. La partie commence en Récit libre ; deux joueurs partent chacun de leur côté.
+- [ ] L2. Un joueur entre dans le périmètre d'un loup visible : « Combat ! » sur son téléphone seulement ; l'autre joueur continue de se déplacer librement.
+- [ ] L3. Les monstres jouent seuls (dés visibles) ; le MJ voit le combat dans *Combat › Combats en cours* et peut passer en « Je joue les monstres ».
+- [ ] L4. L'autre joueur s'approche à moins de 6 cases : il rejoint le combat.
+- [ ] L5. Toucher un monstre hors combat → *Attaquer* ; pendant le tour, *Fuir* (réussi : sortie du combat).
+- [ ] L6. Toucher un PNJ qui confie une quête → *Accepter* ; vaincre les monstres demandés : l'objectif se coche et la quête se termine avec ses récompenses.
+- [ ] L7. Victoire : XP pour les participants seulement ; le bandeau « Victoire ! » n'apparaît que chez eux.
+
 ## Rapport
 
 Merci d'indiquer, pour chaque ligne en échec : modèle de téléphone, version d'Android, type de réseau (box / partage de connexion de quel téléphone), et le message affiché. Ces informations permettent de corriger avant la phase 2.

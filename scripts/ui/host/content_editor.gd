@@ -394,6 +394,7 @@ func _build_monster() -> void:
 	_int(fight, "defense_bonus", "Bonus de Défense", -10, 30)
 	_int(fight, "power", "Puissance (bonus de dégâts)", 0, 99, 2)
 	_int(fight, "speed", "Vitesse (cases)", 1, 20, 5)
+	_int(fight, "aggro", "Périmètre d'attaque (cases, 0 = règle de la campagne)", 0, 20, 0)
 	_int(fight, "res", "Ressource (pour ses capacités)", 0, 999, 10)
 	_dice(fight, "weapon/damage", "Dégâts de son attaque", "1d6")
 	_enum(fight, "weapon/stat", "Caractéristique de l'attaque", STAT_FIELDS, "Force")

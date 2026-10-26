@@ -414,6 +414,8 @@ func _has_heal(ability: Dictionary) -> bool:
 func _check_target(actor: Dictionary, target: Dictionary, kind: String, rng: int, allow_ko: bool = false) -> String:
 	if target.is_empty():
 		return "Choisissez une cible."
+	if s.phase.get("local", false) and not (s.phase.order as Array).has(String(target.get("id", ""))) and String(target.get("id", "")) != String(actor.get("id", "")):
+		return "Cette cible ne fait pas partie de votre combat."
 	if target.get("hidden", false) and side(actor) == "players":
 		return "Cible introuvable."
 	if kind == "enemy":
@@ -667,6 +669,8 @@ func _on_defeated(victim: Dictionary, killer: Dictionary) -> void:
 		return
 	victim["defeated"] = true
 	var sh := sheet_of(victim) if has_sheet(victim) else {}
+	var who: Array = s.phase.get("players", []) if s.phase.get("local", false) else s.players.keys()
+	s.quest_event("kill", {"monster_id": String(sh.get("monster_id", "")), "name": String(victim.get("name", ""))}, who)
 	s.phase["xp_pool"] = int(s.phase.get("xp_pool", 0)) + int(sh.get("xp_reward", 10 if sh.is_empty() else 0))
 	s.phase["defeated"] = int(s.phase.get("defeated", 0)) + 1
 	var table := String(sh.get("loot", ""))
@@ -937,7 +941,10 @@ func use_item(actor: Dictionary, uid: String, target: Dictionary) -> String:
 ## Avance vers l'adversaire le plus proche et l'attaque (capacité offensive si possible).
 func auto_play(actor: Dictionary) -> String:
 	var foes: Array = []
+	var local: bool = s.phase.get("local", false)
 	for t in map().get("tokens", []):
+		if local and not (s.phase.order as Array).has(String(t.id)):
+			continue
 		if t.kind != "object" and side(t) != side(actor) and not is_ko(t) and not t.get("hidden", false) and not has_flag(t, "untargetable"):
 			foes.append(t)
 	if foes.is_empty():
@@ -1045,6 +1052,9 @@ func _victory() -> void:
 	var heroes: Array = []
 	for p in s.players.values():
 		if s.characters.has(p.id) and p.status == Protocol.STATUS_ACCEPTED:
+			# Combat local : seuls les participants gagnent l'XP.
+			if s.phase.get("local", false) and not (s.phase.get("players", []) as Array).has(p.id):
+				continue
 			heroes.append(p.id)
 	var text := "Victoire !"
 	var lines: Array = []
@@ -1079,8 +1089,11 @@ func _victory() -> void:
 
 
 ## Nettoyage quand le combat se termine (changement de phase).
-func end_combat() -> void:
+## only : limiter aux pions d'un combat local (vide : toute la carte).
+func end_combat(only: Array = []) -> void:
 	for t in map().get("tokens", []):
+		if not only.is_empty() and not only.has(String(t.get("id", ""))):
+			continue
 		var list := effects_of(t)
 		for i in range(list.size() - 1, -1, -1):
 			if int(list[i].get("turns", 0)) > 0:
@@ -1092,7 +1105,7 @@ func end_combat() -> void:
 	# Les invocations disparaissent.
 	var m := map()
 	if not m.is_empty():
-		m.tokens = (m.tokens as Array).filter(func(t): return String(t.get("summoned_by", "")) == "")
+		m.tokens = (m.tokens as Array).filter(func(t): return String(t.get("summoned_by", "")) == "" or (not only.is_empty() and not only.has(String(t.id))))
 		s.map_changed(s.active_map, true)
 
 
