@@ -1,0 +1,83 @@
+{
+ "id": "taverne_corbeau",
+ "name": "Taverne du Corbeau Rieur",
+ "description": "Intérieur de taverne : salle commune, comptoir, cuisine et cave.",
+ "universe": "*",
+ "w": 22,
+ "h": 15,
+ "rows": [
+  "######################",
+  "#ddddddddddddd#dddddd#",
+  "#dtttttttttddd#dttttd#",
+  "#ddddddddddddd#dttttd#",
+  "#ddddddddddddd#dddddd#",
+  "#dddddddddddddddddddd#",
+  "#ddttddttddddd#dddddd#",
+  "#ddddddddddddd#dddddd#",
+  "#ddddddddddddd#dddddd#",
+  "#ddddddddddttd#dddddd#",
+  "#ddttddttdddddd##d####",
+  "#dddddddddddddddddddd#",
+  "#ddddddddddddddooooxo#",
+  "#ddddddddddddddoooooo#",
+  "##########dd##########"
+ ],
+ "spawn": {
+  "x": 10,
+  "y": 12
+ },
+ "labels": [
+  {
+   "x": 6,
+   "y": 1,
+   "text": "Comptoir",
+   "hidden": false
+  },
+  {
+   "x": 17,
+   "y": 1,
+   "text": "Cuisine",
+   "hidden": false
+  },
+  {
+   "x": 17,
+   "y": 13,
+   "text": "Cave",
+   "hidden": false
+  },
+  {
+   "x": 11,
+   "y": 13,
+   "text": "Entrée",
+   "hidden": false
+  },
+  {
+   "x": 19,
+   "y": 12,
+   "text": "Trappe cachée sous un tonneau",
+   "hidden": true
+  }
+ ],
+ "tokens": [
+  {
+   "name": "Bertrand le tavernier",
+   "kind": "npc",
+   "x": 6,
+   "y": 3,
+   "color": "#a77d4c",
+   "hp": 10,
+   "hp_max": 10,
+   "hidden": false
+  },
+  {
+   "name": "Voyageur encapuchonné",
+   "kind": "npc",
+   "x": 12,
+   "y": 9,
+   "color": "#55506a",
+   "hp": 14,
+   "hp_max": 14,
+   "hidden": false
+  }
+ ]
+}

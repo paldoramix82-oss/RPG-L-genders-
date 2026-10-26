@@ -1,0 +1,875 @@
+{
+ "id": "legenders_monde",
+ "name": "Légenders — Gens et créatures de Kurtzuma",
+ "universe": "legenders",
+ "description": "PNJ originaux : Ombré, agente de Karoh, marchand de Trèfle, chevalière de Pik, démon, esprit, monstres…",
+ "npcs": [
+  {
+   "name": "Nib",
+   "concept": "Ombré guide et chapardeur",
+   "species": "Ombré",
+   "origin": "Forêts de Kurtzuma",
+   "kind": "npc",
+   "hp": 8,
+   "hp_max": 8,
+   "res": 12,
+   "res_max": 12,
+   "rank": "",
+   "magic": {
+    "category": "Psychique",
+    "name": "Voix des bêtes et illusion",
+    "origin": "Personnalité et environnement",
+    "description": "Parle à tous les animaux et monstres ; prend l'apparence de n'importe quelle créature, sans ses capacités.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Discrétion",
+     "value": 6
+    },
+    {
+     "name": "Survie",
+     "value": 5
+    },
+    {
+     "name": "Artisanat",
+     "value": 4
+    }
+   ],
+   "appearance": "Petit rongeur humanoïde tout noir, aux yeux brillants.",
+   "personality": "Méfiant puis loyal ; adore les objets mécaniques.",
+   "goals": "Être payé en bricoles intéressantes.",
+   "secret": "Il a volé les provisions de la moitié des candidats du test.",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#2a2733",
+    "symbol": "NB"
+   }
+  },
+  {
+   "name": "Agente Vex",
+   "concept": "Agente des services de Karoh",
+   "species": "Humaine sans-magie",
+   "origin": "Karoh",
+   "kind": "npc",
+   "hp": 22,
+   "hp_max": 22,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Brouilleur anti-magie",
+     "description": "Empêche la résonance d'un mage avec le champ terrestre.",
+     "cost": "1 charge",
+     "range": "10 m",
+     "limits": "Inutile contre les mutants et les Gardiens de haut niveau."
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Discrétion",
+     "value": 5
+    },
+    {
+     "name": "Investigation",
+     "value": 5
+    },
+    {
+     "name": "Combat",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "Polie, glaciale, toujours deux coups d'avance.",
+   "goals": "Évaluer les nouveaux mages d'État.",
+   "secret": "Karoh cherche le Lac Retourné.",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Brouilleur portatif",
+     "qty": 1,
+     "description": ""
+    },
+    {
+     "name": "Pistolet compact",
+     "qty": 1,
+     "description": ""
+    }
+   ],
+   "pawn": {
+    "color": "#5c6470",
+    "symbol": "VX"
+   }
+  },
+  {
+   "name": "Orsino Valdecœur",
+   "concept": "Marchand de cristaux de Trèfle",
+   "species": "Humain",
+   "origin": "Trèfle",
+   "kind": "npc",
+   "hp": 12,
+   "hp_max": 12,
+   "res": 5,
+   "res_max": 5,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Marchandage",
+     "value": 7
+    },
+    {
+     "name": "Négociation",
+     "value": 5
+    }
+   ],
+   "appearance": "",
+   "personality": "Jovial, flatteur, compte tout.",
+   "goals": "",
+   "secret": "Trafique de l'AEC synthétique par les Îles Flottantes.",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "AEC jaune (sous licence)",
+     "qty": 12,
+     "description": ""
+    },
+    {
+     "name": "AEC vert",
+     "qty": 3,
+     "description": ""
+    },
+    {
+     "name": "Bijou en AEC",
+     "qty": 2,
+     "description": "Dissimule peut-être un fragment illégal."
+    }
+   ],
+   "pawn": {
+    "color": "#c9a96e",
+    "symbol": "OV"
+   }
+  },
+  {
+   "name": "Dame Hrafna",
+   "concept": "Chevalière mage de Pik",
+   "species": "Humaine",
+   "origin": "Pik",
+   "kind": "npc",
+   "hp": 36,
+   "hp_max": 36,
+   "res": 20,
+   "res_max": 20,
+   "rank": "S-",
+   "magic": {
+    "category": "Renforcement",
+    "name": "Armure de roc",
+    "origin": "Personnalité et environnement",
+    "description": "Se couvre de pierre pour encaisser et frapper.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 15
+    },
+    {
+     "name": "Agilité",
+     "value": 11
+    },
+    {
+     "name": "Endurance",
+     "value": 15
+    },
+    {
+     "name": "Intelligence",
+     "value": 11
+    },
+    {
+     "name": "Perception",
+     "value": 12
+    },
+    {
+     "name": "Charisme",
+     "value": 12
+    }
+   ],
+   "skills": [
+    {
+     "name": "Combat",
+     "value": 6
+    },
+    {
+     "name": "Intimidation",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "Honneur et discipline, héritière de la culture de Fury.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#6e655b",
+    "symbol": "HR"
+   }
+  },
+  {
+   "name": "Comte Aldric",
+   "concept": "Noble diplomate de Keurd",
+   "species": "Humain",
+   "origin": "Keurd",
+   "kind": "npc",
+   "hp": 14,
+   "hp_max": 14,
+   "res": 10,
+   "res_max": 10,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Négociation",
+     "value": 6
+    },
+    {
+     "name": "Intimidation",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "Courtois ; une rancune millénaire bien cachée.",
+   "goals": "Affaiblir l'influence de la RAC sans guerre ouverte.",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#7a2f3a",
+    "symbol": "AK"
+   }
+  },
+  {
+   "name": "Professeure Ilse Marrow",
+   "concept": "Volcanologue de Volcano",
+   "species": "Humaine",
+   "origin": "Grande Caldeira",
+   "kind": "npc",
+   "hp": 12,
+   "hp_max": 12,
+   "res": 10,
+   "res_max": 10,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Investigation",
+     "value": 6
+    },
+    {
+     "name": "Alchimie",
+     "value": 4
+    },
+    {
+     "name": "Survie",
+     "value": 3
+    }
+   ],
+   "appearance": "",
+   "personality": "Passionnée jusqu'à l'imprudence.",
+   "goals": "Mesurer l'esprit né de la cicatrice de Sol'fyr.",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#b4472a",
+    "symbol": "IL"
+   }
+  },
+  {
+   "name": "Sabbas",
+   "concept": "Contrebandier d'AEC noir",
+   "species": "Humain",
+   "origin": "Lima",
+   "kind": "npc",
+   "hp": 20,
+   "hp_max": 20,
+   "res": 5,
+   "res_max": 5,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Discrétion",
+     "value": 5
+    },
+    {
+     "name": "Marchandage",
+     "value": 5
+    }
+   ],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "Travaille pour quelqu'un de très haut placé.",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Fiole scellée d'AEC noir",
+     "qty": 1,
+     "description": "Quelques grammes : de quoi raser un quartier."
+    }
+   ],
+   "pawn": {
+    "color": "#28252e",
+    "symbol": "SB"
+   }
+  },
+  {
+   "name": "Examinateur Dorrow",
+   "concept": "Mage d'État chargé du test",
+   "species": "Humain",
+   "origin": "RAC (Shima)",
+   "kind": "npc",
+   "hp": 40,
+   "hp_max": 40,
+   "res": 30,
+   "res_max": 30,
+   "rank": "SS-",
+   "magic": {
+    "category": "Manipulation",
+    "name": "Densité de l'air",
+    "origin": "Personnalité et environnement",
+    "description": "Durcit l'air pour lui donner forme : murs, entraves, plates-formes.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Combat",
+     "value": 6
+    },
+    {
+     "name": "Investigation",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "Impartial ; note tout : maîtrise, stratégie, survie, utilité…",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#4a4358",
+    "symbol": "DO"
+   }
+  },
+  {
+   "name": "Envie",
+   "concept": "Démon mineur de la jalousie",
+   "species": "Démon",
+   "origin": "Monde de Nhar'Zhul",
+   "kind": "monster",
+   "hp": 18,
+   "hp_max": 18,
+   "res": 20,
+   "res_max": 20,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Se nourrir",
+     "description": "Grandit avec la jalousie autour de lui… et l'amplifie.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "Murmure ce que les autres ont et que tu n'as pas.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#5fb36a",
+    "symbol": "EN"
+   }
+  },
+  {
+   "name": "L'Esprit de la rivière",
+   "concept": "Esprit de lieu",
+   "species": "Esprit",
+   "origin": "Kurtzuma",
+   "kind": "npc",
+   "hp": 30,
+   "hp_max": 30,
+   "res": 40,
+   "res_max": 40,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Crue",
+     "description": "Fait monter les eaux.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Invisible",
+     "description": "Invisible sauf s'il décide de se montrer.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "Ancien, lent, susceptible.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#30536f",
+    "symbol": "ER"
+   }
+  },
+  {
+   "name": "Croc blanc",
+   "concept": "Monstre du Désert de Cristal",
+   "species": "Monstre",
+   "origin": "Désert de Cristal",
+   "kind": "monster",
+   "hp": 28,
+   "hp_max": 28,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Morsure glacée",
+     "description": "Les blessures gèlent.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Meute",
+     "description": "Rarement seul.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 15
+    },
+    {
+     "name": "Agilité",
+     "value": 14
+    },
+    {
+     "name": "Endurance",
+     "value": 14
+    },
+    {
+     "name": "Intelligence",
+     "value": 4
+    },
+    {
+     "name": "Perception",
+     "value": 14
+    },
+    {
+     "name": "Charisme",
+     "value": 3
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#d9dee4",
+    "symbol": "CB"
+   }
+  },
+  {
+   "name": "Guerrier homme-lézard",
+   "concept": "D'une micro-civilisation de la Forêt-Monde",
+   "species": "Homme-lézard",
+   "origin": "Forêt-Monde",
+   "kind": "monster",
+   "hp": 26,
+   "hp_max": 26,
+   "res": 10,
+   "res_max": 10,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Lance-artefact",
+     "description": "Arme à base d'artefacts magiques.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "Intelligent, parle, défend son territoire.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#4f7a3a",
+    "symbol": "HL"
+   }
+  }
+ ]
+}

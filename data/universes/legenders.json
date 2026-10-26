@@ -1,0 +1,296 @@
+{
+ "id": "legenders",
+ "name": "Légenders",
+ "tagline": "Magie AEC, Gardiens et Légenders — continent de Kurtzuma",
+ "description": "Un monde moderne où la magie est une constante physique née des cristaux d'AEC dispersés par l'affrontement primordial des dix Légenders.",
+ "character": {
+  "species": [
+   "Humain",
+   "Humain sans-magie",
+   "Mutant",
+   "Ombré",
+   "Homme-lézard",
+   "Sirène",
+   "Centaure",
+   "Minotaure",
+   "Esprit",
+   "Démon",
+   "Autre"
+  ],
+  "origins": [
+   "RAC (Shima)",
+   "RAC (Mako)",
+   "Pik",
+   "Trèfle",
+   "Karoh",
+   "Keurd",
+   "Alsaora",
+   "Napo",
+   "Mapo",
+   "Lidaknie",
+   "Areime",
+   "Sayé-pomti",
+   "Lima",
+   "Îles Bawlies",
+   "Îles Hier",
+   "Forêt-Monde",
+   "Autre"
+  ],
+  "stats": [
+   "Force",
+   "Agilité",
+   "Endurance",
+   "Intelligence",
+   "Perception",
+   "Charisme"
+  ],
+  "skills": [
+   "Combat",
+   "Discrétion",
+   "Survie",
+   "Médecine",
+   "Alchimie",
+   "Artisanat",
+   "Investigation",
+   "Négociation",
+   "Intimidation",
+   "Marchandage",
+   "Magie",
+   "Pistage",
+   "Maîtrise des bases (AEC)",
+   "Technologie"
+  ],
+  "magic_title": "Magie (AEC)",
+  "magic_categories": [
+   {
+    "name": "Invocation",
+    "hint": "Appeler ce qui existe ailleurs : entités (contrat nécessaire) ou phénomènes."
+   },
+   {
+    "name": "Création",
+    "hint": "Générer de zéro ; ne peut pas contrôler ce qui existe déjà."
+   },
+   {
+    "name": "Manipulation",
+    "hint": "Contrôler sans modifier la nature ; dépend des matériaux disponibles."
+   },
+   {
+    "name": "Transformation",
+    "hint": "Changer la nature d'une chose extérieure, jamais soi-même."
+   },
+   {
+    "name": "Assimilation",
+    "hint": "Consommer une source (détruite) pour en prendre les propriétés."
+   },
+   {
+    "name": "Renforcement",
+    "hint": "Amplifier ses capacités via un vecteur (flammes, foudre, sons…)."
+   },
+   {
+    "name": "Métamorphose",
+    "hint": "Changer complètement de nature : polymorphe ou monomorphe."
+   },
+   {
+    "name": "Déformation",
+    "hint": "Le corps EST constitué de magie (ex. élastique en permanence)."
+   },
+   {
+    "name": "Psychique",
+    "hint": "Agir par le plan mental : esprit, perception, télékinésie."
+   },
+   {
+    "name": "Spéciale",
+    "hint": "Inclassable : trop simple ou trop complexe pour les autres catégories."
+   },
+   {
+    "name": "Aucune (sans-magie)",
+    "hint": "Environ 20 % de la population ; pleinement intégrés à la société."
+   },
+   {
+    "name": "Mutation",
+    "hint": "Biologie modifiée (AEC + ADN animal), hors système AEC : insensible à l'anti-magie."
+   }
+  ],
+  "magic_origins": [
+   "Personnalité et environnement",
+   "Croyance collective",
+   "Imposition par un Légender (Gardien)",
+   "Mutation",
+   "Inconnue"
+  ],
+  "ranks": [
+   "Aucun",
+   "B",
+   "B+",
+   "A-",
+   "A",
+   "A+",
+   "S-",
+   "S",
+   "S+",
+   "SS-",
+   "SS",
+   "SS+",
+   "I-",
+   "I",
+   "I+",
+   "L"
+  ],
+  "rank_title": "Rang de mage",
+  "resource_name": "AEC",
+  "hp_default": 20,
+  "resource_default": 10
+ },
+ "codex": [
+  {
+   "category": "Origines",
+   "title": "Les dix Légenders",
+   "text": "Au commencement il n'y avait que le néant. Puis surgirent dix créatures incarnant les forces de la nature : les Légenders.\n• Lumen Solerin — Lumière. Un corps de lumière où seuls ses yeux rouges sont discernables.\n• Nhar'Zhul Orr'mekhaal Xov'Arûm — Ténèbres. Un corps noir qui engloutit la lumière.\n• Neh'Gravara — Terre. Une géante de roche haute de plusieurs kilomètres.\n• Fulminis Noz'Zerath — Foudre. Une chauve-souris géante aux yeux dorés, 100 m d'envergure.\n• Sol'fyr Ragnythar Flammeer — Feu. Un dragon rouge de 100 m.\n• Vor'Mkhaal khal'Zaneth — Mort. Une créature squelettique encapuchonnée de 4 m.\n• Aor'Mehn Virdanoss — Vie. Une montagne vivante de 7 km.\n• Altaïr Thal'Kôrin — Vent. Un oiseau géant de 200 m d'envergure.\n• Aïrnath Zëroth Ymirûn — Glace. Un léviathan au pelage blanc.\n• Sylphoros Mùrakhen — Eau. Un serpent de mer géant au pelage blanc.\nDurant des millénaires ils s'affrontèrent, jusqu'à lancer ensemble leurs plus puissantes attaques : le Big Bang. Tous tombèrent K.O.",
+   "mj_only": false
+  },
+  {
+   "category": "Origines",
+   "title": "Le réveil et les Gardiens",
+   "text": "Il y a environ 12 000 ans, les Légenders se réveillèrent furieux de voir les humains utiliser leurs pouvoirs sans leur consentement et décidèrent de les éradiquer. Quatre continents sur cinq furent détruits. Alors qu'il ne restait qu'un continent, un être primordial, créateur des Légenders, les soumit d'un claquement de doigts et scella une partie de la puissance de chacun dans dix humains : les Gardiens, protecteurs de l'humanité.",
+   "mj_only": false
+  },
+  {
+   "category": "Magie",
+   "title": "L'AEC (Arc-en-Ciel Cristallisé)",
+   "text": "L'AEC est une constante physique, pas un phénomène mystique : des cristaux dispersés dans l'univers par l'affrontement primordial. Chaque couleur correspond à une fréquence vibratoire et à des usages :\n• Jaune — stockage et production d'énergie, base de la technologie moderne.\n• Rouge — feu et chaleur, industrie et propulsion.\n• Bleu — contrôle des fluides, hydro-ingénierie et médecine.\n• Vert — vie et régénération, santé et agriculture.\n• Violet — annulation magique, contre-mesures.\n• Gris — propriétés temporelles (rare).\n• Noir — AEC corrompu, vidé de son énergie : instable et hautement explosif. Quelques grammes rasent plusieurs kilomètres. Interdit par tous les traités.\nDes milliers de variations existent, certaines non classifiées. Sa possession, son transport et son usage nécessitent des licences.",
+   "mj_only": false
+  },
+  {
+   "category": "Magie",
+   "title": "L'éveil",
+   "text": "Tous les êtres vivants contiennent un peu d'AEC. Chez l'humain, la concentration augmente avec l'âge ; vers 4 à 6 ans elle atteint un seuil et la magie s'éveille. C'est irréversible et cela fixe la catégorie magique pour la vie.\nL'AEC interne n'est pas un réservoir mais une antenne : le mage puise dans le champ magique terrestre par résonance. Dans une zone sans AEC dans le sol, il est coupé de sa source.\nEnviron 20 % de la population reste sans-magie.",
+   "mj_only": false
+  },
+  {
+   "category": "Magie",
+   "title": "Les trois origines d'une magie",
+   "text": "1. Personnalité et environnement — le cas le plus courant : la magie reflète ce que l'on est au moment de l'éveil. Deux porteurs de la même magie ne peuvent exister en même temps.\n2. Croyance collective — une foi sincère et partagée oriente l'éveil des enfants nés dans ce cadre (ex. le clan des Faucheurs et les magies liées à la mort). On ne peut pas fabriquer une croyance dans ce but.\n3. Imposition par un Légender — pour les Gardiens, la magie est imposée par leur Légender.",
+   "mj_only": false
+  },
+  {
+   "category": "Magie",
+   "title": "Les dix catégories magiques",
+   "text": "La catégorie décrit le mécanisme et ne change jamais.\nInvocation — appeler ce qui existe ailleurs (entités sous contrat ou phénomènes).\nCréation — générer de zéro ; limite : l'imagination et la maîtrise.\nManipulation — contrôler sans modifier la nature fondamentale.\nTransformation — modifier la nature d'une chose extérieure, jamais de soi.\nAssimilation — consommer une source qui disparaît pour en utiliser les propriétés.\nRenforcement — amplifier ses caractéristiques via un vecteur.\nMétamorphose — changer complètement de nature (polymorphe / monomorphe). Devenir plus massif est épuisant.\nDéformation — le corps du mage EST de la magie, sans activation.\nPsychique — agir par le plan mental : manipulation de la conscience, perception, télékinésie.\nSpéciale — ce qui n'entre dans aucune autre case.",
+   "mj_only": false
+  },
+  {
+   "category": "Magie",
+   "title": "Le système Gardien",
+   "text": "Un Gardien porte un lien avec un Légender, qui reste une entité indépendante avec son caractère et ses motivations. Le lien permet de puiser dans sa puissance et de communiquer mentalement avec lui.\nLa désignation se fait au hasard à la naissance ; à la mort d'un Gardien, le lien passe à un nouveau-né.\nAu départ, le Gardien n'a presque rien : il débloque la puissance de son Légender en progressant. À haut niveau, il fonctionne sur la puissance primordiale de son Légender et ne dépend plus du champ terrestre (l'anti-magie devient inefficace).",
+   "mj_only": false
+  },
+  {
+   "category": "Magie",
+   "title": "Les mutants",
+   "text": "Biologie modifiée directement par l'AEC et de l'ADN animal, sans antenne ni résonance. Les mutants n'ont pas accès aux techniques universelles de maîtrise, mais la technologie anti-magie est inutile contre eux : leur puissance vient de leur physiologie.",
+   "mj_only": false
+  },
+  {
+   "category": "Magie",
+   "title": "La technologie anti-magie",
+   "text": "Développée par Karoh : des dispositifs créent des interférences qui empêchent la résonance entre l'AEC interne d'un mage et le champ terrestre. C'est de la physique des ondes, pas de la magie inversée. Inefficace contre les Gardiens de haut niveau et contre les mutants.",
+   "mj_only": false
+  },
+  {
+   "category": "Magie",
+   "title": "La maîtrise des bases",
+   "text": "Techniques universelles que tout mage peut travailler :\n• voir la magie en concentrant l'AEC dans les yeux ;\n• dissimuler sa magie ou son niveau ;\n• le canon magique (énergie pure) ;\n• le renforcement corporel basique ;\n• l'utilisation du minimum nécessaire.\nLa maîtrise n'augmente pas la puissance brute : elle optimise (endurance, précision, lisibilité réduite). C'est un art qui se perd.",
+   "mj_only": false
+  },
+  {
+   "category": "Société",
+   "title": "Le système de rang",
+   "text": "Le rang est une moyenne pondérée (coefficients selon la catégorie) de : potentiel de la magie, maîtrise des bases, maîtrise de sa magie, expérience du combat, stratégie, puissance de destruction, survie, utilité, technique, vitesse.\nRangs officiels : B → B+ → A- → A → A+ → S- → S → S+ → SS- → SS → SS+ → I- → I → I+ → L (Légendre). I = Immortel.\nAu-dessus existe un classement mondial non officiel, les L+.",
+   "mj_only": false
+  },
+  {
+   "category": "Société",
+   "title": "Les mages d'État et le test de la magie",
+   "text": "Treize divisions entourent Shima ; au centre, le QG de la magie gère communication, budget, logistique, concours et événements. Ouvert à tous, y compris aux sans-magie et aux étrangers.\nLe test annuel (20 reçus maximum) :\n1. Écrit — savoir général, à élimination directe.\n2. Survie — téléportation aléatoire sur une île hostile ; atteindre un point de rendez-vous caché avant 10 jours. Les vingt premiers passent.\n3. Évaluation du rang — combat contre un mage d'État confirmé, non éliminatoire.\nMissions déposées par n'importe qui, validées par le QG et classées par rang ; salaire fixe selon le rang + primes. Les Jeux de la Magie battent des records d'audience.",
+   "mj_only": false
+  },
+  {
+   "category": "Monde",
+   "title": "Kurtzuma, le continent",
+   "text": "Le continent principal porte le nom de l'ancien empire Kurtsuna, qui l'a entièrement dominé : chaque nation actuelle est bâtie sur ses ruines. Climat chaud à tropical, tempéré en altitude, glacial à l'extrême nord de Pik. Une chaîne de montagnes en croissant traverse le centre.",
+   "mj_only": false
+  },
+  {
+   "category": "Monde",
+   "title": "Les quatre cicatrices",
+   "text": "• Forêt-Monde (Aor'Mehn) — à l'ouest. Forêt primaire impénétrable ; les champs magnétiques de l'AEC vert détruisent la technologie. Plus de 80 % des monstres y vivent.\n• Abîme Englouti (Sylphoros) — à l'est, à 5 000 m de profondeur. Karoh y a installé des dômes sous-marins il y a cinquante ans.\n• Désert de Cristal (Aïrnath) — au nord. Êtres pétrifiés, rivières gelées, arcs-en-ciel permanents. Colonie scientifique Givre Land.\n• Grande Caldeira (Sol'fyr) — au sud lointain. Colonie scientifique Volcano.",
+   "mj_only": false
+  },
+  {
+   "category": "Monde",
+   "title": "Mers et lieux remarquables",
+   "text": "Océan du Nord (froid, tempétueux), Mer Occidentale (la plus fréquentée, Îles Flottantes au large de Trèfle), Océan Oriental (profond, brumeux), Mer Intérieure chaude (disputée).\nÎles Hier : l'AEC gris y fait s'écouler le temps deux fois plus lentement ; tourisme de longévité.\nÎles Bawlies : destination touristique de rêve. Îles Enneigées : habitat des crocs blancs insulaires.",
+   "mj_only": false
+  },
+  {
+   "category": "Monde",
+   "title": "Le Lac Retourné",
+   "text": "Un lac de montagne porteur d'AEC gris, dans une zone oubliée. La lumière y met des années à ressortir : plus on regarde profond, plus on voit loin dans le passé. Personne ne sait qu'il existe. Sa découverte en ferait l'enjeu géopolitique majeur du monde.",
+   "mj_only": true
+  },
+  {
+   "category": "Monde",
+   "title": "L'arbre aux feuilles d'or",
+   "text": "Un arbre millénaire perdu en plein océan, planté par un « homme de la lune ». À sa base, un jardinier qui n'a jamais grimpé ; au-dessus, les vestiges d'une civilisation disparue ; au sommet, des esprits.",
+   "mj_only": true
+  },
+  {
+   "category": "Nations",
+   "title": "Les cinq grandes nations",
+   "text": "Aucune ne partage de frontière directe avec une autre.\n• Pik — nord. Première puissance militaire, légions de chevaliers mages, culture assimilatrice héritée de Fury.\n• RAC (République d'Arc-en-Ciel) — nord-centre. Capitale économique Shima, divisions de mages d'État. Premier producteur d'AEC, centre diplomatique.\n• Trèfle — centre-ouest. Puissance économique, 40 % des ressources mondiales, Îles Flottantes.\n• Karoh — extrême est. Fondée par des sans-magie persécutés ; n°1 en armement et anti-magie. Secrète.\n• Keurd — grand sud-est, héritière de Kurtsuna. Deuxième puissance militaire, noblesse au pouvoir, opaque.",
+   "mj_only": false
+  },
+  {
+   "category": "Nations",
+   "title": "Puissances régionales",
+   "text": "Alsaora (désert riche en hydrocarbures, cités perdues sous le sable, neutralité), Napo et Mapo (nations jumelles, continentale et insulaire), Lidaknie (guerre civile terminée il y a vingt ans), Areime et Sayé-pomti (centre), Lima (côte de la mer intérieure). Plusieurs nations du sud n'ont pas encore de nom.",
+   "mj_only": false
+  },
+  {
+   "category": "Nations",
+   "title": "Géopolitique",
+   "text": "Une paix relative fondée sur la peur : le laser à AEC noir garantit la non-guerre entre grandes puissances. Bloc principal Pik + RAC + Karoh ; Trèfle alliée de Karoh mais finance discrètement le bloc de Keurd ; Keurd dirige un bloc anti-hégémonique au sud. Un Gouvernement mondial, distinct de la RAC, régule notamment l'AEC. Les tensions se jouent dans les petits États et les mers intérieures.",
+   "mj_only": false
+  },
+  {
+   "category": "Créatures",
+   "title": "Animaux, monstres et êtres de magie",
+   "text": "Trois familles :\n• Animaux (dont humains) — système nerveux et système magique séparés.\n• Monstres — deux systèmes fusionnés : physiquement surnaturels, rarement magiques. Intelligents et capables de parler ; les espèces humanoïdes (dragons, hommes-lézards, sirènes, centaures, minotaures) égalent les humains. Ils ont besoin d'une forte densité magique.\n• Êtres de magie pure — esprits et démons, sans corps physique.",
+   "mj_only": false
+  },
+  {
+   "category": "Créatures",
+   "title": "Les Ombrés",
+   "text": "Petits humanoïdes rongeurs tout noirs, nocturnes et silencieux, longtemps pris pour de mauvais esprits. Ils parlent la langue humaine, communiquent avec tous les animaux et monstres et prennent l'apparence de n'importe quelle créature par illusion. Bricoleurs de génie, ils servent parfois de guides contre de l'argent ou des objets.",
+   "mj_only": false
+  },
+  {
+   "category": "Créatures",
+   "title": "Les démons",
+   "text": "Démons mineurs : nés d'une émotion concentrée (jalousie, joie, colère…), ils s'en nourrissent et l'amplifient.\nDémons majeurs : anciens et immortels, ils utilisent des maléfices et vivent dans le monde de Nhar'Zhul. Les plus puissants sont les Sept Péchés Capitaux.\nDémons de croyance : nés d'une foi collective sincère, définis par elle.",
+   "mj_only": false
+  },
+  {
+   "category": "Créatures",
+   "title": "Les esprits",
+   "text": "Le monde spirituel est le plan des êtres de magie pure, en général invisibles : esprits de lieu (forêts, rivières…), esprits de concept (temps, mémoire, guerre), esprits nés d'événements magiques (les cicatrices), esprits d'anciens êtres matériels.",
+   "mj_only": false
+  },
+  {
+   "category": "Pour le MJ",
+   "title": "Utiliser l'univers",
+   "text": "Tout est modifiable : les catégories, rangs, espèces et pays ne sont que des suggestions. Les monstres, PNJ et lieux de vos parties sont à créer librement (pions de la carte, fiches PNJ). Les entrées marquées « MJ » ne sont jamais envoyées aux téléphones des joueurs.",
+   "mj_only": true
+  }
+ ]
+}

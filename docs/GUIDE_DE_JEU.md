@@ -1,0 +1,269 @@
+# Guide de jeu
+
+Référence complète des règles et des écrans. Pour une première découverte, lisez d'abord le [guide du débutant](GUIDE_DEBUTANT.md).
+
+## Lancer une partie
+
+1. **L'hôte** (le MJ) ouvre l'application sur un PC Windows **ou un téléphone Android**, puis *Héberger une partie*.
+2. Il crée une **nouvelle campagne** (nom, univers) ou **reprend** une campagne sauvegardée.
+3. Le tableau de bord affiche **l'adresse IP** en grand. Il n'y a **pas de code**.
+4. Chaque joueur : *Rejoindre une partie* → son nom et l'adresse IP (pavé numérique intégré, avec la touche « . »). Les parties détectées sur le Wi-Fi se rejoignent d'un seul toucher. Le port reste caché dans *Options avancées*. Les joueurs entrent directement (le MJ peut cocher « Valider moi-même chaque nouveau joueur »).
+5. Chaque joueur crée son personnage avec l'**assistant** (voir ci-dessous) puis attend dans le salon (« Vous êtes prêt ! »).
+6. Quand tout le monde est prêt, le MJ appuie sur **« La partie commence ! »** : la partie démarre en phase *Exploration* sur la carte affichée.
+
+Tout le monde doit être sur **le même Wi-Fi** (box, routeur ou partage de connexion d'un téléphone).
+Un téléphone hôte doit garder l'application **ouverte et l'écran allumé** : si Android met l'application en arrière-plan, les joueurs perdent la connexion jusqu'à son retour.
+
+## Les caractéristiques et les formules
+
+Six caractéristiques sur une échelle de 1 à 10 (5 = moyen) :
+
+| Caractéristique | Effets |
+|---|---|
+| **Force** | dégâts des armes de corps à corps et des capacités physiques, épreuves de force |
+| **Dextérité** | toucher des armes fines et de tir, Défense, initiative, discrétion, **vision** |
+| **Constitution** | PV (×2), résistance physique (÷4), certaines ressources (Vigueur) |
+| **Intelligence** | toucher et dégâts des sorts arcaniques, ressource des mages |
+| **Esprit** | mana de nombreuses classes, résistance magique (÷4), puissance des soins |
+| **Charisme** | capacités de soutien (boucliers renforcés), invocations, épreuves sociales |
+
+Formules (toutes les valeurs de base sont réglables par le MJ, *Créer › Règles*) :
+
+| Valeur | Calcul |
+|---|---|
+| PV max | PV de la classe + Constitution × 2 + gain par niveau + équipement |
+| Ressource max (mana, AEC…) | base de la classe + caractéristique de la ressource × 2 + 2 par niveau |
+| Défense | 8 + Dextérité + armure + bonus de classe et d'effets |
+| Toucher | d20 + caractéristique de l'arme (ou de la capacité) + bonus ≥ Défense de la cible |
+| Dégâts | dés de l'arme ou de la capacité + caractéristique ÷ 2 + bonus − résistance de la cible (minimum 1) |
+| Soins | dés du soin + caractéristique ÷ 2, augmentés des bonus de soins (%) |
+| Initiative | d20 + Dextérité |
+| Critique | 20 naturel (ou la plage de l'arme, élargie par certaines classes) : dés de dégâts doublés |
+| Épreuve | d20 + caractéristique ≥ difficulté (10 facile, 15 moyen, 20 difficile) |
+| Vision | 3 + Dextérité ÷ 2 cases (+ bonus d'objets « Vision ») |
+
+### Vision et brouillard de guerre
+
+Chaque joueur ne voit la carte qu'autour de **son** personnage, jusqu'à sa vision (en cases, distance réelle). Les terrains **Mur, Forêt dense, Montagne et Toits** bloquent la ligne de vue (la case elle-même reste visible). Les cases déjà vues restent connues (assombries) : c'est l'**exploration**, mémorisée par l'hôte pour chaque joueur et chaque carte, et sauvegardée.
+
+C'est l'hôte qui filtre : un téléphone ne reçoit **que** les pions et les étiquettes qu'il voit (plus les étiquettes des zones explorées) ; le terrain est transmis mais masqué à l'affichage. Les chiffres de combat d'un pion invisible ne sont pas envoyés.
+
+Réglages du MJ : brouillard par carte (*Monde*), *Oublier l'exploration*, *Voir le brouillard des joueurs* (aperçu), et dans *Créer › Règles* : vision de base, « +1 case tous les N points de Dextérité », **vision partagée** (chaque joueur voit ce que voit tout le groupe).
+
+## Peuples
+
+Le peuple s'ajoute à la classe. Il donne des **bonus de caractéristiques** (comptés dans la valeur de base), des **bonus de jeu** (affichés comme bonus sur la fiche), un **trait**, parfois une **capacité de peuple** (toujours équipée, sans prendre d'emplacement), et des **synergies** avec certaines classes.
+
+| Fantasy | Caractéristiques | Bonus | Capacité | Synergies |
+|---|---|---|---|---|
+| Humain | CHA +1 | +1 toucher | — | Guerrier (+4 PV), Soigneur (+10 % soins), Barde (+2 Inspiration) |
+| Elfe | DEX +1, INT +1, CON −1 | +4 ressource, +2 vision | — | Mage (+4 mana, +1 dégât), Rôdeur (+1 toucher, +1 vision), Druide (+10 % soins) |
+| Nain | CON +2, DEX −1 | +4 PV, +1 rés. physique | — | Gardien (+1 Défense, +1 rés.), Guerrier (+6 PV) |
+| Demi-orc | FOR +2, INT −1 | +2 PV, +1 dégât | Rage du sang | Druide (*Appel de la horde*, +2 PV), Guerrier (+1 dégât), Rôdeur (+1 dégât, +1 vitesse) |
+| Halfelin | DEX +2, FOR −1 | +1 Défense, critique +1 | — | Assassin (critique +1), Barde (CHA +1, +2 Inspiration), Rôdeur (+1 toucher) |
+| Gnome | INT +2, FOR −1 | +2 ressource, +1 rés. magique | — | Mage (+1 dégât), Soigneur (+10 % soins) |
+| Tieffelin | CHA +1, INT +1 | +1 rés. magique | Flammes infernales | Mage (+1 dégât), Assassin (critique +1), Barde (+2 Inspiration) |
+
+Légenders : Humain, Humain sans-magie (corps endurci, −6 AEC, +2 rés. magique), Mutant, Ombré (*Pas du vent*), Homme-lézard, Sirène (*Chant des profondeurs*), Centaure (+2 vitesse), Minotaure (*Charge cornue*), Esprit (+4 AEC), Démon (*Flammes infernales*), chacun avec ses synergies. Le MJ modifie ou crée des peuples dans *Créer › Peuples* (bonus, trait, capacités, synergie par classe).
+
+**Équipement de départ** (tout le monde, en plus du kit de classe) : potion de soin, 2 rations, torche (accessoire : +2 vision), corde, trousse de soins (1d4 + 3 PV).
+
+## Créer son personnage (assistant en 6 étapes)
+
+1. **Identité** — nom, portrait (visage, teint, coiffure, couleur, yeux, barbe, marque), couleur du pion ; histoire, personnalité, description facultatives.
+2. **Classe** — Fantasy : Guerrier, Gardien, Soigneur, Assassin, Rôdeur, Mage, Barde. Légenders : Briseur, Ombre, Invocateur, Créateur élémentaire, Métamorphe, Psychique, Soigneur, Tacticien de Karoh, Mutant. Chaque classe a des bonus de caractéristiques, des PV de base, une ressource, une vitesse, un **passif**, **trois capacités**, un **ultime**, des capacités à apprendre, un kit et des choix d'équipement.
+3. **Caractéristiques** — 5 partout + **15 points** (minimum 1, maximum 10 avant le bonus de classe). *Répartition conseillée* et *Réinitialiser*. Aperçu en direct : PV, ressource, Défense, initiative, résistances, attaque.
+4. **Équipement** — choix propre à la classe (ex. trois dagues pour l'Assassin) + kit fourni + or de départ.
+5. **Récapitulatif** — tout vérifier, revenir en arrière, puis créer.
+
+La fiche est **construite par l'hôte** à partir de ces choix : un téléphone ne peut pas imposer ses statistiques. Par la suite, un joueur ne modifie lui-même que la partie « récit » de sa fiche (nom, histoire, apparence, portrait). La *Création libre (avancée)* crée un personnage « histoire seule » dont le MJ règle les valeurs.
+
+Les anciennes fiches (versions précédentes) sont converties automatiquement : Agilité → Dextérité, Endurance → Constitution, Perception → Esprit, valeurs divisées par deux ; les fiches créées avec l'ancien assistant sont reconstruites avec leur classe (le Prêtre devient Soigneur), l'inventaire est conservé.
+
+## Les phases de jeu
+
+Le MJ choisit la phase (*Combat* dans la colonne d'outils) :
+
+| Phase | Tours | Déplacement | Actions |
+|---|---|---|---|
+| **Récit libre** | non | libre | actions libres résolues par le MJ ; capacités et objets utilisables |
+| **Exploration** | joueurs, chacun son tour | jusqu'à sa vitesse | décrire ce qu'on fait, capacités, objets ; « Terminer mon tour » |
+| **Dialogue** | joueurs | aucun | parler / agir |
+| **Combat** | tous les combattants visibles, par initiative | 1 PA par déplacement | **2 PA** par tour (voir ci-dessous) |
+| **Repos** | non | aucun | à la fin : 50 % des PV et toute la ressource récupérés |
+
+### Exploration libre et combats locaux
+
+Par défaut (règle *Monstres agressifs*), la partie commence en **Récit libre** : chacun explore à son rythme, parle aux PNJ, ouvre des coffres, fait ses quêtes.
+
+- **Agressivité** : un monstre visible attaque le héros qui entre dans son **périmètre** (4 cases, ligne de vue nécessaire ; réglable par monstre et dans *Créer › Règles*). Le mouvement s'arrête dès que l'on est repéré. C'est une **embuscade** : les monstres jouent en premier. Sa meute (monstres à 6 cases ou moins) le suit.
+- **Combat local** : seul le héros repéré (et ceux qui sont tout près) passe en combat. Les autres joueurs restent libres ; ils peuvent rejoindre le combat en s'approchant. Plusieurs combats peuvent avoir lieu en même temps.
+- **Attaquer** : toucher un monstre (8 cases au plus, vue dégagée) → *Attaquer (engager le combat)* ; le joueur joue en premier.
+- **Fuir** (1 PA) : d20 + Dextérité contre 10, +3 par ennemi au contact. Réussi : on quitte le combat et les monstres vous laissent tranquille quelques secondes.
+- **Monstres automatiques** : ils jouent seuls après 2 secondes (le temps de voir les dés). Le MJ peut reprendre la main sur un combat (*Combat › Combats en cours › Je joue les monstres*), passer un tour ou le terminer.
+- **Déplacement libre** limité à 2 × la vitesse par mouvement (réglable). Délai de tour des joueurs : désactivé par défaut (*Créer › Règles*).
+- Fin du combat : XP pour les participants seulement, butin pour celui qui a vaincu.
+- La phase **Combat** générale du MJ fonctionne comme avant (tout le monde) et met fin aux combats locaux.
+
+### Quêtes automatiques et PNJ
+
+- Objectifs automatiques : **Vaincre** (ex. 3 loups), **Atteindre un lieu** (case + rayon), **Obtenir un objet**, **Parler à un PNJ**. Ils se cochent tout seuls ; quand tout est fait, la quête se termine et les récompenses tombent (option *Terminer la quête toute seule*).
+- Une quête qui a un PNJ « Confiée par » est **proposée** par ce PNJ : en le touchant (2 cases au plus), on lit sa quête et on l'accepte. Une quête principale concerne le groupe ; une quête secondaire acceptée est **personnelle**. Le journal liste les quêtes proposées.
+
+### Épreuves : une action déclenche le jet, le résultat s'applique tout seul
+
+Hors combat (et en combat pour 1 PA), une action tentée se résout tout de suite : **d20 + caractéristique contre une difficulté (DD)**. L'hôte lance le dé, l'affiche au-dessus de la carte (« 14 + 7 = 21 contre DD 13 — Réussite ») et applique les conséquences.
+
+| Épreuve | Carac. | Réussite | Échec |
+|---|---|---|---|
+| **Athlétisme** (escalader, sauter, forcer) | Force | coffre forcé | chute : −1d4 PV (1 naturel : −1d6−1) |
+| **Discrétion** (se cacher) | Dextérité | invisible aux monstres 25 s (45 s sur 20) | les monstres proches vous repèrent et attaquent |
+| **Crochetage** (serrure, piège, poches) | Dextérité | coffre ouvert, or volé à un PNJ | 1 naturel : piège (−1d6 PV), PNJ fâché |
+| **Endurance** (tenir bon) | Constitution | chasse un effet néfaste (poison…) | −1d4 PV |
+| **Fouille** | Intelligence | objets, or, coffres cachés (une fois par endroit) | rien |
+| **Savoir** (identifier) | Intelligence | PV, Défense, résistances et point faible d'un monstre ; ou un souvenir (étiquette secrète révélée) | rien |
+| **Perception** (observer) | Esprit | monstres, objets, secrets cachés à 8 cases révélés | rien |
+| **Premiers soins** | Esprit | +1d6 + Esprit ÷ 2 PV à un allié voisin (une fois par minute et par blessé) | 1 naturel : −1 PV |
+| **Survie** (chasser, cueillir) | Esprit | nourriture, herbes (une fois par endroit) | rien |
+| **Persuasion** | Charisme | un PNJ propose une quête ou une rumeur ; un animal se calme | 1 naturel : le PNJ refuse de parler 30 s |
+| **Intimidation** | Charisme | un monstre s'enfuit (effrayé en combat ; jamais un boss) ; un PNJ parle | le monstre attaque |
+| **Arcanes** | Intelligence | coffres et secrets magiques révélés, +1d4 ressource | 1 naturel : −1d4 PV |
+
+- Difficultés : Facile 10, Moyen 14, Difficile 18, Héroïque 22 (un coffre verrouillé a sa propre difficulté ; Forcer = +2). **20 naturel** : réussite critique (effet renforcé, XP doublée) ; **1 naturel** : échec critique ; à 3 près : « Presque… » (échec sans pénalité).
+- Réussite : +5 XP (réglable). Même épreuve : 6 s d'attente (réglable). Les boutons affichent la chance de réussite (« Fouiller · 65 % »).
+- **Côté joueur** : boutons *Fouiller*, *Observer*, *Se cacher*, *Soigner*, *Chasser, cueillir*, *Autre…* sous la carte ; *Crocheter* / *Forcer* sur un coffre verrouillé ; *Convaincre*, *Intimider*, *Faire les poches* sur un PNJ ; *Intimider*, *Identifier*, *Se cacher* sur un monstre. Une **action libre** écrite (« J'escalade le mur ») déclenche l'épreuve devinée d'après le texte ; on peut choisir une autre compétence ou « Sans jet ».
+- **Côté MJ** : une action sans compétence reconnue attend dans *Actions en attente* : choisissez la compétence (devinée) et cliquez la difficulté — le jet est lancé et appliqué. *Le joueur lance* le lui fait lancer lui-même. Sous chaque action résolue, **conséquences en un clic** : −1d4 PV, −1d8 PV, +1d6 PV, +10 XP, +1d10 or, Objet trouvé, Empoisonné, Étourdi. *Demander un jet* propose aussi les épreuves.
+
+### Le combat
+
+| Action | Coût |
+|---|---|
+| Se déplacer (jusqu'à sa vitesse ; les cases restantes peuvent servir plus tard dans le tour) | 1 PA |
+| Attaque rapide (arme équipée) | 1 PA |
+| Attaque puissante : −2 au toucher, +50 % de dégâts | 2 PA |
+| Se défendre : « En garde » (+3 Défense) jusqu'au prochain tour | 1 PA |
+| Utiliser un objet (sur soi ou un allié au contact) | 1 PA |
+| Capacité | son coût en PA + son coût en ressource |
+| Parler, discuter, décrire | gratuit |
+
+- **Début de tour** : effets sur la durée (poison, brûlure, saignement, régénération), durées qui diminuent, recharges qui avancent, +1 ressource, +10 % de jauge d'ultime, passifs « au début du tour ». Un combattant **étourdi** perd son tour.
+- **Jauge d'ultime** : +15 % par coup porté, +10 % par coup reçu, +10 % par tour. Pleine (100 %), l'ultime devient utilisable ; elle se vide à l'utilisation.
+- **Passifs** : toujours actifs (ex. +2 Défense sous 50 % de PV), ou déclenchés (au toucher, en subissant des dégâts, en soignant, quand un allié proche est blessé…). Leur activation s'affiche discrètement sur la carte et dans le récit.
+- **Hors de combat** à 0 PV (pion grisé, tour sauté). Un soin peut relever un allié.
+- **Victoire** quand tous les adversaires visibles sont à terre : XP partagée, or partagé, butin des monstres dans le **coffre du groupe**. **Défaite** si tout le groupe est à terre (le MJ raconte la suite).
+- À la fin du combat, les effets temporaires, les recharges et les invocations disparaissent.
+
+### Dés et résultats visibles
+
+Chaque jet de combat est montré à tous dans un bandeau en haut de la carte : le d20 qui roule puis s'arrête, le bonus, le total, la Défense visée et le résultat (*Touché*, *Raté*, *Critique !*, *Échec critique*), puis les dés de dégâts (ou de soin), les bonus, le ×1,5 de l'attaque puissante, la résistance et les dégâts finalement subis. Le récit garde la même chose en texte : « Shin touche Loup : d20 = 14 +5 = 19 contre Défense 13 » puis « Loup subit 12 dégâts (dés [4, 6] +3 −1 résistance) ».
+
+### Adversaires vaincus et butin
+
+Un adversaire mis à terre est **retiré de la carte** (règle *Les monstres vaincus disparaissent*, active par défaut) et son **butin est tiré tout de suite** : il va **dans le sac de celui qui l'a vaincu** (règle *Le butin va au vainqueur*, sinon au coffre du groupe), l'or aussi. Le téléphone du vainqueur affiche une fenêtre **« Butin ! »**. L'XP de tous les adversaires est partagée à la victoire. Les **coffres** posés sur la carte s'ouvrent depuis une case voisine (le contenu va dans le sac de celui qui ouvre, une seule fois).
+
+### Effets de statut
+
+Étourdi, Immobilisé, Réduit au silence, Empoisonné, Saignement, Brûlure, Gelé, Affaibli, Vulnérable, Marqué, Aveuglé, Effrayé, Bouclier, En garde, Renforcé, Béni, Concentré, Hâte, Régénération, Invisible, Rage, Forme bestiale… Leurs icônes s'affichent au-dessus des pions, dans la frise des tours et sur la fiche (avec leur description). Le MJ peut en créer d'autres.
+
+## Les grandes cartes
+
+| Carte | Taille | Contenu |
+|---|---|---|
+| Kurtzuma — carte du monde | 120 × 80 | Le continent, ses nations (Pik, RAC, Trèfle, Karoh, Keurd…), les mers, les îles et les quatre cicatrices des Légenders |
+| Région de Valombre | 96 × 64 | La ville, ses champs, la rivière et le pont, la forêt des Cendres, le lac, les hameaux, les ruines, la grotte, les montagnes |
+| Shima — la capitale | 96 × 64 | Le QG de la magie au centre, les treize divisions en cercle, le port |
+| Forêt-Monde — la lisière | 96 × 72 | Campement scientifique, villages de monstres, racines géantes, veines d'AEC |
+
+Sur ces cartes, utilisez *Recentrer*, la molette ou deux doigts pour zoomer. Les pions et les noms s'affichent mieux en zoomant.
+
+## Les univers
+
+À la création de la campagne, le MJ choisit un univers :
+
+| Univers | Contenu |
+|---|---|
+| **Légenders** | Codex complet (les dix Légenders, l'AEC et ses couleurs, l'éveil, les 10 catégories magiques, Gardiens, mutants, anti-magie, maîtrise des bases, rangs B → L, mages d'État, Kurtzuma et ses nations, monstres, Ombrés, démons, esprits). Suggestions de création : espèces, origines (nations), catégories et origines de magie, rangs. Cartes en plus : Shima – Division de l'Encre, Île du test de survie, Grande Caldeira. |
+| **Fantasy classique** | Le cadre de démonstration « Les Cendres de Valombre » (ville, forêt, ruines, secrets pour le MJ). |
+| **Univers libre** | Rien d'imposé. |
+
+Les entrées du codex marquées « MJ » (secrets) **ne sont jamais envoyées aux joueurs**.
+Les univers sont de simples fichiers JSON dans `data/universes/` : on peut en ajouter un en copiant `libre.json`.
+
+## Côté joueur
+
+- **Bandeau du haut** : lieu, situation (phase, tour, à qui de jouer), objectif de la quête principale.
+- **Récit** : narration du MJ (encadrée), messages, résultats de combat en lignes colorées (rouge dégâts, vert soins, violet effets, or récompenses), jets de dés. Filtres *Tout / Récit et discussions / Combat*. Saisie : *Message* (groupe ou MJ en privé), *Action* (libre, avec des débuts de phrase proposés), *Dés*. Les jets demandés par le MJ ont un bouton **Lancer le dé**.
+- **Carte** : frise des tours (portraits, PV, effets), carte avec cases atteignables dorées et cibles entourées de rouge, chiffres flottants, panneau du tour (PA, attaques, défense, fin du tour) ou rappel de la phase et dés rapides.
+- **Barre du bas permanente** : portrait (ouvre la fiche, « + » doré quand une montée de niveau attend), PV, ressource, jauge d'ultime, or, indicateur de tour (« À VOUS · 2 PA »), capacités équipées, **Sac**, **Fiche**, **Journal**, **Discuter** (pastille de non-lus).
+- **États des capacités** : disponible ; coût insuffisant (coût en rouge) ; en recharge (tours restants en grand) ; inutilisable (grisée, la raison s'affiche au toucher : pas votre tour, PA, mana, recharge, ultime pas chargé, aucun ennemi ou allié à portée, aucun allié blessé) ; sélectionnée en attente de cible (cadre doré, « CIBLE ? »). Le ciblage n'entoure que les pions **à portée**.
+- **Panneau du tour** : « À vous ! », points d'action restants, *Attaque rapide*, *Attaque puissante*, *Se défendre*, *Objet* (ouvre le sac), chacun avec son coût en PA (grisé si impossible), et *Fin du tour* compact. Pendant qu'une action attend la réponse de l'hôte, les boutons sont bloqués et l'indicateur de connexion affiche « Envoi… ».
+- **Discussion** : *Discuter* ouvre un panneau avec la conversation et la saisie par-dessus la carte ; parler ne coûte aucun PA et n'interrompt pas le combat. Les messages privés reçus déclenchent une notification.
+- **Notifications** (en haut, 3 au plus, se ferment d'un toucher) : PV récupérés, objet obtenu, or reçu, compétence apprise, effet subi, ultime disponible, action refusée (avec la raison). Elles reflètent l'état confirmé par l'hôte ; tout reste aussi dans le récit.
+- **Paysage** : en tournant le téléphone, la barre du bas devient une colonne à droite (bascule Récit / Carte, personnage, capacités, boutons), le panneau du tour passe à côté de la carte, et les idées d'actions tiennent dans un menu *Idées d'actions…*. Orientation automatique, ou bloquée en portrait / paysage dans *Journal › Réglages › Affichage*. Les zones système (encoche, barre de navigation) sont respectées.
+- **Panneaux superposés** (fermeture par la croix, l'extérieur ou le bouton retour) :
+  - *Capacité* : description, coûts, portée, cible, effets, raison si indisponible, *Utiliser* ;
+  - *Fiche* : en-tête (portrait, nom, classe, niveau, XP, or, PV, ressource, ultime, effets), montée de niveau si elle attend, puis quatre onglets — *Personnage* (caractéristiques avec base + bonus, valeurs de combat dont la vision, bonus et malus, effets), *Capacités* (passif, équipées, connues, à débloquer avec leur niveau), *Équipement* (porté, contenu du sac), *Histoire* ;
+  - *Sac* : emplacements (arme, armure, 2 accessoires), cases d'objets colorées par rareté avec leur nom, filtres par catégorie (seulement celles présentes), détail avec comparaison (« Défense 12 → 16 (+4) » en vert, pertes en rouge), *Équiper*, *Utiliser* (confirmation seulement pour un objet rare ou mieux), *Lire*, *Donner à…*, *Jeter* (avec confirmation) ; onglet *Coffre du groupe* ;
+  - *Journal* : quêtes (principales d'abord, objectifs, récompenses), groupe, codex, réglages (musique, connexion, aide).
+- Sur PC (fenêtre large), la carte et le récit s'affichent côte à côte.
+
+## Côté MJ
+
+L'écran est organisé en quatre zones, séparées par des **barres déplaçables** à la souris. Raccourcis : Ctrl + S sauvegarder, F1 carte, F2 récit, F5 tour suivant (combat), Ctrl + E événement rapide, Ctrl + Q nouvelle quête, Ctrl + N écrire, Échap fermer un panneau (bouton *Raccourcis* en haut).
+
+- **Gauche — joueurs** : adresse IP, joueurs (portrait, PV, ressource, niveau, or, effets, connexion), *Écrire*, *Jet*, *Fiche et outils*, *Déconnecter*, *Retirer*.
+- **Centre — Carte et Récit** : la carte interactive (pions animés, chiffres flottants) et le récit complet, avec les **actions en attente** en haut (résoudre, refuser, *Le joueur lance*).
+- **Bas — journal des actions** : une ligne par événement récent (combats, récompenses, phases, propositions d'action, jets, connexions), le détail au survol.
+- **Bas — saisie et événements** : *Narration* (mise en forme récit) ou message simple, au groupe ou en privé ; dés publics, secrets ou montrés à un joueur. **Événement rapide…** : épreuve de groupe (jet demandé à chacun, avec caractéristique et difficulté), dégâts ou soins de groupe, récompense de groupe (XP, or, objet au coffre), embuscade (monstres placés puis combat lancé), créer un objet, nouvelle quête.
+- **Droite — outils** :
+  - **Combat** : choix de la phase, ordre des tours (▲ ▼ ×), au tour d'un monstre ses commandes (*Jouer automatiquement*, attaque rapide / puissante, se défendre, capacités) avec ciblage sur la carte, *Tour suivant*, fin de combat ; pion sélectionné (nom, PV, effets à appliquer, caché, note, couleur) ; coffre du groupe (donner, retirer).
+  - **Monde** : musique (14 morceaux, diffusion aux téléphones, combat automatique), cartes (montrer, créer, dupliquer, propriétés, supprimer, **brouillard de guerre**, *Voir le brouillard des joueurs*, *Oublier l'exploration*), outils de dessin (déplacer, peindre 29 terrains, pions, étiquettes secrètes, gomme, départ).
+  - **Quêtes** : brouillons, en cours, terminées ; *Nouvelle quête* (principale / secondaire, donneur, description, objectifs, joueurs concernés ou tout le groupe, récompenses : XP, or, objets du catalogue ou créés sur mesure) ; *Donner aux joueurs*, objectifs à cocher, *Réussie : distribuer* (une seule fois), *Échouée*.
+  - **Créer** : le catalogue de la campagne — **objets** (catégorie, rareté, icône, arme, bonus, effets à l'utilisation, effets à l'impact, capacités accordées, livre de compétence), **capacités** (coûts, portée, cible, zone, jet, recharge, ultime, effets), **effets de statut** (bonus / malus, étourdi, immobilisé, bouclier, dégâts ou soins par tour…), **monstres** et boss (caractéristiques, PV, attaque, capacités, XP, table de butin), **classes** (bonus, PV, ressource, passif, capacités, ultime, capacités à apprendre, kit), **tables de butin** (chances, quantités, objets garantis, or) et **règles** (points de création, PA, coûts, formules, XP, emplacements…). Le bouton **Aperçu** montre la carte de l'objet, de la capacité, de l'effet, du monstre ou de la classe telle que les joueurs la verront, avant d'enregistrer. Actions directes : *Donner à…*, *Au coffre du groupe*, *Placer* un monstre, *Tirer* une table de butin.
+  - **Fiches** : tous les personnages, *Nouveau PNJ*, *Packs de PNJ…* (convertis automatiquement), autoriser ou non les joueurs à modifier leur histoire.
+  - **Codex** (avec les secrets MJ) et **Réseau** (état, adresses, journal des connexions).
+- **Fiche et outils d'un personnage** : ± PV, soigner, mettre hors de combat, ± ressource, charger l'ultime, donner XP ou or, ± caractéristiques, donner un objet (du catalogue ou créé sur le moment), apprendre / oublier une capacité, équiper / retirer, appliquer / retirer un effet, inventaire, modifier l'histoire et les valeurs (fiche libre), placer sur la carte.
+- **Journal du MJ** : chaque modification manuelle (PV, objets, effets, XP, règles…) est notée dans le récit, visible du MJ seul.
+
+## Aventures prêtes à jouer et cartes
+
+**Aventures** (`data/adventures`, générées par `tools/make_adventures.py`) : *Les cloches de Valombre*, *La meute des Cendres*, *Les ruines du temple oublié*, *Une nuit au Corbeau Rieur* (Fantasy), *Le test de la magie*, *Premier jour à la Division de l'Encre* (Légenders). Chacune installe une carte, des PNJ placés (avec notes pour le MJ), des monstres cachés, des coffres, des étiquettes secrètes, des **quêtes en brouillon** et des **scènes** : texte à raconter, conseils pour le MJ et action en un clic (donner une quête, épreuve de groupe, révéler les monstres et lancer le combat). On la choisit à la création de la campagne ou dans l'onglet **Aventure** du MJ.
+
+**Cartes** (onglet *Monde*) : **Générer…** crée une carte jouable en un clic — forêt, village, **ville** (remparts, portes, avenues, marché, quartiers), donjon, grotte, plaine avec rivière, île — en cinq tailles (jusqu'à **Immense, 100 × 68**), avec des lieux nommés et quelques étiquettes secrètes. Villages et villes arrivent **construits et habités** (auberge, forge, échoppe, temple, caserne, manoir, maisons…, chacun avec son habitant) ; les grandes cartes sauvages ont des campements, ruines, cryptes, fermes à découvrir.
+
+**Bâtiments prêts** (*Monde › Bâtiments prêts*) : maison, grande maison, auberge, forge, échoppe, temple, tour de garde, caserne, ferme et champs, grange, place du marché, puits, campement, tour du mage, herboristerie, manoir, ruine, entrée de crypte. Choisissez, puis touchez la carte (le contour du bâtiment suit le curseur) : murs, porte, meubles, nom, coffre (parfois verrouillé), monstre caché pour la crypte et la ruine, et **son habitant**. *Annuler la dernière retouche* le retire.
+
+**Habitants** (*Monde › Habitants*) : villageois, aubergiste, forgeron, marchand, prêtre, garde, capitaine, fermier, chasseur, herboriste, mage, noble. Touchez la carte pour en placer un, puis déplacez-le avec *Déplacer*.
+
+**Quêtes secondaires prêtes** : 25 quêtes (loups, brigands, chef des bandits, gobelins, araignées, ours, squelettes, ombres, golem, cultistes, cave infestée, herbes de lune, champignons, minerai, outils volés, récolte, cristaux, gemmes, relique, peaux, antidote, colis, lettre, patrouille, compagnon perdu), chacune liée aux métiers qui peuvent la confier. **Un habitant salue et propose une quête dès qu'on lui parle** (toucher le PNJ à 2 cases au plus suffit) ; une fois finie, il en propose une autre. À l'acceptation, la quête **s'installe toute seule** : monstres à vaincre placés plus loin, objets à ramasser sur la carte, lieu à atteindre marqué, colis ou lettre remis au joueur. Les objectifs se cochent seuls ; on termine en **revenant voir** le PNJ (qui reprend les objets demandés) et les récompenses tombent. Les PNJ des aventures prêtes ont aussi un métier. Outils de retouche : **Peindre** (pinceau réglable), **Remplir** (toute une zone d'un même terrain), **Rectangle**, **Pièce** (sol + murs autour, en deux touches), et **Annuler la dernière retouche** (Ctrl + Z, 20 étapes).
+
+## Graphismes
+
+Le jeu est en **pixel art** (sprites originaux générés par `tools/make_sprites.py`) :
+- **Icônes** : chaque objet a son dessin (épée, arc, potion, herbe, relique…) ; les capacités et effets sont des symboles (feu, glace, foudre, cœur…) posés sur une **tuile carrée qui s'éclaire de la couleur de leur élément**.
+- **Carte** : arbres variés (chênes, pins, arbres fruitiers, en fleurs, d'automne, sapins enneigés), buissons, rochers, fleurs, roseaux, nénuphars, cristaux. Les **bâtiments prêts** sont meublés (tables, tonneaux, caisses, lits, étagères, enclume et forge, autel et piliers, chaudron, bottes de foin, tapis), la place du marché a ses **étals colorés**, le campement ses **tentes** et son feu, le puits et les tombes sont dessinés. Repeindre une case enlève son meuble ; *Annuler* le remet.
+- **Pions** : un petit personnage selon la **classe** du héros, le **métier** du PNJ (aubergiste avec sa chope, forgeron et son marteau, garde et sa lance…) ou l'**espèce** du monstre (loup, gobelin, squelette, araignée, ours, golem, dragon…), debout sur un socle de la couleur du pion. Coffres et objets à ramasser ont leur sprite.
+- La case de la carte mesure 16 ou 32 pixels, pour des pixels nets à toutes les tailles de carte.
+
+## Musique
+
+Avant le début de la partie (menus, création du personnage, salon), le **thème principal** joue en fond, sur le PC comme sur les téléphones ; le bouton *Musique* de l'accueil le coupe (réglage gardé par l'appareil). Si le MJ lance un morceau, c'est le sien qu'on entend ; quand la partie commence, le thème s'arrête et c'est le MJ qui choisit la musique.
+
+## Progression
+
+- **XP** par paliers : 100 pour le niveau 2, 300 pour le 3, 600 pour le 4, 1 000 pour le 5… (réglable).
+- À chaque niveau : PV et ressource en plus, **1 point de caractéristique** à placer, et **un choix** : apprendre une capacité de sa classe (accessible à partir d'un certain niveau) ou améliorer une capacité connue (rang 2, 3 : +2 aux dégâts / soins et −1 au coût par rang).
+- Capacités **connues** et **équipées** : 3 de base + 1 ultime équipées (réglable) ; on change hors combat (en combat seulement si le MJ l'autorise).
+- On apprend aussi des capacités grâce aux **livres** (objets), aux **objets** qui en accordent tant qu'ils sont équipés, et au **MJ** à tout moment.
+
+## Objets et butin
+
+- Catégories : arme, armure, accessoire, consommable, potion, matériau, objet de quête, livre, objet unique.
+- Raretés : commun (gris), peu commun (vert), rare (bleu), épique (violet), légendaire (or).
+- Emplacements : 1 arme, 1 armure, 2 accessoires (boucliers, anneaux, amulettes, bottes…).
+- Effets possibles : caractéristiques, PV, ressource, Défense, toucher, dégâts, résistances, vitesse, soins, critique, PA ; effets à l'impact (poison, étourdissement, vol de vie…) ; capacités accordées ; consommables à effets.
+- **Butin** : chaque monstre a une table de butin ; la victoire la tire et met les objets dans le **coffre du groupe** (premier arrivé, premier servi). Le MJ peut aussi tirer une table à la main, donner directement, ou retirer.
+
+## Sauvegarde
+
+Automatique toutes les minutes et à la fin de la session, plus le bouton *Sauver*. Tout est conservé : joueurs, fiches (classes, caractéristiques, passifs, capacités connues et équipées, niveaux, XP, inventaire, or, ressources, effets), catalogue et règles de la campagne (créations du MJ comprises), quêtes, coffre du groupe, cartes, pions, messages, phase en cours. Les anciennes sauvegardes sont converties à l'ouverture (l'original est copié à côté, en `.json.v1`). Une sauvegarde venant d'une version plus récente affiche un avertissement.

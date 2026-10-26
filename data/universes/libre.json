@@ -1,0 +1,59 @@
+{
+ "id": "libre",
+ "name": "Univers libre",
+ "tagline": "Un monde vierge à inventer",
+ "description": "Aucun contenu imposé : le MJ et les joueurs inventent tout.",
+ "character": {
+  "species": [
+   "Humain",
+   "Autre"
+  ],
+  "origins": [
+   "Autre"
+  ],
+  "stats": [
+   "Force",
+   "Agilité",
+   "Endurance",
+   "Intelligence",
+   "Perception",
+   "Charisme"
+  ],
+  "skills": [
+   "Combat",
+   "Discrétion",
+   "Survie",
+   "Médecine",
+   "Investigation",
+   "Négociation",
+   "Magie"
+  ],
+  "magic_title": "Pouvoirs",
+  "magic_categories": [
+   {
+    "name": "Libre",
+    "hint": "Décrivez votre pouvoir comme vous voulez."
+   },
+   {
+    "name": "Aucun",
+    "hint": ""
+   }
+  ],
+  "magic_origins": [
+   "Libre"
+  ],
+  "ranks": [],
+  "rank_title": "Rang",
+  "resource_name": "Énergie",
+  "hp_default": 20,
+  "resource_default": 10
+ },
+ "codex": [
+  {
+   "category": "Pour le MJ",
+   "title": "Univers libre",
+   "text": "Aucune règle imposée. Créez vos lieux, cartes, pions et PNJ au fil de la partie.",
+   "mj_only": false
+  }
+ ]
+}

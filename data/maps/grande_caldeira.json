@@ -1,0 +1,49 @@
+{
+ "id": "grande_caldeira",
+ "name": "Grande Caldeira — colonie Volcano",
+ "description": "La cicatrice de Sol'fyr : rivières de lave, cendres, et la colonie scientifique Volcano.",
+ "universe": "legenders",
+ "w": 32,
+ "h": 20,
+ "rows": [
+  "ccccccccccmcmccmcccccmcmccmccccc",
+  "c#######cccmccccccmcccccmcccmlll",
+  "m#bbbbb#ccccmcccccccccccmllllccm",
+  "m#bbbbb#cccccccccccccclllccccccc",
+  "c#bbbbb#ccmccllcllccclcccmmcccmc",
+  "c#bbbbb#ccccclcllllllcccmccccccc",
+  "c###r###cccclllllllllccccccccccc",
+  "ccccccccccccllllxlllllccccmccmcc",
+  "cmccccccccclllxxxxllllcccmcccccc",
+  "ccccccccccclllxxxlxllllccccmcmcc",
+  "cccccccccclllxxxlxxxllcccccccccc",
+  "cmcccccccmclllxxxxxlllcccccmcccc",
+  "ccmcccccccrrrlxxxxxlllcccccccccc",
+  "cccmcccrrrllllllxllllmlmcccccccc",
+  "cmrrrrrccccmclllllllcmcccccccccc",
+  "rrcccccccccclmlllllccccccccccccc",
+  "cmccccmccmccccclllcmccmccccccmcc",
+  "cccccccccmcmcccccmccmccccccccccc",
+  "cmcccmccccccccccccccmccccccccccc",
+  "ccccmmcccmcmmcccccccccmmcccccccc"
+ ],
+ "spawn": {
+  "x": 0,
+  "y": 15
+ },
+ "labels": [
+  {
+   "x": 4,
+   "y": 3,
+   "text": "Volcano (colonie scientifique)",
+   "hidden": false
+  },
+  {
+   "x": 16,
+   "y": 10,
+   "text": "Cœur du brasier",
+   "hidden": false
+  }
+ ],
+ "tokens": []
+}

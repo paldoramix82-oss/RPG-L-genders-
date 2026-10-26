@@ -1,0 +1,86 @@
+[
+ {
+  "id": "kurtzuma",
+  "title": "Kurtzuma (thème principal)",
+  "mood": "Épique",
+  "file": "res://assets/music/kurtzuma.ogg"
+ },
+ {
+  "id": "chevaliers_de_pik",
+  "title": "Les chevaliers mages de Pik",
+  "mood": "Épique",
+  "file": "res://assets/music/chevaliers_de_pik.ogg"
+ },
+ {
+  "id": "victoire",
+  "title": "Victoire !",
+  "mood": "Épique",
+  "file": "res://assets/music/victoire.ogg"
+ },
+ {
+  "id": "poing_de_braise",
+  "title": "Poing de braise",
+  "mood": "Combat (rock)",
+  "file": "res://assets/music/poing_de_braise.ogg"
+ },
+ {
+  "id": "gardien_du_dragon",
+  "title": "Gardien du Dragon",
+  "mood": "Combat (rock)",
+  "file": "res://assets/music/gardien_du_dragon.ogg"
+ },
+ {
+  "id": "test_de_la_magie",
+  "title": "Le test de la magie",
+  "mood": "Aventure (rock)",
+  "file": "res://assets/music/test_de_la_magie.ogg"
+ },
+ {
+  "id": "course_contre_la_montre",
+  "title": "Course contre la montre",
+  "mood": "Tension",
+  "file": "res://assets/music/course_contre_la_montre.ogg"
+ },
+ {
+  "id": "taverne",
+  "title": "Taverne du Corbeau Rieur",
+  "mood": "Taverne",
+  "file": "res://assets/music/taverne.ogg"
+ },
+ {
+  "id": "shima",
+  "title": "Shima, cité des mages",
+  "mood": "Ville",
+  "file": "res://assets/music/shima.ogg"
+ },
+ {
+  "id": "foret_monde",
+  "title": "La Forêt-Monde",
+  "mood": "Exploration",
+  "file": "res://assets/music/foret_monde.ogg"
+ },
+ {
+  "id": "desert_de_cristal",
+  "title": "Le Désert de Cristal",
+  "mood": "Exploration",
+  "file": "res://assets/music/desert_de_cristal.ogg"
+ },
+ {
+  "id": "valombre",
+  "title": "Valombre sous les cendres",
+  "mood": "Mystère",
+  "file": "res://assets/music/valombre.ogg"
+ },
+ {
+  "id": "abime_englouti",
+  "title": "L'Abîme englouti",
+  "mood": "Mystère",
+  "file": "res://assets/music/abime_englouti.ogg"
+ },
+ {
+  "id": "campement",
+  "title": "Repos au campement",
+  "mood": "Repos",
+  "file": "res://assets/music/campement.ogg"
+ }
+]
