@@ -1,0 +1,4438 @@
+{
+ "universe": "legenders",
+ "version": 1,
+ "rules": {
+  "stat_base": 5,
+  "stat_pool": 15,
+  "stat_min": 1,
+  "stat_max": 10,
+  "stat_cap": 14,
+  "ap_per_turn": 2,
+  "move_ap": 1,
+  "quick_attack_ap": 1,
+  "power_attack_ap": 2,
+  "defend_ap": 1,
+  "item_ap": 1,
+  "defense_base": 8,
+  "hp_per_con": 2,
+  "res_per_stat": 2,
+  "res_regen_turn": 1,
+  "ult_gain_deal": 15,
+  "ult_gain_taken": 10,
+  "ult_gain_turn": 10,
+  "xp_base": 100,
+  "level_max": 20,
+  "stat_points_per_level": 1,
+  "pick_every_levels": 1,
+  "slots_basic": 3,
+  "slots_ultimate": 1,
+  "swap_in_combat": false,
+  "rest_hp_pct": 50,
+  "start_gold": 20,
+  "max_ability_rank": 3
+ },
+ "stats": [
+  {
+   "name": "Force",
+   "short": "FOR",
+   "description": "Puissance physique : dégâts au corps à corps, attaques puissantes, porter, enfoncer."
+  },
+  {
+   "name": "Dextérité",
+   "short": "DEX",
+   "description": "Précision et agilité : toucher, esquive (Défense), initiative, discrétion, tir."
+  },
+  {
+   "name": "Constitution",
+   "short": "CON",
+   "description": "Résistance physique : points de vie, résistance aux coups et au poison."
+  },
+  {
+   "name": "Intelligence",
+   "short": "INT",
+   "description": "Savoir et analyse : puissance des sorts arcaniques, énigmes, connaissances."
+  },
+  {
+   "name": "Esprit",
+   "short": "ESP",
+   "description": "Volonté et concentration : mana, résistance mentale et magique, puissance des soins."
+  },
+  {
+   "name": "Charisme",
+   "short": "CHA",
+   "description": "Influence : persuader, intimider, et renforcer les capacités de soutien (bonus aux alliés)."
+  }
+ ],
+ "classes": {
+  "briseur": {
+   "id": "briseur",
+   "name": "Briseur",
+   "tagline": "Renforcement : se couvre d'une énergie qui décuple ses coups.",
+   "role": "Combattant au contact",
+   "color": "#b0605a",
+   "emblem": "fist",
+   "description": "Maître du renforcement : chaque coup est chargé de son vecteur (flammes, foudre, son…).",
+   "difficulty": 1,
+   "bonus": {
+    "Force": 1,
+    "Constitution": 1
+   },
+   "hp_base": 20,
+   "hp_per_level": 6,
+   "resource": {
+    "name": "AEC",
+    "stat": "Constitution",
+    "base": 6
+   },
+   "speed": 5,
+   "crit_bonus": 0,
+   "defense_bonus": 0,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Surcharge",
+    "description": "Sous 50 % de ses PV : +3 dégâts.",
+    "trigger": "always",
+    "icon": "fire",
+    "cond": {
+     "self_hp_below": 50
+    },
+    "mods": {
+     "damage": 3
+    }
+   },
+   "abilities": [
+    "poing_elementaire",
+    "charge_aec",
+    "peau_renforcee"
+   ],
+   "ultimate": "explosion_vecteur",
+   "learnable": [
+    {
+     "ability": "second_souffle",
+     "level": 2
+    },
+    {
+     "ability": "rage_briseur",
+     "level": 3
+    }
+   ],
+   "kit": [
+    {
+     "item": "armure_cuir",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "ration",
+     "qty": 2,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Vos armes",
+     "options": [
+      "griffes_acier",
+      "marteau_armes",
+      "epee_longue"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 5,
+    "Dextérité": 2,
+    "Constitution": 4,
+    "Intelligence": 0,
+    "Esprit": 2,
+    "Charisme": 2
+   },
+   "magic": {
+    "category": "Renforcement",
+    "name": "Vecteur élémentaire",
+    "description": "Se recouvre d'un élément pour décupler ses coups."
+   }
+  },
+  "ombre": {
+   "id": "ombre",
+   "name": "Ombre",
+   "tagline": "Assassin des Faucheurs : silence, apnée, coups critiques.",
+   "role": "Dégâts et critiques",
+   "color": "#4a4358",
+   "emblem": "dagger",
+   "description": "Formée chez les Faucheurs : frappe dans le silence, devient intangible et achève les cibles affaiblies.",
+   "difficulty": 1,
+   "bonus": {
+    "Dextérité": 2
+   },
+   "hp_base": 14,
+   "hp_per_level": 4,
+   "resource": {
+    "name": "AEC",
+    "stat": "Dextérité",
+    "base": 8
+   },
+   "speed": 6,
+   "crit_bonus": 1,
+   "defense_bonus": 0,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Faucheuse",
+    "description": "+1d6 dégâts contre une cible sous 50 % de ses PV ou affectée par un effet négatif.",
+    "trigger": "always",
+    "icon": "skull",
+    "cond": {
+     "target_weak": true
+    },
+    "mods": {
+     "damage_dice": "1d6"
+    }
+   },
+   "abilities": [
+    "frappe_ombre",
+    "apnee_spectrale",
+    "lame_silence"
+   ],
+   "ultimate": "moisson",
+   "learnable": [
+    {
+     "ability": "pluie_kunai",
+     "level": 2
+    },
+    {
+     "ability": "marque_faucheur",
+     "level": 3
+    }
+   ],
+   "kit": [
+    {
+     "item": "cape_ombre",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "bombe_fumee",
+     "qty": 2,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Votre lame",
+     "options": [
+      "dague_courbe",
+      "kunai_jumeaux",
+      "stylet_empoisonne"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 1,
+    "Dextérité": 5,
+    "Constitution": 3,
+    "Intelligence": 1,
+    "Esprit": 2,
+    "Charisme": 3
+   },
+   "magic": {
+    "category": "Altération",
+    "name": "Apnée spectrale",
+    "description": "Retient son souffle pour devenir intangible."
+   }
+  },
+  "invocateur": {
+   "id": "invocateur",
+   "name": "Invocateur",
+   "tagline": "Appelle des esprits liés par contrat.",
+   "role": "Invocation et soutien",
+   "color": "#6f9fc9",
+   "emblem": "spirit",
+   "description": "Lié par contrat à des esprits : les appelle au combat et protège ses alliés.",
+   "difficulty": 1,
+   "bonus": {
+    "Charisme": 1,
+    "Esprit": 1
+   },
+   "hp_base": 12,
+   "hp_per_level": 4,
+   "resource": {
+    "name": "AEC",
+    "stat": "Charisme",
+    "base": 12
+   },
+   "speed": 5,
+   "crit_bonus": 0,
+   "defense_bonus": 0,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Lien spirituel",
+    "description": "Au début de votre tour, récupère 1 AEC.",
+    "trigger": "turn_start",
+    "icon": "spirit",
+    "effects": [
+     {
+      "type": "restore",
+      "resource": "res",
+      "amount": 1,
+      "on": "self"
+     }
+    ]
+   },
+   "abilities": [
+    "appel_esprit",
+    "gardien_spirituel",
+    "invocation"
+   ],
+   "ultimate": "legion",
+   "learnable": [
+    {
+     "ability": "premiers_soins",
+     "level": 2
+    }
+   ],
+   "kit": [
+    {
+     "item": "robe_mage",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "potion_mana",
+     "qty": 1,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Votre catalyseur",
+     "options": [
+      "baguette_braise",
+      "baton_chene",
+      "talisman_garde"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 0,
+    "Dextérité": 3,
+    "Constitution": 3,
+    "Intelligence": 1,
+    "Esprit": 3,
+    "Charisme": 5
+   },
+   "magic": {
+    "category": "Invocation",
+    "name": "Contrats spirituels",
+    "description": "Appelle des esprits liés par contrat."
+   }
+  },
+  "createur": {
+   "id": "createur",
+   "name": "Créateur élémentaire",
+   "tagline": "Génère tornades, flammes ou vagues à partir de rien.",
+   "role": "Attaque magique à distance",
+   "color": "#d1a15e",
+   "emblem": "flame",
+   "description": "Crée les éléments à partir de rien : énormes dégâts de zone, mais fragile.",
+   "difficulty": 1,
+   "bonus": {
+    "Intelligence": 2
+   },
+   "hp_base": 10,
+   "hp_per_level": 4,
+   "resource": {
+    "name": "AEC",
+    "stat": "Intelligence",
+    "base": 12
+   },
+   "speed": 5,
+   "crit_bonus": 0,
+   "defense_bonus": 0,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Résonance",
+    "description": "Quand un de vos sorts touche, récupère 2 AEC.",
+    "trigger": "on_hit",
+    "icon": "flame",
+    "cond": {
+     "element": "magique"
+    },
+    "effects": [
+     {
+      "type": "restore",
+      "resource": "res",
+      "amount": 2,
+      "on": "self"
+     }
+    ]
+   },
+   "abilities": [
+    "trait_elementaire",
+    "deferlement",
+    "mur_elementaire"
+   ],
+   "ultimate": "tempete",
+   "learnable": [
+    {
+     "ability": "boule_de_feu",
+     "level": 2
+    },
+    {
+     "ability": "eclair_chaine",
+     "level": 4
+    }
+   ],
+   "kit": [
+    {
+     "item": "robe_mage",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "potion_mana",
+     "qty": 2,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Votre focaliseur",
+     "options": [
+      "baguette_braise",
+      "baton_chene",
+      "grimoire_poche"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 0,
+    "Dextérité": 3,
+    "Constitution": 3,
+    "Intelligence": 5,
+    "Esprit": 4,
+    "Charisme": 0
+   },
+   "magic": {
+    "category": "Création",
+    "name": "Éléments primordiaux",
+    "description": "Génère tornades, flammes ou vagues."
+   }
+  },
+  "metamorphe": {
+   "id": "metamorphe",
+   "name": "Métamorphe",
+   "tagline": "Prend la forme d'une bête pour combattre ou fuir.",
+   "role": "Combattant polyvalent",
+   "color": "#7b5a3a",
+   "emblem": "paw",
+   "description": "Change de forme : bête de combat redoutable, rapide et résistante.",
+   "difficulty": 1,
+   "bonus": {
+    "Force": 1,
+    "Dextérité": 1
+   },
+   "hp_base": 18,
+   "hp_per_level": 6,
+   "resource": {
+    "name": "AEC",
+    "stat": "Constitution",
+    "base": 8
+   },
+   "speed": 6,
+   "crit_bonus": 0,
+   "defense_bonus": 0,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Instinct animal",
+    "description": "Au début de votre tour, si vos PV sont sous 50 %, récupère 1d4 PV.",
+    "trigger": "turn_start",
+    "icon": "paw",
+    "cond": {
+     "self_hp_below": 50
+    },
+    "effects": [
+     {
+      "type": "heal",
+      "dice": "1d4",
+      "on": "self"
+     }
+    ]
+   },
+   "abilities": [
+    "forme_bestiale",
+    "griffes",
+    "bond"
+   ],
+   "ultimate": "fureur_primale",
+   "learnable": [
+    {
+     "ability": "second_souffle",
+     "level": 2
+    },
+    {
+     "ability": "hurlement",
+     "level": 3
+    }
+   ],
+   "kit": [
+    {
+     "item": "armure_cuir",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "ration",
+     "qty": 3,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Votre arme",
+     "options": [
+      "griffes_acier",
+      "lance",
+      "dague"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 4,
+    "Dextérité": 4,
+    "Constitution": 4,
+    "Intelligence": 0,
+    "Esprit": 2,
+    "Charisme": 1
+   },
+   "magic": {
+    "category": "Transformation",
+    "name": "Forme animale",
+    "description": "Prend la forme d'une bête."
+   }
+  },
+  "psychique": {
+   "id": "psychique",
+   "name": "Psychique",
+   "tagline": "Agit par l'esprit : perception, manipulation, télékinésie.",
+   "role": "Contrôle",
+   "color": "#a07cc9",
+   "emblem": "eye",
+   "description": "Brise la volonté des ennemis : étourdissements, peur et dégâts mentaux.",
+   "difficulty": 1,
+   "bonus": {
+    "Esprit": 1,
+    "Intelligence": 1
+   },
+   "hp_base": 12,
+   "hp_per_level": 4,
+   "resource": {
+    "name": "AEC",
+    "stat": "Esprit",
+    "base": 12
+   },
+   "speed": 5,
+   "crit_bonus": 0,
+   "defense_bonus": 0,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Esprit acéré",
+    "description": "+2 au toucher contre une cible affectée par un effet négatif.",
+    "trigger": "always",
+    "icon": "eye",
+    "cond": {
+     "target_debuffed": true
+    },
+    "mods": {
+     "to_hit": 2
+    }
+   },
+   "abilities": [
+    "onde_mentale",
+    "emprise",
+    "telekinesie"
+   ],
+   "ultimate": "effondrement",
+   "learnable": [
+    {
+     "ability": "terreur",
+     "level": 2
+    }
+   ],
+   "kit": [
+    {
+     "item": "robe_mage",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "potion_mana",
+     "qty": 1,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Votre focaliseur",
+     "options": [
+      "anneau_esprit",
+      "baguette_braise",
+      "grimoire_poche"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 0,
+    "Dextérité": 3,
+    "Constitution": 3,
+    "Intelligence": 3,
+    "Esprit": 5,
+    "Charisme": 1
+   },
+   "magic": {
+    "category": "Psychisme",
+    "name": "Esprit dominant",
+    "description": "Perception, manipulation, télékinésie."
+   }
+  },
+  "soigneur": {
+   "id": "soigneur",
+   "name": "Soigneur",
+   "tagline": "Feux follets et énergie verte : garde le groupe debout.",
+   "role": "Soin et soutien",
+   "color": "#8fb28a",
+   "emblem": "heart",
+   "description": "Feux follets et énergie verte : soigne, purifie, protège.",
+   "difficulty": 1,
+   "bonus": {
+    "Esprit": 2
+   },
+   "hp_base": 14,
+   "hp_per_level": 5,
+   "resource": {
+    "name": "AEC",
+    "stat": "Esprit",
+    "base": 12
+   },
+   "speed": 5,
+   "crit_bonus": 0,
+   "defense_bonus": 0,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Énergie verte",
+    "description": "Vos soins sont 50 % plus efficaces.",
+    "trigger": "always",
+    "icon": "heart",
+    "mods": {
+     "heal_pct": 50
+    }
+   },
+   "abilities": [
+    "feux_follets",
+    "purification_l",
+    "vague_soin"
+   ],
+   "ultimate": "renouveau",
+   "learnable": [
+    {
+     "ability": "bulle_vie",
+     "level": 3
+    }
+   ],
+   "kit": [
+    {
+     "item": "robe_mage",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "herbes_medicinales",
+     "qty": 3,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Votre catalyseur",
+     "options": [
+      "masse_benie",
+      "baton_chene",
+      "talisman_garde"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 1,
+    "Dextérité": 2,
+    "Constitution": 3,
+    "Intelligence": 1,
+    "Esprit": 5,
+    "Charisme": 3
+   },
+   "magic": {
+    "category": "Soin",
+    "name": "Feux follets",
+    "description": "Énergie verte qui referme les plaies."
+   }
+  },
+  "tacticien": {
+   "id": "tacticien",
+   "name": "Tacticien de Karoh",
+   "tagline": "Sans magie, mais avec la technologie la plus redoutée du monde.",
+   "role": "Tir et anti-magie",
+   "color": "#5c6470",
+   "emblem": "gear",
+   "description": "Pas de magie, mais des gadgets : tirs précis, brouilleurs, pièges.",
+   "difficulty": 1,
+   "bonus": {
+    "Dextérité": 1,
+    "Intelligence": 1
+   },
+   "hp_base": 15,
+   "hp_per_level": 5,
+   "resource": {
+    "name": "Munitions",
+    "stat": "Intelligence",
+    "base": 10
+   },
+   "speed": 5,
+   "crit_bonus": 0,
+   "defense_bonus": 0,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Calcul balistique",
+    "description": "À 3 cases ou plus de sa cible : +2 au toucher et +2 dégâts.",
+    "trigger": "always",
+    "icon": "target",
+    "cond": {
+     "distance_min": 3
+    },
+    "mods": {
+     "to_hit": 2,
+     "damage": 2
+    }
+   },
+   "abilities": [
+    "tir_ajuste",
+    "brouilleur",
+    "grenade"
+   ],
+   "ultimate": "frappe_orbitale",
+   "learnable": [
+    {
+     "ability": "tourelle",
+     "level": 3
+    }
+   ],
+   "kit": [
+    {
+     "item": "armure_cuir",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "potion_soin",
+     "qty": 1,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Votre arme",
+     "options": [
+      "arbalete",
+      "arc_long",
+      "kunai_jumeaux"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 1,
+    "Dextérité": 5,
+    "Constitution": 3,
+    "Intelligence": 4,
+    "Esprit": 2,
+    "Charisme": 0
+   },
+   "magic": {}
+  },
+  "mutant": {
+   "id": "mutant",
+   "name": "Mutant",
+   "tagline": "AEC et ADN animal : insensible à l'anti-magie.",
+   "role": "Tank et combattant",
+   "color": "#4f7a3a",
+   "emblem": "claw",
+   "description": "Un corps transformé : régénération, résistance et force brute.",
+   "difficulty": 1,
+   "bonus": {
+    "Constitution": 2
+   },
+   "hp_base": 22,
+   "hp_per_level": 7,
+   "resource": {
+    "name": "AEC",
+    "stat": "Constitution",
+    "base": 6
+   },
+   "speed": 5,
+   "crit_bonus": 0,
+   "defense_bonus": 1,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Régénération mutante",
+    "description": "Au début de votre tour, récupère 2 PV.",
+    "trigger": "turn_start",
+    "icon": "leaf",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 2,
+      "on": "self"
+     }
+    ]
+   },
+   "abilities": [
+    "assaut_sauvage",
+    "regeneration_m",
+    "peau_ecailles"
+   ],
+   "ultimate": "transformation_totale",
+   "learnable": [
+    {
+     "ability": "second_souffle",
+     "level": 3
+    }
+   ],
+   "kit": [
+    {
+     "item": "cotte_mailles",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "ration",
+     "qty": 2,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Votre arme",
+     "options": [
+      "griffes_acier",
+      "hache_guerre",
+      "marteau_armes"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 4,
+    "Dextérité": 2,
+    "Constitution": 5,
+    "Intelligence": 0,
+    "Esprit": 2,
+    "Charisme": 2
+   },
+   "magic": {
+    "category": "Mutation",
+    "name": "ADN animal",
+    "description": "Insensible à l'anti-magie."
+   }
+  }
+ },
+ "abilities": {
+  "boule_de_feu": {
+   "id": "boule_de_feu",
+   "name": "Boule de feu",
+   "short": "Boule de feu",
+   "icon": "fire",
+   "description": "Explose sur une zone (rayon 1) : 3d6 dégâts magiques, brûlure possible.",
+   "cost": 6,
+   "ap": 2,
+   "range": 6,
+   "cooldown": 2,
+   "target": "area_enemy",
+   "radius": 1,
+   "roll": "attack",
+   "stat": "Intelligence",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "3d6",
+     "element": "magique"
+    },
+    {
+     "type": "status",
+     "status": "brulure",
+     "turns": 2,
+     "chance": 30
+    }
+   ],
+   "ultimate": false
+  },
+  "second_souffle": {
+   "id": "second_souffle",
+   "name": "Second souffle",
+   "short": "Second souffle",
+   "icon": "heart",
+   "description": "Récupère 1d10 + Constitution PV.",
+   "cost": 3,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 3,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Constitution",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "heal",
+     "dice": "1d10",
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "premiers_soins": {
+   "id": "premiers_soins",
+   "name": "Premiers soins",
+   "short": "Premiers soins",
+   "icon": "cross",
+   "description": "Soigne un allié au contact (1d8 + Esprit).",
+   "cost": 2,
+   "ap": 1,
+   "range": 1,
+   "cooldown": 1,
+   "target": "ally",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "heal",
+     "dice": "1d8",
+     "on": "target"
+    }
+   ],
+   "ultimate": false
+  },
+  "eclair_chaine": {
+   "id": "eclair_chaine",
+   "name": "Éclair en chaîne",
+   "short": "Éclair en chaîne",
+   "icon": "bolt",
+   "description": "Frappe une zone (rayon 1) : 2d8 dégâts magiques.",
+   "cost": 6,
+   "ap": 2,
+   "range": 6,
+   "cooldown": 2,
+   "target": "area_enemy",
+   "radius": 1,
+   "roll": "attack",
+   "stat": "Intelligence",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d8",
+     "element": "magique"
+    }
+   ],
+   "ultimate": false
+  },
+  "renaissance": {
+   "id": "renaissance",
+   "name": "Renaissance",
+   "short": "Renaissance",
+   "icon": "phoenix",
+   "description": "Une fois par combat : rend 50 % des PV et retire tous les effets négatifs.",
+   "cost": 0,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 99,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Constitution",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "heal",
+     "dice": "6d6",
+     "on": "self"
+    },
+    {
+     "type": "cleanse",
+     "count": 5,
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "poing_elementaire": {
+   "id": "poing_elementaire",
+   "name": "Poing élémentaire",
+   "short": "Poing",
+   "icon": "fist",
+   "description": "2d8 + Force, 30 % de brûlure.",
+   "cost": 3,
+   "ap": 1,
+   "range": 1,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d8"
+    },
+    {
+     "type": "status",
+     "status": "brulure",
+     "turns": 2,
+     "chance": 30
+    }
+   ],
+   "ultimate": false
+  },
+  "charge_aec": {
+   "id": "charge_aec",
+   "name": "Charge d'AEC",
+   "short": "Charge",
+   "icon": "bolt",
+   "description": "Fonce à 4 cases : 1d8 + Force et 50 % d'étourdir.",
+   "cost": 4,
+   "ap": 2,
+   "range": 4,
+   "cooldown": 2,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "1d8"
+    },
+    {
+     "type": "status",
+     "status": "etourdi",
+     "turns": 1,
+     "chance": 50
+    }
+   ],
+   "ultimate": false
+  },
+  "peau_renforcee": {
+   "id": "peau_renforcee",
+   "name": "Peau renforcée",
+   "short": "Peau",
+   "icon": "ward",
+   "description": "Bouclier de 8 + Constitution sur vous pendant 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 2,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Constitution",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "bouclier",
+     "turns": 2,
+     "value": 8,
+     "scale": "Constitution",
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "explosion_vecteur": {
+   "id": "explosion_vecteur",
+   "name": "Explosion de vecteur",
+   "short": "Explosion",
+   "icon": "meteor",
+   "description": "ULTIME : tous les ennemis à 1 case : 3d10 + Force.",
+   "cost": 0,
+   "ap": 2,
+   "range": 0,
+   "cooldown": 0,
+   "target": "area_enemy",
+   "radius": 1,
+   "roll": "attack",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "3d10"
+    }
+   ],
+   "ultimate": true
+  },
+  "rage_briseur": {
+   "id": "rage_briseur",
+   "name": "Rage",
+   "short": "Rage",
+   "icon": "fire",
+   "description": "Vous entrez en Rage 3 tours (+3 dégâts, −2 Défense).",
+   "cost": 2,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 4,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "rage",
+     "turns": 3,
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "frappe_ombre": {
+   "id": "frappe_ombre",
+   "name": "Frappe dans l'ombre",
+   "short": "Frappe",
+   "icon": "dagger",
+   "description": "2d6 + Dextérité, +2 au toucher.",
+   "cost": 3,
+   "ap": 1,
+   "range": 1,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6"
+    }
+   ],
+   "ultimate": false
+  },
+  "apnee_spectrale": {
+   "id": "apnee_spectrale",
+   "name": "Apnée spectrale",
+   "short": "Apnée",
+   "icon": "mask",
+   "description": "Devient Invisible 1 tour (intangible).",
+   "cost": 4,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 3,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "invisible",
+     "turns": 1,
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "lame_silence": {
+   "id": "lame_silence",
+   "name": "Lame du silence",
+   "short": "Silence",
+   "icon": "drop",
+   "description": "1d6 + Dextérité et Réduit au silence 1 tour.",
+   "cost": 3,
+   "ap": 1,
+   "range": 1,
+   "cooldown": 2,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "1d6"
+    },
+    {
+     "type": "status",
+     "status": "silence",
+     "turns": 1
+    }
+   ],
+   "ultimate": false
+  },
+  "moisson": {
+   "id": "moisson",
+   "name": "Moisson",
+   "short": "Moisson",
+   "icon": "skull",
+   "description": "ULTIME : 5d6 + Dextérité sur une cible et Saignement 3 tours.",
+   "cost": 0,
+   "ap": 2,
+   "range": 1,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "5d6"
+    },
+    {
+     "type": "status",
+     "status": "saignement",
+     "turns": 3
+    }
+   ],
+   "ultimate": true
+  },
+  "pluie_kunai": {
+   "id": "pluie_kunai",
+   "name": "Pluie de kunai",
+   "short": "Pluie de kunai",
+   "icon": "dagger",
+   "description": "Zone de rayon 1 à 4 cases : 2d4 + Dextérité.",
+   "cost": 3,
+   "ap": 1,
+   "range": 4,
+   "cooldown": 2,
+   "target": "area_enemy",
+   "radius": 1,
+   "roll": "attack",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d4"
+    }
+   ],
+   "ultimate": false
+  },
+  "marque_faucheur": {
+   "id": "marque_faucheur",
+   "name": "Marque du Faucheur",
+   "short": "Marque du Faucheur",
+   "icon": "target",
+   "description": "La cible est Marquée 3 tours.",
+   "cost": 2,
+   "ap": 1,
+   "range": 6,
+   "cooldown": 2,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "marque",
+     "turns": 3
+    }
+   ],
+   "ultimate": false
+  },
+  "appel_esprit": {
+   "id": "appel_esprit",
+   "name": "Appel d'esprit",
+   "short": "Esprit",
+   "icon": "spirit",
+   "description": "Un esprit frappe une cible à 6 cases : 2d6 + Charisme magiques.",
+   "cost": 3,
+   "ap": 1,
+   "range": 6,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Charisme",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6",
+     "element": "magique"
+    }
+   ],
+   "ultimate": false
+  },
+  "gardien_spirituel": {
+   "id": "gardien_spirituel",
+   "name": "Gardien spirituel",
+   "short": "Gardien",
+   "icon": "ward",
+   "description": "Un allié à 4 cases : bouclier de 6 + Charisme, 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 4,
+   "cooldown": 2,
+   "target": "ally",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Charisme",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "bouclier",
+     "turns": 2,
+     "value": 6,
+     "scale": "Charisme"
+    }
+   ],
+   "ultimate": false
+  },
+  "invocation": {
+   "id": "invocation",
+   "name": "Invocation",
+   "short": "Invocation",
+   "icon": "spirit",
+   "description": "Invoque un esprit lié (15 PV, 1d8) à côté de vous.",
+   "cost": 5,
+   "ap": 2,
+   "range": 1,
+   "cooldown": 4,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Charisme",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "summon",
+     "name": "Esprit lié",
+     "hp": 15,
+     "attack": "1d8",
+     "defense": 12,
+     "color": "#9fc3d4"
+    }
+   ],
+   "ultimate": false
+  },
+  "legion": {
+   "id": "legion",
+   "name": "Légion d'esprits",
+   "short": "Légion",
+   "icon": "spirit",
+   "description": "ULTIME : zone de rayon 2 à 6 cases : 3d8 dégâts magiques et Effrayé.",
+   "cost": 0,
+   "ap": 2,
+   "range": 6,
+   "cooldown": 0,
+   "target": "area_enemy",
+   "radius": 2,
+   "roll": "attack",
+   "stat": "Charisme",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "3d8",
+     "element": "magique"
+    },
+    {
+     "type": "status",
+     "status": "effraye",
+     "turns": 2
+    }
+   ],
+   "ultimate": true
+  },
+  "trait_elementaire": {
+   "id": "trait_elementaire",
+   "name": "Trait élémentaire",
+   "short": "Trait",
+   "icon": "fire",
+   "description": "2d8 + Intelligence magiques à 7 cases.",
+   "cost": 3,
+   "ap": 1,
+   "range": 7,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Intelligence",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d8",
+     "element": "magique"
+    }
+   ],
+   "ultimate": false
+  },
+  "deferlement": {
+   "id": "deferlement",
+   "name": "Déferlement",
+   "short": "Vague",
+   "icon": "wave",
+   "description": "Zone de rayon 1 à 4 cases : 2d6 magiques, repousse de 1 case.",
+   "cost": 5,
+   "ap": 1,
+   "range": 4,
+   "cooldown": 2,
+   "target": "area_enemy",
+   "radius": 1,
+   "roll": "attack",
+   "stat": "Intelligence",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6",
+     "element": "magique"
+    },
+    {
+     "type": "push",
+     "cells": 1
+    }
+   ],
+   "ultimate": false
+  },
+  "mur_elementaire": {
+   "id": "mur_elementaire",
+   "name": "Mur élémentaire",
+   "short": "Mur",
+   "icon": "ward",
+   "description": "Vous et vos alliés à 1 case : bouclier de 6, 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 2,
+   "target": "area_ally",
+   "radius": 1,
+   "roll": "none",
+   "stat": "Intelligence",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "bouclier",
+     "turns": 2,
+     "value": 6,
+     "on": "target"
+    }
+   ],
+   "ultimate": false
+  },
+  "tempete": {
+   "id": "tempete",
+   "name": "Tempête primordiale",
+   "short": "Tempête",
+   "icon": "wind",
+   "description": "ULTIME : zone de rayon 2 à 7 cases : 4d6 magiques et Gelé.",
+   "cost": 0,
+   "ap": 2,
+   "range": 7,
+   "cooldown": 0,
+   "target": "area_enemy",
+   "radius": 2,
+   "roll": "attack",
+   "stat": "Intelligence",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "4d6",
+     "element": "magique"
+    },
+    {
+     "type": "status",
+     "status": "gel",
+     "turns": 2
+    }
+   ],
+   "ultimate": true
+  },
+  "forme_bestiale": {
+   "id": "forme_bestiale",
+   "name": "Forme bestiale",
+   "short": "Bête",
+   "icon": "paw",
+   "description": "Forme bestiale 4 tours : +2 Force, +2 vitesse, +2 dégâts.",
+   "cost": 3,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 5,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Constitution",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "forme_bestiale",
+     "turns": 4,
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "griffes": {
+   "id": "griffes",
+   "name": "Coup de griffes",
+   "short": "Griffes",
+   "icon": "claw",
+   "description": "2d6 + Force et Saignement 2 tours (50 %).",
+   "cost": 3,
+   "ap": 1,
+   "range": 1,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6"
+    },
+    {
+     "type": "status",
+     "status": "saignement",
+     "turns": 2,
+     "chance": 50
+    }
+   ],
+   "ultimate": false
+  },
+  "bond": {
+   "id": "bond",
+   "name": "Bond",
+   "short": "Bond",
+   "icon": "boots",
+   "description": "Saute sur une cible à 5 cases : 1d8 + Dextérité.",
+   "cost": 3,
+   "ap": 1,
+   "range": 5,
+   "cooldown": 2,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "1d8",
+     "stat": "Dextérité"
+    }
+   ],
+   "ultimate": false
+  },
+  "fureur_primale": {
+   "id": "fureur_primale",
+   "name": "Fureur primale",
+   "short": "Fureur",
+   "icon": "claw",
+   "description": "ULTIME : 4d8 + Force sur une cible, vous récupérez 30 % des dégâts.",
+   "cost": 0,
+   "ap": 2,
+   "range": 1,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "4d8"
+    },
+    {
+     "type": "drain",
+     "pct": 30
+    }
+   ],
+   "ultimate": true
+  },
+  "hurlement": {
+   "id": "hurlement",
+   "name": "Hurlement",
+   "short": "Hurlement",
+   "icon": "horn",
+   "description": "Ennemis à 2 cases : Effrayés 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 3,
+   "target": "area_enemy",
+   "radius": 2,
+   "roll": "none",
+   "stat": "Charisme",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "effraye",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "onde_mentale": {
+   "id": "onde_mentale",
+   "name": "Onde mentale",
+   "short": "Onde",
+   "icon": "spiral",
+   "description": "2d6 + Esprit dégâts magiques à 6 cases.",
+   "cost": 3,
+   "ap": 1,
+   "range": 6,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Esprit",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6",
+     "element": "magique"
+    }
+   ],
+   "ultimate": false
+  },
+  "emprise": {
+   "id": "emprise",
+   "name": "Emprise",
+   "short": "Emprise",
+   "icon": "eye",
+   "description": "60 % d'étourdir une cible à 4 cases.",
+   "cost": 5,
+   "ap": 1,
+   "range": 4,
+   "cooldown": 3,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "etourdi",
+     "turns": 1,
+     "chance": 60
+    }
+   ],
+   "ultimate": false
+  },
+  "telekinesie": {
+   "id": "telekinesie",
+   "name": "Télékinésie",
+   "short": "Télé",
+   "icon": "hand",
+   "description": "1d8 + Esprit et attire la cible de 2 cases.",
+   "cost": 3,
+   "ap": 1,
+   "range": 6,
+   "cooldown": 1,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Esprit",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "1d8",
+     "element": "magique"
+    },
+    {
+     "type": "pull",
+     "cells": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "effondrement": {
+   "id": "effondrement",
+   "name": "Effondrement mental",
+   "short": "Effondrement",
+   "icon": "skull",
+   "description": "ULTIME : zone de rayon 2 : 3d8 magiques, Étourdi (50 %).",
+   "cost": 0,
+   "ap": 2,
+   "range": 6,
+   "cooldown": 0,
+   "target": "area_enemy",
+   "radius": 2,
+   "roll": "attack",
+   "stat": "Esprit",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "3d8",
+     "element": "magique"
+    },
+    {
+     "type": "status",
+     "status": "etourdi",
+     "turns": 1,
+     "chance": 50
+    }
+   ],
+   "ultimate": true
+  },
+  "terreur": {
+   "id": "terreur",
+   "name": "Terreur",
+   "short": "Terreur",
+   "icon": "skull",
+   "description": "Une cible est Effrayée et Affaiblie 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 5,
+   "cooldown": 2,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "effraye",
+     "turns": 2
+    },
+    {
+     "type": "status",
+     "status": "affaibli",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "feux_follets": {
+   "id": "feux_follets",
+   "name": "Feux follets",
+   "short": "Soin",
+   "icon": "heart",
+   "description": "Un allié à 5 cases récupère 2d8 + Esprit PV.",
+   "cost": 3,
+   "ap": 1,
+   "range": 5,
+   "cooldown": 0,
+   "target": "ally",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "soin",
+   "effects": [
+    {
+     "type": "heal",
+     "dice": "2d8",
+     "on": "target"
+    }
+   ],
+   "ultimate": false
+  },
+  "purification_l": {
+   "id": "purification_l",
+   "name": "Purification",
+   "short": "Purification",
+   "icon": "sparkle",
+   "description": "Retire 2 effets négatifs et donne Régénération 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 4,
+   "cooldown": 2,
+   "target": "ally",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "soin",
+   "effects": [
+    {
+     "type": "cleanse",
+     "count": 2,
+     "on": "target"
+    },
+    {
+     "type": "status",
+     "status": "regeneration",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "vague_soin": {
+   "id": "vague_soin",
+   "name": "Vague de soin",
+   "short": "Vague",
+   "icon": "wave",
+   "description": "Vous et vos alliés à 2 cases : 1d8 + Esprit PV.",
+   "cost": 5,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 2,
+   "target": "area_ally",
+   "radius": 2,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "soin",
+   "effects": [
+    {
+     "type": "heal",
+     "dice": "1d8",
+     "on": "target"
+    }
+   ],
+   "ultimate": false
+  },
+  "renouveau": {
+   "id": "renouveau",
+   "name": "Renouveau",
+   "short": "Renouveau",
+   "icon": "leaf",
+   "description": "ULTIME : alliés à 3 cases : 3d8 + Esprit PV (même à 0 PV) et purifiés.",
+   "cost": 0,
+   "ap": 2,
+   "range": 0,
+   "cooldown": 0,
+   "target": "area_ally",
+   "radius": 3,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "soin",
+   "effects": [
+    {
+     "type": "heal",
+     "dice": "3d8",
+     "on": "target"
+    },
+    {
+     "type": "cleanse",
+     "count": 3,
+     "on": "target"
+    }
+   ],
+   "ultimate": true
+  },
+  "bulle_vie": {
+   "id": "bulle_vie",
+   "name": "Bulle de vie",
+   "short": "Bulle de vie",
+   "icon": "ward",
+   "description": "Un allié : bouclier de 10, Régénération 3 tours.",
+   "cost": 5,
+   "ap": 2,
+   "range": 4,
+   "cooldown": 3,
+   "target": "ally",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "bouclier",
+     "turns": 2,
+     "value": 10,
+     "on": "target"
+    },
+    {
+     "type": "status",
+     "status": "regeneration",
+     "turns": 3
+    }
+   ],
+   "ultimate": false
+  },
+  "tir_ajuste": {
+   "id": "tir_ajuste",
+   "name": "Tir ajusté",
+   "short": "Tir",
+   "icon": "gun",
+   "description": "2d8 + Dextérité à 8 cases.",
+   "cost": 3,
+   "ap": 1,
+   "range": 8,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d8"
+    }
+   ],
+   "ultimate": false
+  },
+  "brouilleur": {
+   "id": "brouilleur",
+   "name": "Brouilleur anti-magie",
+   "short": "Brouilleur",
+   "icon": "gear",
+   "description": "La cible est Réduite au silence 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 5,
+   "cooldown": 3,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Intelligence",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "silence",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "grenade": {
+   "id": "grenade",
+   "name": "Grenade",
+   "short": "Grenade",
+   "icon": "bomb",
+   "description": "Zone de rayon 1 à 5 cases : 2d6 et repousse de 1 case.",
+   "cost": 4,
+   "ap": 1,
+   "range": 5,
+   "cooldown": 2,
+   "target": "area_enemy",
+   "radius": 1,
+   "roll": "attack",
+   "stat": "Intelligence",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6"
+    },
+    {
+     "type": "push",
+     "cells": 1
+    }
+   ],
+   "ultimate": false
+  },
+  "frappe_orbitale": {
+   "id": "frappe_orbitale",
+   "name": "Frappe d'artillerie",
+   "short": "Artillerie",
+   "icon": "meteor",
+   "description": "ULTIME : zone de rayon 2 à 10 cases : 4d8.",
+   "cost": 0,
+   "ap": 2,
+   "range": 10,
+   "cooldown": 0,
+   "target": "area_enemy",
+   "radius": 2,
+   "roll": "attack",
+   "stat": "Intelligence",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "4d8"
+    }
+   ],
+   "ultimate": true
+  },
+  "tourelle": {
+   "id": "tourelle",
+   "name": "Tourelle",
+   "short": "Tourelle",
+   "icon": "gear",
+   "description": "Déploie une tourelle (10 PV, 1d8).",
+   "cost": 5,
+   "ap": 2,
+   "range": 1,
+   "cooldown": 4,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Intelligence",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "summon",
+     "name": "Tourelle",
+     "hp": 10,
+     "attack": "1d8",
+     "defense": 13,
+     "color": "#5c6470"
+    }
+   ],
+   "ultimate": false
+  },
+  "assaut_sauvage": {
+   "id": "assaut_sauvage",
+   "name": "Assaut sauvage",
+   "short": "Assaut",
+   "icon": "claw",
+   "description": "2d8 + Force.",
+   "cost": 4,
+   "ap": 1,
+   "range": 1,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d8"
+    }
+   ],
+   "ultimate": false
+  },
+  "regeneration_m": {
+   "id": "regeneration_m",
+   "name": "Régénération",
+   "short": "Régén",
+   "icon": "leaf",
+   "description": "Récupère 1d8 + Constitution PV.",
+   "cost": 2,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 2,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Constitution",
+   "element": "soin",
+   "effects": [
+    {
+     "type": "heal",
+     "dice": "1d8",
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "peau_ecailles": {
+   "id": "peau_ecailles",
+   "name": "Peau d'écailles",
+   "short": "Écailles",
+   "icon": "scale",
+   "description": "En garde (+3 Défense) et bouclier de 6 pendant 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 3,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Constitution",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "protege",
+     "turns": 2,
+     "on": "self"
+    },
+    {
+     "type": "status",
+     "status": "bouclier",
+     "turns": 2,
+     "value": 6,
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "transformation_totale": {
+   "id": "transformation_totale",
+   "name": "Transformation totale",
+   "short": "Mutation",
+   "icon": "claw",
+   "description": "ULTIME : Rage et Forme bestiale 3 tours, récupère 3d6 PV.",
+   "cost": 0,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 0,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Constitution",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "rage",
+     "turns": 3,
+     "on": "self"
+    },
+    {
+     "type": "status",
+     "status": "forme_bestiale",
+     "turns": 3,
+     "on": "self"
+    },
+    {
+     "type": "heal",
+     "dice": "3d6",
+     "on": "self"
+    }
+   ],
+   "ultimate": true
+  },
+  "morsure": {
+   "id": "morsure",
+   "name": "Morsure",
+   "short": "Morsure",
+   "icon": "fang",
+   "description": "1d6 + Force, 30 % de saignement.",
+   "cost": 0,
+   "ap": 1,
+   "range": 1,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "1d6"
+    },
+    {
+     "type": "status",
+     "status": "saignement",
+     "turns": 2,
+     "chance": 30
+    }
+   ],
+   "ultimate": false
+  },
+  "hurlement_meute": {
+   "id": "hurlement_meute",
+   "name": "Hurlement",
+   "short": "Hurlement",
+   "icon": "horn",
+   "description": "Les alliés à 3 cases sont Renforcés.",
+   "cost": 0,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 4,
+   "target": "area_ally",
+   "radius": 3,
+   "roll": "none",
+   "stat": "Charisme",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "renforce",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "toile": {
+   "id": "toile",
+   "name": "Toile",
+   "short": "Toile",
+   "icon": "chain",
+   "description": "Immobilise une cible à 4 cases.",
+   "cost": 0,
+   "ap": 1,
+   "range": 4,
+   "cooldown": 3,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "immobilise",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "crochet_venin": {
+   "id": "crochet_venin",
+   "name": "Crochets venimeux",
+   "short": "Crochets venimeux",
+   "icon": "fang",
+   "description": "1d8 et Empoisonné 3 tours.",
+   "cost": 0,
+   "ap": 1,
+   "range": 1,
+   "cooldown": 2,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "1d8"
+    },
+    {
+     "type": "status",
+     "status": "poison",
+     "turns": 3
+    }
+   ],
+   "ultimate": false
+  },
+  "tir_gobelin": {
+   "id": "tir_gobelin",
+   "name": "Flèche barbelée",
+   "short": "Flèche barbelée",
+   "icon": "arrow",
+   "description": "1d6 à 6 cases.",
+   "cost": 0,
+   "ap": 1,
+   "range": 6,
+   "cooldown": 0,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "1d6"
+    }
+   ],
+   "ultimate": false
+  },
+  "eclair_noir": {
+   "id": "eclair_noir",
+   "name": "Éclair noir",
+   "short": "Éclair noir",
+   "icon": "bolt",
+   "description": "2d6 magiques à 6 cases.",
+   "cost": 3,
+   "ap": 1,
+   "range": 6,
+   "cooldown": 1,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Intelligence",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6",
+     "element": "magique"
+    }
+   ],
+   "ultimate": false
+  },
+  "malediction": {
+   "id": "malediction",
+   "name": "Malédiction",
+   "short": "Malédiction",
+   "icon": "skull",
+   "description": "Une cible est Vulnérable et Affaiblie 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 5,
+   "cooldown": 3,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "vulnerable",
+     "turns": 2
+    },
+    {
+     "type": "status",
+     "status": "affaibli",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "ecrasement": {
+   "id": "ecrasement",
+   "name": "Écrasement",
+   "short": "Écrasement",
+   "icon": "fist",
+   "description": "2d10 + Force, 40 % d'étourdir.",
+   "cost": 0,
+   "ap": 2,
+   "range": 1,
+   "cooldown": 2,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d10"
+    },
+    {
+     "type": "status",
+     "status": "etourdi",
+     "turns": 1,
+     "chance": 40
+    }
+   ],
+   "ultimate": false
+  },
+  "souffle_feu": {
+   "id": "souffle_feu",
+   "name": "Souffle de feu",
+   "short": "Souffle de feu",
+   "icon": "fire",
+   "description": "Zone de rayon 2 à 4 cases : 4d6 magiques et brûlure.",
+   "cost": 0,
+   "ap": 2,
+   "range": 4,
+   "cooldown": 3,
+   "target": "area_enemy",
+   "radius": 2,
+   "roll": "attack",
+   "stat": "Constitution",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "4d6",
+     "element": "magique"
+    },
+    {
+     "type": "status",
+     "status": "brulure",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "cri_chef": {
+   "id": "cri_chef",
+   "name": "Ordre de bataille",
+   "short": "Ordre de bataille",
+   "icon": "horn",
+   "description": "Les alliés à 4 cases sont Renforcés et Concentrés.",
+   "cost": 0,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 3,
+   "target": "area_ally",
+   "radius": 4,
+   "roll": "none",
+   "stat": "Charisme",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "renforce",
+     "turns": 2
+    },
+    {
+     "type": "status",
+     "status": "concentre",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "drain_ombre": {
+   "id": "drain_ombre",
+   "name": "Étreinte de l'ombre",
+   "short": "Étreinte de l'ombre",
+   "icon": "spiral",
+   "description": "2d8 magiques, récupère 50 % en PV.",
+   "cost": 4,
+   "ap": 1,
+   "range": 3,
+   "cooldown": 2,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Esprit",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d8",
+     "element": "magique"
+    },
+    {
+     "type": "drain",
+     "pct": 50
+    }
+   ],
+   "ultimate": false
+  }
+ },
+ "statuses": {
+  "etourdi": {
+   "id": "etourdi",
+   "name": "Étourdi",
+   "icon": "spiral",
+   "color": "#e0c35a",
+   "kind": "debuff",
+   "description": "Perd son prochain tour.",
+   "flags": [
+    "stun"
+   ]
+  },
+  "immobilise": {
+   "id": "immobilise",
+   "name": "Immobilisé",
+   "icon": "chain",
+   "color": "#9a8f7a",
+   "kind": "debuff",
+   "description": "Ne peut pas se déplacer.",
+   "flags": [
+    "root"
+   ]
+  },
+  "silence": {
+   "id": "silence",
+   "name": "Réduit au silence",
+   "icon": "mask",
+   "color": "#8a7fa8",
+   "kind": "debuff",
+   "description": "Ne peut pas utiliser de capacité.",
+   "flags": [
+    "silence"
+   ]
+  },
+  "poison": {
+   "id": "poison",
+   "name": "Empoisonné",
+   "icon": "drop",
+   "color": "#7fb05a",
+   "kind": "debuff",
+   "description": "Perd 1d4 PV au début de chaque tour (+ valeur).",
+   "tick": {
+    "type": "damage",
+    "dice": "1d4"
+   }
+  },
+  "saignement": {
+   "id": "saignement",
+   "name": "Saignement",
+   "icon": "drop",
+   "color": "#c25050",
+   "kind": "debuff",
+   "description": "Perd 1d6 PV au début de chaque tour.",
+   "tick": {
+    "type": "damage",
+    "dice": "1d6"
+   }
+  },
+  "brulure": {
+   "id": "brulure",
+   "name": "Brûlure",
+   "icon": "fire",
+   "color": "#e07a3a",
+   "kind": "debuff",
+   "description": "Perd 1d6 PV au début de chaque tour.",
+   "tick": {
+    "type": "damage",
+    "dice": "1d6"
+   }
+  },
+  "gel": {
+   "id": "gel",
+   "name": "Gelé",
+   "icon": "ice",
+   "color": "#9fc3d4",
+   "kind": "debuff",
+   "description": "−2 vitesse et −1 PA.",
+   "mods": {
+    "speed": -2,
+    "ap": -1
+   }
+  },
+  "affaibli": {
+   "id": "affaibli",
+   "name": "Affaibli",
+   "icon": "fist",
+   "color": "#8a7a6a",
+   "kind": "debuff",
+   "description": "−2 aux dégâts infligés.",
+   "mods": {
+    "damage": -2
+   }
+  },
+  "vulnerable": {
+   "id": "vulnerable",
+   "name": "Vulnérable",
+   "icon": "target",
+   "color": "#d27a6a",
+   "kind": "debuff",
+   "description": "−2 Défense et subit +2 dégâts.",
+   "mods": {
+    "defense": -2,
+    "damage_taken": 2
+   }
+  },
+  "marque": {
+   "id": "marque",
+   "name": "Marqué",
+   "icon": "target",
+   "color": "#c9a96e",
+   "kind": "debuff",
+   "description": "Subit +3 dégâts des attaques.",
+   "mods": {
+    "damage_taken": 3
+   }
+  },
+  "aveugle": {
+   "id": "aveugle",
+   "name": "Aveuglé",
+   "icon": "eye",
+   "color": "#6a6a6a",
+   "kind": "debuff",
+   "description": "−4 au toucher.",
+   "mods": {
+    "to_hit": -4
+   }
+  },
+  "effraye": {
+   "id": "effraye",
+   "name": "Effrayé",
+   "icon": "skull",
+   "color": "#7a6a8a",
+   "kind": "debuff",
+   "description": "−2 au toucher et −1 Défense.",
+   "mods": {
+    "to_hit": -2,
+    "defense": -1
+   }
+  },
+  "bouclier": {
+   "id": "bouclier",
+   "name": "Bouclier",
+   "icon": "ward",
+   "color": "#7fa8d4",
+   "kind": "buff",
+   "description": "Absorbe des dégâts (valeur) avant les PV.",
+   "flags": [
+    "shield"
+   ]
+  },
+  "protege": {
+   "id": "protege",
+   "name": "En garde",
+   "icon": "shield",
+   "color": "#c9a96e",
+   "kind": "buff",
+   "description": "+3 Défense.",
+   "mods": {
+    "defense": 3
+   }
+  },
+  "renforce": {
+   "id": "renforce",
+   "name": "Renforcé",
+   "icon": "fist",
+   "color": "#d1a15e",
+   "kind": "buff",
+   "description": "+2 aux dégâts.",
+   "mods": {
+    "damage": 2
+   }
+  },
+  "beni": {
+   "id": "beni",
+   "name": "Béni",
+   "icon": "star",
+   "color": "#f0d78c",
+   "kind": "buff",
+   "description": "+1 au toucher et +1 aux dégâts.",
+   "mods": {
+    "to_hit": 1,
+    "damage": 1
+   }
+  },
+  "concentre": {
+   "id": "concentre",
+   "name": "Concentré",
+   "icon": "eye",
+   "color": "#a07cc9",
+   "kind": "buff",
+   "description": "+2 au toucher.",
+   "mods": {
+    "to_hit": 2
+   }
+  },
+  "hate": {
+   "id": "hate",
+   "name": "Hâte",
+   "icon": "wind",
+   "color": "#8fd4c0",
+   "kind": "buff",
+   "description": "+1 PA et +2 vitesse.",
+   "mods": {
+    "ap": 1,
+    "speed": 2
+   }
+  },
+  "regeneration": {
+   "id": "regeneration",
+   "name": "Régénération",
+   "icon": "leaf",
+   "color": "#8fb28a",
+   "kind": "buff",
+   "description": "Récupère 1d6 PV au début de chaque tour.",
+   "tick": {
+    "type": "heal",
+    "dice": "1d6"
+   }
+  },
+  "invisible": {
+   "id": "invisible",
+   "name": "Invisible",
+   "icon": "mask",
+   "color": "#5a5a7a",
+   "kind": "buff",
+   "description": "Ne peut pas être ciblé ; +2 au toucher. Prend fin en attaquant.",
+   "flags": [
+    "untargetable",
+    "break_on_attack"
+   ],
+   "mods": {
+    "to_hit": 2
+   }
+  },
+  "rage": {
+   "id": "rage",
+   "name": "Rage",
+   "icon": "fire",
+   "color": "#c25050",
+   "kind": "buff",
+   "description": "+3 dégâts, −2 Défense.",
+   "mods": {
+    "damage": 3,
+    "defense": -2
+   }
+  },
+  "forme_bestiale": {
+   "id": "forme_bestiale",
+   "name": "Forme bestiale",
+   "icon": "paw",
+   "color": "#7b5a3a",
+   "kind": "buff",
+   "description": "+2 Force, +2 vitesse, +2 dégâts.",
+   "mods": {
+    "Force": 2,
+    "speed": 2,
+    "damage": 2
+   }
+  },
+  "modifie": {
+   "id": "modifie",
+   "name": "Modifié",
+   "icon": "sparkle",
+   "color": "#a07cc9",
+   "kind": "buff",
+   "description": "Caractéristique modifiée temporairement."
+  }
+ },
+ "items": {
+  "epee_longue": {
+   "id": "epee_longue",
+   "name": "Épée longue",
+   "icon": "sword",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Fiable et équilibrée.",
+   "value": 15,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d8",
+    "stat": "Force",
+    "crit": 19,
+    "range": 1,
+    "element": "physique"
+   }
+  },
+  "hache_guerre": {
+   "id": "hache_guerre",
+   "name": "Hache de guerre",
+   "icon": "axe",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Lourde : gros dégâts.",
+   "value": 15,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d12",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   }
+  },
+  "marteau_armes": {
+   "id": "marteau_armes",
+   "name": "Marteau d'armes",
+   "icon": "hammer",
+   "category": "arme",
+   "rarity": "peu_commun",
+   "description": "Chaque coup peut étourdir (15 %).",
+   "value": 25,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d10",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "on_hit": [
+    {
+     "type": "status",
+     "status": "etourdi",
+     "turns": 1,
+     "chance": 15
+    }
+   ]
+  },
+  "lance": {
+   "id": "lance",
+   "name": "Lance",
+   "icon": "spear",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Frappe à 2 cases.",
+   "value": 12,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d8",
+    "stat": "Force",
+    "crit": 20,
+    "range": 2,
+    "element": "physique"
+   }
+  },
+  "dague": {
+   "id": "dague",
+   "name": "Dague",
+   "icon": "dagger",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Légère et précise.",
+   "value": 6,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d4",
+    "stat": "Dextérité",
+    "crit": 19,
+    "range": 1,
+    "element": "physique"
+   }
+  },
+  "dague_courbe": {
+   "id": "dague_courbe",
+   "name": "Dague courbe",
+   "icon": "dagger",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Critique sur 17-20.",
+   "value": 15,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d4",
+    "stat": "Dextérité",
+    "crit": 17,
+    "range": 1,
+    "element": "physique"
+   }
+  },
+  "kunai_jumeaux": {
+   "id": "kunai_jumeaux",
+   "name": "Kunai jumeaux",
+   "icon": "dagger",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Se lancent jusqu'à 3 cases.",
+   "value": 15,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Dextérité",
+    "crit": 19,
+    "range": 3,
+    "element": "physique"
+   }
+  },
+  "stylet_empoisonne": {
+   "id": "stylet_empoisonne",
+   "name": "Stylet empoisonné",
+   "icon": "dagger",
+   "category": "arme",
+   "rarity": "peu_commun",
+   "description": "25 % d'empoisonner la cible (3 tours).",
+   "value": 25,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d4",
+    "stat": "Dextérité",
+    "crit": 19,
+    "range": 1,
+    "element": "physique"
+   },
+   "on_hit": [
+    {
+     "type": "status",
+     "status": "poison",
+     "turns": 3,
+     "chance": 25
+    }
+   ]
+  },
+  "arc_long": {
+   "id": "arc_long",
+   "name": "Arc long",
+   "icon": "bow",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Portée 8.",
+   "value": 15,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d8",
+    "stat": "Dextérité",
+    "crit": 20,
+    "range": 8,
+    "element": "physique"
+   }
+  },
+  "arbalete": {
+   "id": "arbalete",
+   "name": "Arbalète",
+   "icon": "crossbow",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Portée 6, critique 19-20.",
+   "value": 18,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d10",
+    "stat": "Dextérité",
+    "crit": 19,
+    "range": 6,
+    "element": "physique"
+   }
+  },
+  "arc_court": {
+   "id": "arc_court",
+   "name": "Arc court",
+   "icon": "bow",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Portée 6, léger.",
+   "value": 10,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Dextérité",
+    "crit": 19,
+    "range": 6,
+    "element": "physique"
+   }
+  },
+  "baton_chene": {
+   "id": "baton_chene",
+   "name": "Bâton de chêne",
+   "icon": "staff",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Augmente la réserve de mana (+4).",
+   "value": 10,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "mods": {
+    "res_max": 4
+   }
+  },
+  "baguette_braise": {
+   "id": "baguette_braise",
+   "name": "Baguette de braise",
+   "icon": "wand",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Projette des braises (portée 5, magique).",
+   "value": 15,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Intelligence",
+    "crit": 20,
+    "range": 5,
+    "element": "magique"
+   }
+  },
+  "masse_benie": {
+   "id": "masse_benie",
+   "name": "Masse bénie",
+   "icon": "hammer",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "+10 % aux soins prodigués.",
+   "value": 12,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "mods": {
+    "heal_pct": 10
+   }
+  },
+  "rapiere": {
+   "id": "rapiere",
+   "name": "Rapière",
+   "icon": "sword",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Fine et rapide.",
+   "value": 14,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Dextérité",
+    "crit": 18,
+    "range": 1,
+    "element": "physique"
+   }
+  },
+  "luth_lame": {
+   "id": "luth_lame",
+   "name": "Luth à lame",
+   "icon": "lute",
+   "category": "arme",
+   "rarity": "peu_commun",
+   "description": "Instrument… et arme (+1 Charisme).",
+   "value": 25,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Dextérité",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "mods": {
+    "Charisme": 1
+   }
+  },
+  "griffes_acier": {
+   "id": "griffes_acier",
+   "name": "Griffes d'acier",
+   "icon": "claw",
+   "category": "arme",
+   "rarity": "commun",
+   "description": "Deux attaques rapides.",
+   "value": 12,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Force",
+    "crit": 19,
+    "range": 1,
+    "element": "physique"
+   }
+  },
+  "lame_runique": {
+   "id": "lame_runique",
+   "name": "Lame runique",
+   "icon": "sword",
+   "category": "arme",
+   "rarity": "rare",
+   "description": "+1 au toucher, dégâts magiques.",
+   "value": 80,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d10",
+    "stat": "Force",
+    "crit": 19,
+    "range": 1,
+    "element": "magique"
+   },
+   "mods": {
+    "to_hit": 1
+   }
+  },
+  "arc_du_vent": {
+   "id": "arc_du_vent",
+   "name": "Arc du vent",
+   "icon": "bow",
+   "category": "arme",
+   "rarity": "rare",
+   "description": "Portée 10, +1 vitesse.",
+   "value": 80,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d10",
+    "stat": "Dextérité",
+    "crit": 19,
+    "range": 10,
+    "element": "physique"
+   },
+   "mods": {
+    "speed": 1
+   }
+  },
+  "croc_vampirique": {
+   "id": "croc_vampirique",
+   "name": "Croc vampirique",
+   "icon": "dagger",
+   "category": "arme",
+   "rarity": "epique",
+   "description": "Rend 30 % des dégâts infligés en PV.",
+   "value": 150,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Dextérité",
+    "crit": 18,
+    "range": 1,
+    "element": "physique"
+   },
+   "on_hit": [
+    {
+     "type": "drain",
+     "pct": 30
+    }
+   ]
+  },
+  "baton_tempete": {
+   "id": "baton_tempete",
+   "name": "Bâton des tempêtes",
+   "icon": "staff",
+   "category": "arme",
+   "rarity": "epique",
+   "description": "Accorde la capacité « Éclair en chaîne ».",
+   "value": 160,
+   "slot": "arme",
+   "stackable": false,
+   "unique": false,
+   "weapon": {
+    "damage": "1d8",
+    "stat": "Intelligence",
+    "crit": 20,
+    "range": 5,
+    "element": "magique"
+   },
+   "mods": {
+    "res_max": 6
+   },
+   "grants": [
+    "eclair_chaine"
+   ]
+  },
+  "brise_monde": {
+   "id": "brise_monde",
+   "name": "Brise-Monde",
+   "icon": "hammer",
+   "category": "arme",
+   "rarity": "legendaire",
+   "description": "Marteau d'un héros oublié. 30 % d'étourdir, +2 Force.",
+   "value": 500,
+   "slot": "arme",
+   "stackable": false,
+   "unique": true,
+   "weapon": {
+    "damage": "2d8",
+    "stat": "Force",
+    "crit": 19,
+    "range": 1,
+    "element": "physique"
+   },
+   "mods": {
+    "Force": 2
+   },
+   "on_hit": [
+    {
+     "type": "status",
+     "status": "etourdi",
+     "turns": 1,
+     "chance": 30
+    }
+   ]
+  },
+  "armure_cuir": {
+   "id": "armure_cuir",
+   "name": "Armure de cuir",
+   "icon": "armor",
+   "category": "armure",
+   "rarity": "commun",
+   "description": "Légère.",
+   "value": 10,
+   "slot": "armure",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "defense": 1,
+    "resist_phys": 1
+   }
+  },
+  "cotte_mailles": {
+   "id": "cotte_mailles",
+   "name": "Cotte de mailles",
+   "icon": "armor",
+   "category": "armure",
+   "rarity": "commun",
+   "description": "Bonne protection, −1 vitesse.",
+   "value": 25,
+   "slot": "armure",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "defense": 3,
+    "resist_phys": 2,
+    "speed": -1
+   }
+  },
+  "harnois": {
+   "id": "harnois",
+   "name": "Harnois",
+   "icon": "armor",
+   "category": "armure",
+   "rarity": "peu_commun",
+   "description": "Plates complètes, −1 vitesse.",
+   "value": 60,
+   "slot": "armure",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "defense": 4,
+    "resist_phys": 3,
+    "speed": -1
+   }
+  },
+  "robe_mage": {
+   "id": "robe_mage",
+   "name": "Robe d'apprenti",
+   "icon": "robe",
+   "category": "armure",
+   "rarity": "commun",
+   "description": "+4 mana, résistance magique +1.",
+   "value": 10,
+   "slot": "armure",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "res_max": 4,
+    "resist_mag": 1
+   }
+  },
+  "robe_archimage": {
+   "id": "robe_archimage",
+   "name": "Robe d'archimage",
+   "icon": "robe",
+   "category": "armure",
+   "rarity": "rare",
+   "description": "+8 mana, +2 résistance magique.",
+   "value": 90,
+   "slot": "armure",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "res_max": 8,
+    "resist_mag": 2,
+    "defense": 1
+   }
+  },
+  "cape_ombre": {
+   "id": "cape_ombre",
+   "name": "Cape d'ombre",
+   "icon": "cloak",
+   "category": "armure",
+   "rarity": "peu_commun",
+   "description": "+1 Défense, +1 Dextérité.",
+   "value": 35,
+   "slot": "armure",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "defense": 1,
+    "Dextérité": 1
+   }
+  },
+  "bouclier_bois": {
+   "id": "bouclier_bois",
+   "name": "Bouclier de bois",
+   "icon": "shield",
+   "category": "armure",
+   "rarity": "commun",
+   "description": "+2 Défense.",
+   "value": 8,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "defense": 2
+   }
+  },
+  "pavois": {
+   "id": "pavois",
+   "name": "Pavois",
+   "icon": "shield",
+   "category": "armure",
+   "rarity": "peu_commun",
+   "description": "+3 Défense, +1 résistance physique.",
+   "value": 30,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "defense": 3,
+    "resist_phys": 1
+   }
+  },
+  "anneau_force": {
+   "id": "anneau_force",
+   "name": "Anneau de force",
+   "icon": "ring",
+   "category": "accessoire",
+   "rarity": "peu_commun",
+   "description": "+1 Force.",
+   "value": 40,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "Force": 1
+   }
+  },
+  "anneau_esprit": {
+   "id": "anneau_esprit",
+   "name": "Anneau de clarté",
+   "icon": "ring",
+   "category": "accessoire",
+   "rarity": "peu_commun",
+   "description": "+1 Esprit.",
+   "value": 40,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "Esprit": 1
+   }
+  },
+  "amulette_vie": {
+   "id": "amulette_vie",
+   "name": "Amulette de vie",
+   "icon": "amulet",
+   "category": "accessoire",
+   "rarity": "rare",
+   "description": "+10 PV max.",
+   "value": 90,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "hp_max": 10
+   }
+  },
+  "talisman_garde": {
+   "id": "talisman_garde",
+   "name": "Talisman de garde",
+   "icon": "amulet",
+   "category": "accessoire",
+   "rarity": "peu_commun",
+   "description": "+1 résistance physique et magique.",
+   "value": 45,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "resist_phys": 1,
+    "resist_mag": 1
+   }
+  },
+  "bottes_vent": {
+   "id": "bottes_vent",
+   "name": "Bottes de vent",
+   "icon": "boots",
+   "category": "accessoire",
+   "rarity": "rare",
+   "description": "+2 vitesse.",
+   "value": 70,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "speed": 2
+   }
+  },
+  "oeil_faucon": {
+   "id": "oeil_faucon",
+   "name": "Œil de faucon",
+   "icon": "eye",
+   "category": "accessoire",
+   "rarity": "rare",
+   "description": "+2 au toucher à distance (et partout).",
+   "value": 90,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "to_hit": 2
+   }
+  },
+  "grimoire_poche": {
+   "id": "grimoire_poche",
+   "name": "Grimoire de poche",
+   "icon": "book",
+   "category": "accessoire",
+   "rarity": "commun",
+   "description": "+4 mana.",
+   "value": 20,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "res_max": 4
+   }
+  },
+  "couronne_epines": {
+   "id": "couronne_epines",
+   "name": "Couronne d'épines",
+   "icon": "crown",
+   "category": "accessoire",
+   "rarity": "epique",
+   "description": "+3 dégâts mais −5 PV max.",
+   "value": 150,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "damage": 3,
+    "hp_max": -5
+   }
+  },
+  "pendentif_phenix": {
+   "id": "pendentif_phenix",
+   "name": "Pendentif du phénix",
+   "icon": "amulet",
+   "category": "accessoire",
+   "rarity": "legendaire",
+   "description": "Une fois par combat, accorde « Renaissance ».",
+   "value": 400,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": true,
+   "mods": {
+    "hp_max": 5
+   },
+   "grants": [
+    "renaissance"
+   ]
+  },
+  "potion_soin": {
+   "id": "potion_soin",
+   "name": "Potion de soin",
+   "icon": "potion",
+   "category": "potion",
+   "rarity": "commun",
+   "description": "Rend 2d6+2 PV.",
+   "value": 10,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "heal",
+     "dice": "2d6",
+     "on": "self",
+     "bonus": 2
+    }
+   ]
+  },
+  "potion_soin_sup": {
+   "id": "potion_soin_sup",
+   "name": "Potion de soin supérieure",
+   "icon": "potion",
+   "category": "potion",
+   "rarity": "peu_commun",
+   "description": "Rend 4d6+4 PV.",
+   "value": 30,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "heal",
+     "dice": "4d6",
+     "on": "self",
+     "bonus": 4
+    }
+   ]
+  },
+  "potion_mana": {
+   "id": "potion_mana",
+   "name": "Potion de mana",
+   "icon": "flask",
+   "category": "potion",
+   "rarity": "commun",
+   "description": "Rend 8 points de ressource.",
+   "value": 12,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "restore",
+     "resource": "res",
+     "amount": 8,
+     "on": "self"
+    }
+   ]
+  },
+  "elixir_force": {
+   "id": "elixir_force",
+   "name": "Élixir de force",
+   "icon": "flask",
+   "category": "potion",
+   "rarity": "peu_commun",
+   "description": "+2 Force pendant 3 tours.",
+   "value": 25,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "stat",
+     "stat": "Force",
+     "amount": 2,
+     "turns": 3,
+     "on": "self"
+    }
+   ]
+  },
+  "elixir_hate": {
+   "id": "elixir_hate",
+   "name": "Élixir de hâte",
+   "icon": "flask",
+   "category": "potion",
+   "rarity": "rare",
+   "description": "Hâte pendant 2 tours (+1 PA).",
+   "value": 60,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "status",
+     "status": "hate",
+     "turns": 2,
+     "on": "self"
+    }
+   ]
+  },
+  "antidote": {
+   "id": "antidote",
+   "name": "Antidote",
+   "icon": "flask",
+   "category": "potion",
+   "rarity": "commun",
+   "description": "Retire poison et saignement.",
+   "value": 8,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "cleanse",
+     "count": 2,
+     "on": "self"
+    }
+   ]
+  },
+  "ration": {
+   "id": "ration",
+   "name": "Ration de voyage",
+   "icon": "food",
+   "category": "consommable",
+   "rarity": "commun",
+   "description": "Rend 1d6 PV.",
+   "value": 2,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "heal",
+     "dice": "1d6",
+     "on": "self"
+    }
+   ]
+  },
+  "bombe_fumee": {
+   "id": "bombe_fumee",
+   "name": "Bombe fumigène",
+   "icon": "bomb",
+   "category": "consommable",
+   "rarity": "commun",
+   "description": "Invisible pendant 1 tour.",
+   "value": 15,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "status",
+     "status": "invisible",
+     "turns": 1,
+     "on": "self"
+    }
+   ]
+  },
+  "parchemin_feu": {
+   "id": "parchemin_feu",
+   "name": "Parchemin de feu",
+   "icon": "scroll",
+   "category": "consommable",
+   "rarity": "peu_commun",
+   "description": "Brûle tous ceux qui vous entourent (2d6).",
+   "value": 30,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "narrate",
+     "text": "Le parchemin s'embrase !"
+    }
+   ]
+  },
+  "cuir_brut": {
+   "id": "cuir_brut",
+   "name": "Cuir brut",
+   "icon": "leather",
+   "category": "materiau",
+   "rarity": "commun",
+   "description": "À vendre ou à travailler.",
+   "value": 3,
+   "slot": "",
+   "stackable": true,
+   "unique": false
+  },
+  "croc_loup": {
+   "id": "croc_loup",
+   "name": "Croc de loup",
+   "icon": "fang",
+   "category": "materiau",
+   "rarity": "commun",
+   "description": "Trophée de chasse.",
+   "value": 3,
+   "slot": "",
+   "stackable": true,
+   "unique": false
+  },
+  "herbes_medicinales": {
+   "id": "herbes_medicinales",
+   "name": "Herbes médicinales",
+   "icon": "herb",
+   "category": "materiau",
+   "rarity": "commun",
+   "description": "Un soigneur saura en faire quelque chose.",
+   "value": 3,
+   "slot": "",
+   "stackable": true,
+   "unique": false
+  },
+  "minerai_fer": {
+   "id": "minerai_fer",
+   "name": "Minerai de fer",
+   "icon": "ore",
+   "category": "materiau",
+   "rarity": "commun",
+   "description": "Pour un forgeron.",
+   "value": 3,
+   "slot": "",
+   "stackable": true,
+   "unique": false
+  },
+  "gemme_brute": {
+   "id": "gemme_brute",
+   "name": "Gemme brute",
+   "icon": "gem",
+   "category": "materiau",
+   "rarity": "peu_commun",
+   "description": "Se vend bien.",
+   "value": 25,
+   "slot": "",
+   "stackable": true,
+   "unique": false
+  },
+  "ecaille_dragon": {
+   "id": "ecaille_dragon",
+   "name": "Écaille de dragon",
+   "icon": "scale",
+   "category": "materiau",
+   "rarity": "epique",
+   "description": "Matériau légendaire pour une armure.",
+   "value": 120,
+   "slot": "",
+   "stackable": true,
+   "unique": false
+  },
+  "cle_rouillee": {
+   "id": "cle_rouillee",
+   "name": "Clé rouillée",
+   "icon": "key",
+   "category": "quete",
+   "rarity": "commun",
+   "description": "Ouvre quelque chose, quelque part…",
+   "value": 0,
+   "slot": "",
+   "stackable": false,
+   "unique": false
+  },
+  "lettre_scellee": {
+   "id": "lettre_scellee",
+   "name": "Lettre scellée",
+   "icon": "scroll",
+   "category": "quete",
+   "rarity": "peu_commun",
+   "description": "Le sceau n'est pas brisé.",
+   "value": 0,
+   "slot": "",
+   "stackable": false,
+   "unique": false
+  },
+  "carte_tresor": {
+   "id": "carte_tresor",
+   "name": "Carte au trésor",
+   "icon": "map",
+   "category": "quete",
+   "rarity": "rare",
+   "description": "Une croix rouge sur une île inconnue.",
+   "value": 0,
+   "slot": "",
+   "stackable": false,
+   "unique": false
+  },
+  "livre_boule_feu": {
+   "id": "livre_boule_feu",
+   "name": "Grimoire : Boule de feu",
+   "icon": "book",
+   "category": "livre",
+   "rarity": "rare",
+   "description": "Apprend la capacité « Boule de feu ».",
+   "value": 120,
+   "slot": "",
+   "stackable": false,
+   "unique": false,
+   "teaches": "boule_de_feu"
+  },
+  "livre_second_souffle": {
+   "id": "livre_second_souffle",
+   "name": "Manuel : Second souffle",
+   "icon": "book",
+   "category": "livre",
+   "rarity": "peu_commun",
+   "description": "Apprend la capacité « Second souffle ».",
+   "value": 60,
+   "slot": "",
+   "stackable": false,
+   "unique": false,
+   "teaches": "second_souffle"
+  },
+  "livre_premiers_soins": {
+   "id": "livre_premiers_soins",
+   "name": "Traité : Premiers soins",
+   "icon": "book",
+   "category": "livre",
+   "rarity": "commun",
+   "description": "Apprend la capacité « Premiers soins ».",
+   "value": 30,
+   "slot": "",
+   "stackable": false,
+   "unique": false,
+   "teaches": "premiers_soins"
+  }
+ },
+ "loot": {
+  "bete": {
+   "id": "bete",
+   "name": "Bête sauvage",
+   "gold": [
+    0,
+    2
+   ],
+   "entries": [
+    {
+     "item": "cuir_brut",
+     "chance": 70,
+     "min": 1,
+     "max": 2
+    },
+    {
+     "item": "croc_loup",
+     "chance": 50,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "ration",
+     "chance": 20,
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "brigand": {
+   "id": "brigand",
+   "name": "Brigand",
+   "gold": [
+    3,
+    12
+   ],
+   "entries": [
+    {
+     "item": "potion_soin",
+     "chance": 30,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "dague",
+     "chance": 15,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "armure_cuir",
+     "chance": 10,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "bombe_fumee",
+     "chance": 15,
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "gobelin": {
+   "id": "gobelin",
+   "name": "Gobelin",
+   "gold": [
+    1,
+    6
+   ],
+   "entries": [
+    {
+     "item": "potion_soin",
+     "chance": 20,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "minerai_fer",
+     "chance": 30,
+     "min": 1,
+     "max": 2
+    },
+    {
+     "item": "arc_court",
+     "chance": 8,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "gemme_brute",
+     "chance": 8,
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "mort_vivant": {
+   "id": "mort_vivant",
+   "name": "Mort-vivant",
+   "gold": [
+    0,
+    5
+   ],
+   "entries": [
+    {
+     "item": "antidote",
+     "chance": 20,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "epee_longue",
+     "chance": 10,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "talisman_garde",
+     "chance": 5,
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "magique": {
+   "id": "magique",
+   "name": "Créature magique",
+   "gold": [
+    5,
+    15
+   ],
+   "entries": [
+    {
+     "item": "potion_mana",
+     "chance": 40,
+     "min": 1,
+     "max": 2
+    },
+    {
+     "item": "gemme_brute",
+     "chance": 25,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "anneau_esprit",
+     "chance": 6,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "livre_boule_feu",
+     "chance": 4,
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "coffre": {
+   "id": "coffre",
+   "name": "Coffre au trésor",
+   "gold": [
+    15,
+    40
+   ],
+   "entries": [
+    {
+     "item": "potion_soin",
+     "chance": 60,
+     "min": 1,
+     "max": 2
+    },
+    {
+     "item": "potion_soin_sup",
+     "chance": 25,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "anneau_force",
+     "chance": 12,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "bottes_vent",
+     "chance": 6,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "lame_runique",
+     "chance": 5,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "livre_second_souffle",
+     "chance": 10,
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "boss": {
+   "id": "boss",
+   "name": "Trésor de boss",
+   "gold": [
+    40,
+    100
+   ],
+   "guaranteed": [
+    {
+     "item": "potion_soin_sup",
+     "qty": 2
+    }
+   ],
+   "entries": [
+    {
+     "item": "amulette_vie",
+     "chance": 30,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "croc_vampirique",
+     "chance": 15,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "baton_tempete",
+     "chance": 15,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "robe_archimage",
+     "chance": 20,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "ecaille_dragon",
+     "chance": 20,
+     "min": 1,
+     "max": 2
+    },
+    {
+     "item": "brise_monde",
+     "chance": 3,
+     "min": 1,
+     "max": 1
+    },
+    {
+     "item": "pendentif_phenix",
+     "chance": 3,
+     "min": 1,
+     "max": 1
+    }
+   ]
+  }
+ },
+ "monsters": {
+  "loup": {
+   "id": "loup",
+   "name": "Loup",
+   "color": "#9a9a9a",
+   "description": "Chasse en meute.",
+   "stats": {
+    "Force": 5,
+    "Dextérité": 6,
+    "Constitution": 5,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 5
+   },
+   "hp": 23,
+   "power": 2,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [
+    "morsure"
+   ],
+   "xp": 15,
+   "loot": "bete",
+   "defense_bonus": 0,
+   "boss": false,
+   "speed": 7,
+   "res": 10,
+   "icon": "paw"
+  },
+  "loup_alpha": {
+   "id": "loup_alpha",
+   "name": "Loup alpha",
+   "color": "#d9dee4",
+   "description": "Chef de meute.",
+   "stats": {
+    "Force": 7,
+    "Dextérité": 6,
+    "Constitution": 7,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 5
+   },
+   "hp": 44,
+   "power": 2,
+   "weapon": {
+    "damage": "1d8",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [
+    "morsure",
+    "hurlement_meute"
+   ],
+   "xp": 40,
+   "loot": "bete",
+   "defense_bonus": 0,
+   "boss": false,
+   "speed": 7,
+   "res": 10,
+   "icon": "paw"
+  },
+  "gobelin": {
+   "id": "gobelin",
+   "name": "Gobelin",
+   "color": "#7f9a5a",
+   "description": "Petit, lâche, nombreux.",
+   "stats": {
+    "Force": 3,
+    "Dextérité": 6,
+    "Constitution": 4,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 5
+   },
+   "hp": 18,
+   "power": 2,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Dextérité",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [],
+   "xp": 12,
+   "loot": "gobelin",
+   "defense_bonus": 0,
+   "boss": false,
+   "speed": 5,
+   "res": 10,
+   "icon": "skull"
+  },
+  "gobelin_archer": {
+   "id": "gobelin_archer",
+   "name": "Gobelin archer",
+   "color": "#6f8a4a",
+   "description": "Tire de loin.",
+   "stats": {
+    "Force": 3,
+    "Dextérité": 7,
+    "Constitution": 4,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 5
+   },
+   "hp": 16,
+   "power": 2,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Dextérité",
+    "crit": 20,
+    "range": 6,
+    "element": "physique"
+   },
+   "abilities": [
+    "tir_gobelin"
+   ],
+   "xp": 14,
+   "loot": "gobelin",
+   "defense_bonus": 0,
+   "boss": false,
+   "speed": 5,
+   "res": 10,
+   "icon": "skull"
+  },
+  "bandit": {
+   "id": "bandit",
+   "name": "Bandit",
+   "color": "#8a6a4a",
+   "description": "Détrousseur de grand chemin.",
+   "stats": {
+    "Force": 6,
+    "Dextérité": 5,
+    "Constitution": 5,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 5
+   },
+   "hp": 29,
+   "power": 2,
+   "weapon": {
+    "damage": "1d8",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [],
+   "xp": 20,
+   "loot": "brigand",
+   "defense_bonus": 1,
+   "boss": false,
+   "speed": 5,
+   "res": 10,
+   "icon": "skull"
+  },
+  "chef_bandit": {
+   "id": "chef_bandit",
+   "name": "Chef bandit",
+   "color": "#b0605a",
+   "description": "Il crie plus fort que les autres.",
+   "stats": {
+    "Force": 8,
+    "Dextérité": 6,
+    "Constitution": 7,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 7
+   },
+   "hp": 62,
+   "power": 4,
+   "weapon": {
+    "damage": "1d10",
+    "stat": "Force",
+    "crit": 19,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [
+    "cri_chef"
+   ],
+   "xp": 70,
+   "loot": "brigand",
+   "defense_bonus": 2,
+   "boss": true,
+   "speed": 5,
+   "res": 10,
+   "icon": "skull"
+  },
+  "squelette": {
+   "id": "squelette",
+   "name": "Squelette",
+   "color": "#e0e0d0",
+   "description": "Os animés par une volonté ancienne.",
+   "stats": {
+    "Force": 5,
+    "Dextérité": 5,
+    "Constitution": 4,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 5
+   },
+   "hp": 23,
+   "power": 2,
+   "weapon": {
+    "damage": "1d8",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [],
+   "xp": 18,
+   "loot": "mort_vivant",
+   "defense_bonus": 1,
+   "boss": false,
+   "speed": 5,
+   "res": 10,
+   "icon": "skull"
+  },
+  "araignee": {
+   "id": "araignee",
+   "name": "Araignée géante",
+   "color": "#3a3a3a",
+   "description": "Huit pattes, beaucoup trop d'yeux.",
+   "stats": {
+    "Force": 5,
+    "Dextérité": 7,
+    "Constitution": 5,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 5
+   },
+   "hp": 31,
+   "power": 2,
+   "weapon": {
+    "damage": "1d6",
+    "stat": "Dextérité",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [
+    "crochet_venin",
+    "toile"
+   ],
+   "xp": 30,
+   "loot": "bete",
+   "defense_bonus": 0,
+   "boss": false,
+   "speed": 6,
+   "res": 10,
+   "icon": "skull"
+  },
+  "ours": {
+   "id": "ours",
+   "name": "Ours des cavernes",
+   "color": "#6b4a2a",
+   "description": "Massif et furieux.",
+   "stats": {
+    "Force": 9,
+    "Dextérité": 3,
+    "Constitution": 9,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 5
+   },
+   "hp": 65,
+   "power": 2,
+   "weapon": {
+    "damage": "2d6",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [
+    "ecrasement"
+   ],
+   "xp": 55,
+   "loot": "bete",
+   "defense_bonus": 0,
+   "boss": false,
+   "speed": 5,
+   "res": 10,
+   "icon": "paw"
+  },
+  "cultiste": {
+   "id": "cultiste",
+   "name": "Cultiste",
+   "color": "#5a4a6a",
+   "description": "Murmure des noms interdits.",
+   "stats": {
+    "Force": 5,
+    "Dextérité": 5,
+    "Constitution": 5,
+    "Intelligence": 7,
+    "Esprit": 6,
+    "Charisme": 5
+   },
+   "hp": 26,
+   "power": 2,
+   "weapon": {
+    "damage": "1d4",
+    "stat": "Dextérité",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [
+    "eclair_noir",
+    "malediction"
+   ],
+   "xp": 30,
+   "loot": "magique",
+   "defense_bonus": 0,
+   "boss": false,
+   "speed": 5,
+   "res": 10,
+   "icon": "skull"
+  },
+  "golem": {
+   "id": "golem",
+   "name": "Golem de pierre",
+   "color": "#8a8f9a",
+   "description": "Lent et presque indestructible.",
+   "stats": {
+    "Force": 9,
+    "Dextérité": 2,
+    "Constitution": 10,
+    "Intelligence": 5,
+    "Esprit": 5,
+    "Charisme": 5
+   },
+   "hp": 78,
+   "power": 2,
+   "weapon": {
+    "damage": "2d8",
+    "stat": "Force",
+    "crit": 20,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [
+    "ecrasement"
+   ],
+   "xp": 70,
+   "loot": "magique",
+   "defense_bonus": 3,
+   "boss": false,
+   "speed": 3,
+   "res": 10,
+   "icon": "skull"
+  },
+  "ombre_errante": {
+   "id": "ombre_errante",
+   "name": "Ombré",
+   "color": "#2a2a3a",
+   "description": "Une silhouette qui boit la lumière.",
+   "stats": {
+    "Force": 5,
+    "Dextérité": 7,
+    "Constitution": 5,
+    "Intelligence": 5,
+    "Esprit": 7,
+    "Charisme": 5
+   },
+   "hp": 36,
+   "power": 2,
+   "weapon": {
+    "damage": "1d8",
+    "stat": "Dextérité",
+    "crit": 20,
+    "range": 1,
+    "element": "magique"
+   },
+   "abilities": [
+    "drain_ombre"
+   ],
+   "xp": 45,
+   "loot": "magique",
+   "defense_bonus": 0,
+   "boss": false,
+   "speed": 5,
+   "res": 10,
+   "icon": "skull"
+  },
+  "jeune_dragon": {
+   "id": "jeune_dragon",
+   "name": "Jeune dragon",
+   "color": "#c25050",
+   "description": "Déjà bien trop grand.",
+   "stats": {
+    "Force": 9,
+    "Dextérité": 6,
+    "Constitution": 9,
+    "Intelligence": 5,
+    "Esprit": 7,
+    "Charisme": 5
+   },
+   "hp": 156,
+   "power": 4,
+   "weapon": {
+    "damage": "2d8",
+    "stat": "Force",
+    "crit": 19,
+    "range": 1,
+    "element": "physique"
+   },
+   "abilities": [
+    "souffle_feu",
+    "ecrasement"
+   ],
+   "xp": 250,
+   "loot": "boss",
+   "defense_bonus": 3,
+   "boss": true,
+   "speed": 6,
+   "res": 10,
+   "icon": "dragon"
+  }
+ }
+}

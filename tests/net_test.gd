@@ -211,6 +211,10 @@ func _run_server3() -> void:
 		server.mj_add_label(map_id, 3, 3, "Passage secret", true)
 		server.mj_roll("d20", Protocol.TO_MJ, "jet secret MJ")
 		server.mj_roll("d6", _find(server, "Dana").id, "jet pour Dana")
+		# Quête donnée au groupe et objet dans le coffre commun.
+		_state.quest = server.mj_quest_save({"title": "Les loups de Valombre", "kind": "main", "objectives": [{"text": "Trouver la tanière"}],
+			"rewards": {"xp": 120, "gold": 15}, "give": true}).id
+		server.add_loot(Content.item_instance(server.content, "potion_soin"), "Test")
 		server.mj_start_game("exploration"))
 	server.phase_changed.connect(func():
 		var phase: Dictionary = server.phase
@@ -257,13 +261,17 @@ func _check_server3() -> void:
 	_expect(sheet.get("name", "") == "Dana la Brave", "fiche de Dana enregistrée")
 	_expect(sheet.get("secret", "") == "mon secret", "secret de la fiche conservé côté hôte")
 	_expect(sheet.get("auto", false) and sheet.get("class_id", "") == "ombre", "fiche de Dana créée avec l'assistant (classe Ombre)")
-	var d := Rules.derived(sheet, "legenders")
+	var d := Rules.derived(sheet, server.content)
 	_expect(int(sheet.get("hp_max", 0)) == int(d.hp_max) and int(d.hp_max) > 10 and int(sheet.defense) == int(d.defense), "PV et défense calculés automatiquement par l'hôte (%d PV, déf. %d)" % [d.hp_max, d.defense])
 	_expect(sheet.get("inventory", []).any(func(i): return i.name == "Kunai jumeaux"), "équipement choisi dans l'assistant (Kunai jumeaux)")
 	_expect(server.session.get("started", false), "la partie a été lancée par le MJ")
-	var attacks := server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ROLL and String(m.get("text", "")).contains("attaque"))
-	_expect(attacks.any(func(m): return String(m.text).begins_with("Dana la Brave attaque PNJ visible")), "Dana a attaqué le PNJ à son tour (jet automatique)")
-	_expect(String(_state.get("npc_attack_error", "x")) == "" and attacks.any(func(m): return String(m.text).begins_with("PNJ visible attaque Dana")), "le MJ a fait attaquer son PNJ à son tour")
+	var attacks := server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_COMBAT and String(m.get("text", "")).contains("Attaque rapide"))
+	_expect(attacks.any(func(m): return String(m.text).begins_with("Dana la Brave : Attaque rapide (Kunai jumeaux) → PNJ visible")), "Dana a attaqué le PNJ à son tour (jet automatique, 1 PA)")
+	_expect(String(_state.get("npc_attack_error", "x")) == "" and attacks.any(func(m): return String(m.text).begins_with("PNJ visible : Attaque rapide")), "le MJ a fait attaquer son PNJ à son tour")
+	var q := server._quest(String(_state.get("quest", "")))
+	server.mj_quest_complete(q.id)
+	_expect(q.status == "done" and int(server.characters[dana.id].gold) >= 20 + 15, "quête réussie : or distribué au groupe")
+	_expect(server.loot.is_empty() and server.characters[dana.id].inventory.any(func(i): return i.name == "Potion de soin"), "Dana a pris la potion du coffre commun")
 	_expect(server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and m.status == Protocol.ACTION_RESOLVED).size() == 1, "action de Dana résolue par le MJ")
 	_expect(int(_state.get("imported", 0)) >= 10, "pack de PNJ importé (%d fiches)" % int(_state.get("imported", 0)))
 	var eli_req := server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ROLL_REQUEST)
@@ -286,13 +294,14 @@ func _run_dana() -> void:
 	Net.client.command_failed.connect(func(_r, error): _state.errors = _state.get("errors", []) + [error])
 	Net.client.welcomed.connect(func():
 		var c := Net.client
-		var cls := Rules.get_class_def("legenders", "ombre")
-		var base := CharacterData.create(c.universe, c.me.id, c.me.id, "Dana la Brave")
-		var sheet := Rules.build_sheet(base, "legenders", "ombre", cls.recommended, [1, 0])
-		sheet.secret = "mon secret"
-		sheet.species = "Humain"
-		sheet.magic.name = "Flammes"
-		c.save_character(sheet))
+		var cls := Rules.get_class_def(c.content, "ombre")
+		c.create_character("ombre", cls.recommended, [1], {"name": "Dana la Brave", "secret": "mon secret", "species": "Humain",
+			"magic": {"name": "Flammes", "category": "Altération", "public": true}}))
+	Net.client.quests_changed.connect(func(): _state.quests_seen = Net.client.quests.size())
+	Net.client.loot_changed.connect(func():
+		if not Net.client.loot.is_empty() and not _state.get("took", false):
+			_state.took = true
+			Net.client.take_loot(String(Net.client.loot[0].uid)))
 	Net.client.phase_changed.connect(func():
 		var c := Net.client
 		if not c.is_my_turn():
@@ -357,6 +366,8 @@ func _check_dana() -> void:
 	_expect(not labels.has("Perception secrète"), "Dana ne voit pas le jet secret demandé à Eli")
 	_expect(c.music.get("track", "") != "", "musique de l'hôte reçue")
 	_expect(c.characters.size() == 2, "les fiches de PNJ du MJ ne sont pas envoyées aux joueurs")
+	_expect(int(_state.get("quests_seen", 0)) == 1, "quête du MJ reçue par Dana")
+	_expect(not c.content.get("classes", {}).is_empty() and c.content.get("monsters") == null, "catalogue reçu sans les monstres ni le butin du MJ")
 
 
 func _run_eli() -> void:
@@ -369,9 +380,7 @@ func _run_eli() -> void:
 	Net.client.welcomed.connect(func():
 		# Trop de points répartis : refusé par l'hôte.
 		var c := Net.client
-		var base := CharacterData.create(c.universe, c.me.id, c.me.id, "Eli")
-		var sheet := Rules.build_sheet(base, "legenders", "briseur", {"Force": 6, "Agilité": 6, "Endurance": 6}, [0, 0])
-		c.save_character(sheet))
+		c.create_character("briseur", {"Force": 6, "Dextérité": 6, "Constitution": 6}, [0], {"name": "Eli"}))
 	Net.client.message_received.connect(func(m):
 		if m.get("kind", "") == Protocol.KIND_ROLL_REQUEST:
 			Net.client.answer_roll(m.id))

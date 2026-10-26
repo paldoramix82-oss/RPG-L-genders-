@@ -1,28 +1,23 @@
 class_name CreationWizard
 extends VBoxContainer
-## Création de personnage guidée en 4 étapes :
-##   1. la classe (capacités et équipement prêts à jouer),
-##   2. la répartition des points de caractéristiques (réserve limitée),
-##   3. l'équipement (choix propres à la classe, ex. trois dagues pour l'Ombre),
-##   4. le nom et l'apparence.
-## Les PV, l'énergie, la défense, l'initiative et la vitesse se calculent tout seuls.
+## Création de personnage guidée en 5 étapes :
+##   1. Identité : nom, portrait, description (histoire et personnalité facultatives),
+##   2. Classe : rôle, passif, trois capacités et un ultime prêts à jouer,
+##   3. Caractéristiques : 5 partout + 15 points à répartir (bornes réglées par le MJ),
+##   4. Équipement : kit de classe et choix propres à la classe,
+##   5. Récapitulatif : tout vérifier, revenir en arrière, puis créer.
+## L'hôte reconstruit la fiche lui-même à partir de ces choix (rien n'est imposé par le téléphone).
 
-signal finished(sheet: Dictionary)
+## payload : {class_id, alloc, choices, identity}
+signal finished(payload: Dictionary)
 signal cancelled
 
-const STEPS := ["Classe", "Caractéristiques", "Équipement", "Identité"]
-const STAT_HINTS := {
-	"Force": "Coups au contact, porter, enfoncer.",
-	"Agilité": "Défense, initiative, armes fines.",
-	"Endurance": "Points de vie, résistance.",
-	"Intelligence": "Magie de savoir, analyse, énergie de certaines classes.",
-	"Perception": "Tir, repérer, initiative.",
-	"Charisme": "Persuader, invoquer, soigner pour certaines classes.",
-}
+const STEPS := ["Identité", "Classe", "Caractéristiques", "Équipement", "Récapitulatif"]
+const TITLES := ["Qui es-tu ?", "Choisis ta classe", "Répartis tes points", "Choisis ton équipement", "Vérifie et confirme"]
 
 var universe := {}
+var content := {}
 var base := {}
-var classes: Array = []
 var step := 0
 var class_id := ""
 var alloc := {}
@@ -31,20 +26,26 @@ var identity := {}
 var _content: VBoxContainer
 var _scroll: TouchScroll
 var _title: Label
-var _dots: HBoxContainer
+var _dots: HFlowContainer
 var _back: Button
 var _next: Button
 var _points_label: Label
-var _preview: VBoxContainer
+var _preview: HFlowContainer
 var _value_labels := {}
+var _portrait: Portrait
 
 
-func _init(universe_data: Dictionary, base_sheet: Dictionary) -> void:
+func _init(universe_data: Dictionary, content_data: Dictionary, base_sheet: Dictionary) -> void:
 	universe = universe_data
+	content = content_data
 	base = base_sheet
-	classes = Rules.classes(String(universe.get("id", "")))
-	identity = {"name": String(base.get("name", "")), "color": String(base.get("pawn", {}).get("color", CharacterData.PAWN_COLORS[0])),
-		"species": "", "appearance": "", "concept": ""}
+	identity = {
+		"name": String(base.get("name", "")), "species": String(base.get("species", "")), "concept": "",
+		"appearance": String(base.get("appearance", "")), "background": "", "personality": "",
+		"color": String(base.get("pawn", {}).get("color", CharacterData.PAWN_COLORS[0])),
+		"portrait": (base.get("portrait", {}) as Dictionary).duplicate(),
+	}
+	_reset_alloc()
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_theme_constant_override("separation", 8)
@@ -54,12 +55,13 @@ func _init(universe_data: Dictionary, base_sheet: Dictionary) -> void:
 	_title = UIKit.label("", "TitleLabel", true)
 	_title.add_theme_font_size_override("font_size", 26)
 	head.add_child(_title)
-	_dots = HBoxContainer.new()
+	_dots = HFlowContainer.new()
+	_dots.add_theme_constant_override("h_separation", 4)
 	head.add_child(_dots)
 	_scroll = TouchScroll.new()
 	add_child(_scroll)
 	var column := CenteredColumn.new()
-	column.max_width = 640
+	column.max_width = 680
 	column.side_margin = 0
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(column)
@@ -78,6 +80,12 @@ func _init(universe_data: Dictionary, base_sheet: Dictionary) -> void:
 	_show_step()
 
 
+func _reset_alloc() -> void:
+	alloc = {}
+	for s in Content.stat_names(content):
+		alloc[s] = 0
+
+
 func _go(delta: int) -> void:
 	if delta > 0 and step == STEPS.size() - 1:
 		_finish()
@@ -93,146 +101,277 @@ func _show_step() -> void:
 	UIKit.clear(_content)
 	_value_labels.clear()
 	_scroll.scroll_vertical = 0
-	_title.text = "Étape %d/4 — %s" % [step + 1, ["Choisis ta classe", "Répartis tes points", "Choisis ton équipement", "Qui es-tu ?"][step]]
+	_title.text = "Étape %d/%d — %s" % [step + 1, STEPS.size(), TITLES[step]]
 	UIKit.clear(_dots)
 	for i in STEPS.size():
 		var chip := UIKit.chip(STEPS[i], Palette.GOLD if i == step else (Palette.OK if i < step else Palette.FAINT))
+		chip.add_theme_font_size_override("font_size", 13)
 		_dots.add_child(chip)
 	_back.text = "‹  Retour" if step > 0 else "Annuler"
 	_next.text = "Créer mon personnage" if step == STEPS.size() - 1 else "Suivant  ›"
 	match step:
 		0:
-			_step_class()
-		1:
-			_step_points()
-		2:
-			_step_gear()
-		3:
 			_step_identity()
+		1:
+			_step_class()
+		2:
+			_step_points()
+		3:
+			_step_gear()
+		4:
+			_step_recap()
 	_update_next()
 
 
 func _update_next() -> void:
 	match step:
 		0:
-			_next.disabled = class_id == ""
-		1:
-			_next.disabled = Rules.points_spent(alloc) > Rules.POINT_POOL
-		3:
 			_next.disabled = String(identity.name).strip_edges() == ""
+		1:
+			_next.disabled = class_id == ""
+		2:
+			_next.disabled = not Rules.valid_alloc(alloc, content)
 		_:
 			_next.disabled = false
 
 
 func _cls() -> Dictionary:
-	return Rules.get_class_def(String(universe.get("id", "")), class_id)
+	return Rules.get_class_def(content, class_id)
 
 
 func _preview_sheet() -> Dictionary:
-	return Rules.build_sheet(base, String(universe.get("id", "")), class_id, alloc, choices)
+	var b := base.duplicate(true)
+	b.name = identity.name
+	b.portrait = identity.portrait
+	return Rules.build_sheet(b, content, class_id, alloc, choices)
 
 
-# --- 1. Classe ---------------------------------------------------------------
+# --- 1. Identité -------------------------------------------------------------
+
+func _step_identity() -> void:
+	var intro := UIKit.card(_content, "", "HighlightPanel")
+	intro.add_child(UIKit.label("Donne un nom à ton héros et choisis son visage. Le reste (histoire, personnalité) est facultatif : tu pourras le compléter plus tard.", "", true))
+	var card := UIKit.card(_content, "Nom et apparence")
+	var name_edit := UIKit.line_edit(String(identity.name), "Ex. : Lina, Bran, Shin…")
+	name_edit.max_length = 32
+	name_edit.text_changed.connect(func(t):
+		identity.name = t
+		_update_next())
+	UIKit.field(card, "Nom du personnage", name_edit)
+	# Portrait en haut, réglages dessous : tient sur un téléphone.
+	var look := HBoxContainer.new()
+	look.add_theme_constant_override("separation", 14)
+	card.add_child(look)
+	_portrait = Portrait.new(identity.portrait, Color(String(identity.color)), 120)
+	look.add_child(_portrait)
+	var side := VBoxContainer.new()
+	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	look.add_child(side)
+	side.add_child(UIKit.label("Choisissez le visage de votre héros avec les flèches, ou laissez faire le hasard.", "MutedLabel", true))
+	var pickers := VBoxContainer.new()
+	pickers.add_theme_constant_override("separation", 4)
+	pickers.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(pickers)
+	for spec in [["face", "Visage", Portrait.FACE_NAMES], ["skin", "Teint", ["Clair", "Doré", "Ambré", "Mat", "Brun", "Ébène"]],
+			["hair", "Coiffure", Portrait.HAIR_NAMES], ["hair_color", "Couleur", ["Noir", "Châtain", "Auburn", "Blond", "Roux", "Blanc", "Bleu nuit", "Prune"]],
+			["eyes", "Yeux", Portrait.EYE_NAMES], ["beard", "Barbe", Portrait.BEARD_NAMES], ["mark", "Marque", Portrait.MARK_NAMES]]:
+		pickers.add_child(_cycler(spec[0], spec[1], spec[2]))
+	side.add_child(UIKit.button("Au hasard", "", func():
+		for key in CharacterData.PORTRAIT_KEYS:
+			identity.portrait[key] = randi() % 8
+		identity.portrait.beard = randi() % 4
+		identity.portrait.mark = randi() % 4
+		_show_step()))
+	card.add_child(UIKit.label("Couleur du pion", "MutedLabel"))
+	var colors := HFlowContainer.new()
+	colors.add_theme_constant_override("h_separation", 8)
+	colors.add_theme_constant_override("v_separation", 8)
+	card.add_child(colors)
+	for col in CharacterData.PAWN_COLORS:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(48, 48)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(col)
+		sb.set_corner_radius_all(24)
+		sb.border_color = Palette.GOLD if col == identity.color else Palette.BORDER
+		sb.set_border_width_all(3 if col == identity.color else 1)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(st, sb)
+		b.pressed.connect(func():
+			identity.color = col
+			_show_step())
+		colors.add_child(b)
+	var species := UIKit.line_edit(String(identity.species), "Humain, elfe, mutant…")
+	species.text_changed.connect(func(t): identity.species = t)
+	UIKit.field(card, "Espèce (facultatif)", species)
+	var more := UIKit.card(_content, "Pour aller plus loin (facultatif)")
+	for spec in [["appearance", "Description", "À quoi ressemble ton personnage ?"], ["background", "Histoire", "D'où vient-il ? Que cherche-t-il ?"],
+			["personality", "Personnalité", "Calme, tête brûlée, curieux…"]]:
+		var e := TextEdit.new()
+		e.text = String(identity.get(spec[0], ""))
+		e.placeholder_text = spec[2]
+		e.custom_minimum_size.y = 84
+		e.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+		var key: String = spec[0]
+		e.text_changed.connect(func(): identity[key] = e.text)
+		UIKit.field(more, spec[1], e)
+
+
+func _cycler(key: String, caption: String, names: Array) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	var l := UIKit.label(caption, "MutedLabel")
+	l.custom_minimum_size.x = 90
+	row.add_child(l)
+	var value := UIKit.label("", "StrongLabel")
+	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var refresh := func():
+		value.text = String(names[int(identity.portrait.get(key, 0)) % names.size()])
+		if _portrait:
+			_portrait.set_data(identity.portrait, Color(String(identity.color)))
+	for d in [-1, 1]:
+		var b := UIKit.button("‹" if d < 0 else "›", "", func():
+			identity.portrait[key] = posmod(int(identity.portrait.get(key, 0)) + d, names.size())
+			refresh.call())
+		b.custom_minimum_size = Vector2(48, 40)
+		if d < 0:
+			row.add_child(b)
+			row.add_child(value)
+		else:
+			row.add_child(b)
+	refresh.call()
+	return row
+
+
+# --- 2. Classe ---------------------------------------------------------------
 
 func _step_class() -> void:
-	_content.add_child(UIKit.label("Chaque classe arrive avec ses capacités et son équipement. Tout reste modifiable plus tard.", "MutedLabel", true))
-	for c in classes:
-		var selected: bool = c.id == class_id
+	_content.add_child(GameUI.hint("Chaque classe arrive avec un passif, trois capacités et un ultime, prêts à jouer. Touche une classe pour voir le détail."))
+	for cls in Rules.classes(content):
+		var selected := String(cls.id) == class_id
 		var card := UIKit.card(_content, "", "HighlightPanel" if selected else "CardPanel")
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
+		row.add_theme_constant_override("separation", 14)
 		card.add_child(row)
-		row.add_child(Emblem.new(String(c.get("emblem", "sword")), Color(String(c.get("color", "#c9a96e"))), 60))
+		var emblem := Emblem.new(String(cls.get("emblem", "sword")), Color(String(cls.get("color", "#8a8f9a"))), 60)
+		emblem.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		row.add_child(emblem)
 		var col := VBoxContainer.new()
 		col.add_theme_constant_override("separation", 2)
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(col)
-		var name_label := UIKit.label(String(c.name), "HeadingLabel", true)
+		var name_label := UIKit.label(String(cls.name), "HeadingLabel", true)
+		name_label.add_theme_font_size_override("font_size", 24)
 		col.add_child(name_label)
-		col.add_child(UIKit.chip(String(c.get("role", "")), Color(String(c.get("color", "#c9a96e"))).lightened(0.3)))
-		col.add_child(UIKit.label(String(c.get("tagline", "")), "", true))
-		var bonus: PackedStringArray = []
-		for k in c.get("bonus", {}):
-			bonus.append("%s +%d" % [k, c.bonus[k]])
-		col.add_child(UIKit.label("PV %d  ·  Vitesse %d cases  ·  %s" % [c.hp_base, c.speed, ", ".join(bonus)], "MutedLabel", true))
-		var abil: PackedStringArray = []
-		for a in c.get("abilities", []):
-			abil.append(String(a.name))
-		col.add_child(UIKit.label("Capacités : " + ", ".join(abil), "MutedLabel", true))
-		var pick := UIKit.button("Classe choisie" if selected else "Choisir " + String(c.name), "PrimaryButton" if selected else "", func():
-			if class_id != c.id:
-				class_id = c.id
-				alloc = (c.get("recommended", {}) as Dictionary).duplicate()
+		var stars := "◆".repeat(int(cls.get("difficulty", 1))) + "◇".repeat(3 - int(cls.get("difficulty", 1)))
+		col.add_child(UIKit.chip("%s · difficulté %s" % [cls.get("role", ""), stars], Palette.VIOLET.lightened(0.3)))
+		col.add_child(UIKit.label(String(cls.get("description", cls.get("tagline", ""))), "", true))
+		var res: Dictionary = cls.get("resource", {})
+		col.add_child(UIKit.label("PV de base %d · %s · Vitesse %d cases · Bonus : %s" % [int(cls.hp_base), res.get("name", "Énergie"), int(cls.speed), _bonus_text(cls)], "MutedLabel", true))
+		if selected:
+			card.add_child(GameUI.passive_card(cls.get("passive", {}), content))
+			for id in cls.get("abilities", []) + [cls.get("ultimate", "")]:
+				var a := Content.get_entry(content, "abilities", String(id))
+				if not a.is_empty():
+					var aa: Dictionary = a.duplicate()
+					aa.ultimate = String(id) == String(cls.get("ultimate", ""))
+					card.add_child(GameUI.ability_card(aa, content, String(res.get("name", "Énergie"))))
+		var pick := UIKit.button("Classe choisie" if selected else "Choisir : %s" % cls.name, "PrimaryButton" if selected else "", func():
+			if class_id != String(cls.id):
+				class_id = String(cls.id)
 				choices = []
+				for _g in cls.get("choices", []):
+					choices.append(0)
+				_reset_alloc()
 			_show_step())
+		pick.custom_minimum_size.y = 52
 		card.add_child(pick)
 
 
-# --- 2. Points -----------------------------------------------------------------
+func _bonus_text(cls: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	var bonus: Dictionary = cls.get("bonus", {})
+	for s in bonus:
+		parts.append("%s %+d" % [Content.stat_info(content, s).get("short", s), int(bonus[s])])
+	return ", ".join(parts) if not parts.is_empty() else "aucun"
+
+
+# --- 3. Caractéristiques -----------------------------------------------------
 
 func _step_points() -> void:
+	var rules := Content.rules(content)
+	var head := UIKit.card(_content, "", "HighlightPanel")
+	_points_label = UIKit.label("", "HeadingLabel")
+	_points_label.add_theme_font_size_override("font_size", 26)
+	head.add_child(_points_label)
+	head.add_child(UIKit.label("Chaque caractéristique part de %d. Répartis %d points (entre %d et %d par caractéristique avant le bonus de classe). Plus c'est haut, mieux c'est." % [
+		int(rules.stat_base), int(rules.stat_pool), int(rules.stat_min), int(rules.stat_max)], "", true))
+	var tools := HFlowContainer.new()
+	tools.add_theme_constant_override("h_separation", 8)
+	tools.add_theme_constant_override("v_separation", 8)
+	head.add_child(tools)
+	tools.add_child(UIKit.button("Répartition conseillée", "", func():
+		var rec: Dictionary = _cls().get("recommended", {})
+		for s in Content.stat_names(content):
+			alloc[s] = int(rec.get(s, 0))
+		_refresh_points()))
+	tools.add_child(UIKit.button("Réinitialiser", "", func():
+		_reset_alloc()
+		_refresh_points()))
+	var card := UIKit.card(_content, "Caractéristiques")
 	var cls := _cls()
-	_points_label = UIKit.label("", "CodeLabel")
-	_points_label.add_theme_font_size_override("font_size", 24)
-	var top := UIKit.card(_content, "", "HighlightPanel")
-	top.add_child(_points_label)
-	top.add_child(UIKit.label("Chaque caractéristique part de 10. Baissez-en une (jusqu'à 6) pour gagner des points. Votre classe ajoute ses bonus.", "MutedLabel", true))
-	var row := HBoxContainer.new()
-	top.add_child(row)
-	row.add_child(UIKit.button("Répartition conseillée", "", func():
-		alloc = (cls.get("recommended", {}) as Dictionary).duplicate()
-		_refresh_points()))
-	row.add_child(UIKit.button("Tout à zéro", "", func():
-		alloc = {}
-		_refresh_points()))
-	var list := UIKit.card(_content, "Caractéristiques")
-	for s in Rules.STATS:
-		var line := HBoxContainer.new()
-		line.add_theme_constant_override("separation", 8)
-		list.add_child(line)
+	for s in Content.stat_names(content):
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		card.add_child(row)
 		var info := VBoxContainer.new()
 		info.add_theme_constant_override("separation", 0)
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		line.add_child(info)
-		info.add_child(UIKit.label(s, "StrongLabel"))
-		info.add_child(UIKit.label(STAT_HINTS[s], "MutedLabel", true))
+		row.add_child(info)
+		var n := UIKit.label(s, "StrongLabel")
+		info.add_child(n)
+		info.add_child(UIKit.label(String(Content.stat_info(content, s).get("description", "")), "MutedLabel", true))
 		var minus := UIKit.button("−", "", _bump.bind(s, -1))
-		minus.custom_minimum_size = Vector2(52, 52)
-		line.add_child(minus)
-		var value := UIKit.label("", "CodeLabel")
-		value.add_theme_font_size_override("font_size", 24)
-		value.custom_minimum_size.x = 76
-		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		line.add_child(value)
+		minus.custom_minimum_size = Vector2(46, 50)
+		row.add_child(minus)
+		var v := UIKit.label("", "StrongLabel")
+		v.custom_minimum_size.x = 48
+		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_theme_font_size_override("font_size", 24)
+		row.add_child(v)
 		var plus := UIKit.button("+", "PrimaryButton", _bump.bind(s, 1))
-		plus.custom_minimum_size = Vector2(52, 52)
-		line.add_child(plus)
-		_value_labels[s] = value
-	_preview = UIKit.card(_content, "Ce que ça donne")
+		plus.custom_minimum_size = Vector2(46, 50)
+		row.add_child(plus)
+		_value_labels[s] = v
+		if int(cls.get("bonus", {}).get(s, 0)) != 0:
+			n.text = "%s  (classe %+d)" % [s, int(cls.bonus[s])]
+	var prev := UIKit.card(_content, "Ce que ça donne")
+	_preview = HFlowContainer.new()
+	_preview.add_theme_constant_override("h_separation", 8)
+	_preview.add_theme_constant_override("v_separation", 8)
+	prev.add_child(_preview)
 	_refresh_points()
 
 
 func _bump(stat_name: String, delta: int) -> void:
+	var b := Rules.alloc_bounds(content)
 	var v := int(alloc.get(stat_name, 0)) + delta
-	if v < Rules.ALLOC_MIN or v > Rules.ALLOC_MAX:
+	if v < b.x or v > b.y:
 		return
-	if delta > 0 and Rules.points_spent(alloc) >= Rules.POINT_POOL:
+	if delta > 0 and Rules.points_left(alloc, content) <= 0:
 		return
 	alloc[stat_name] = v
 	_refresh_points()
 
 
 func _refresh_points() -> void:
-	var cls := _cls()
-	var values := Rules.stat_values(alloc, cls)
-	var left := Rules.POINT_POOL - Rules.points_spent(alloc)
+	var values := Rules.stat_values(alloc, _cls(), content)
+	var left := Rules.points_left(alloc, content)
 	_points_label.text = "Points restants : %d" % left
-	_points_label.add_theme_color_override("font_color", Palette.GOLD if left > 0 else (Palette.OK if left == 0 else Palette.DANGER))
+	_points_label.add_theme_color_override("font_color", Palette.OK if left == 0 else (Palette.GOLD if left > 0 else Palette.DANGER))
 	for s in _value_labels:
-		var bonus := int(cls.get("bonus", {}).get(s, 0))
-		var m := Rules.mod(values[s])
-		(_value_labels[s] as Label).text = "%d (%+d)" % [values[s], m]
-		(_value_labels[s] as Label).tooltip_text = "dont +%d de classe" % bonus if bonus > 0 else ""
+		_value_labels[s].text = str(values[s])
 	_fill_preview()
 	_update_next()
 
@@ -240,176 +379,123 @@ func _refresh_points() -> void:
 func _fill_preview() -> void:
 	if _preview == null:
 		return
-	for child in _preview.get_children().slice(2):
-		_preview.remove_child(child)
-		child.queue_free()
+	UIKit.clear(_preview)
 	var sheet := _preview_sheet()
-	var d := Rules.derived(sheet, String(universe.get("id", "")))
-	var res_name := String(universe.get("character", {}).get("resource_name", "Énergie"))
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 8)
-	_preview.add_child(grid)
-	for spec in [["PV", d.hp_max], [res_name, d.res_max], ["Défense", d.defense], ["Initiative", "%+d" % d.initiative], ["Vitesse", "%d cases" % d.speed]]:
-		grid.add_child(_stat_box(spec[0], str(spec[1])))
-	for w in Rules.weapons(sheet):
-		var p := Rules.attack_profile(sheet, String(universe.get("id", "")), w)
-		_preview.add_child(UIKit.label(_attack_text(p), "MutedLabel", true))
+	var d := Rules.derived(sheet, content)
+	var w: Dictionary = Rules.weapons(sheet)[0]
+	var p := Rules.attack_profile(sheet, content, w)
+	for spec in [["PV", str(d.hp_max), Palette.HP, "Points de vie : à 0, hors de combat."],
+			[String(d.res_name), str(d.res_max), Palette.MANA, "Sert à utiliser les capacités."],
+			["Défense", str(d.defense), Palette.GOLD, "Score à atteindre au d20 pour vous toucher."],
+			["Initiative", "%+d" % int(d.initiative), Palette.GOLD, "Ajoutée au d20 pour l'ordre du combat."],
+			["Résistance", "%d / %d" % [d.resist_phys, d.resist_mag], Palette.VIOLET.lightened(0.3), "Réduit les dégâts physiques / magiques."],
+			["Attaque", "d20%+d · %s%+d" % [p.to_hit, p.damage, p.damage_bonus], Palette.HP.lightened(0.2), "Toucher et dégâts de votre arme."]]:
+		var t := GameUI.value_tile(spec[0], spec[1], spec[2], spec[3])
+		t.custom_minimum_size.x = 120
+		t.size_flags_horizontal = Control.SIZE_FILL
+		_preview.add_child(t)
 
 
-func _stat_box(caption: String, value: String) -> Control:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = "InsetPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 0)
-	panel.add_child(col)
-	var v := UIKit.label(value, "CodeLabel")
-	v.add_theme_font_size_override("font_size", 22)
-	v.add_theme_color_override("font_color", Palette.GOLD)
-	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(v)
-	var c := UIKit.label(caption, "MutedLabel")
-	c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(c)
-	return panel
-
-
-static func _attack_text(p: Dictionary) -> String:
-	var crit := "Critique sur 20" if int(p.crit) >= 20 else "Critique sur %d-20" % int(p.crit)
-	var dmg := String(p.damage) + ("%+d" % int(p.damage_mod) if int(p.damage_mod) != 0 else "")
-	return "%s : toucher %+d, dégâts %s, %s, portée %d" % [p.name, p.to_hit, dmg, crit, p.range]
-
-
-# --- 3. Équipement -------------------------------------------------------------
+# --- 4. Équipement -----------------------------------------------------------
 
 func _step_gear() -> void:
 	var cls := _cls()
 	var groups: Array = cls.get("choices", [])
-	while choices.size() < groups.size():
-		choices.append(0)
+	_content.add_child(GameUI.hint("Ton équipement de départ. Tu en trouveras d'autres en jouant (butin, quêtes, marchands)."))
 	for gi in groups.size():
 		var g: Dictionary = groups[gi]
-		var card := UIKit.card(_content, String(g.title))
+		var card := UIKit.card(_content, String(g.get("title", "Choix")))
 		var options: Array = g.get("options", [])
 		for oi in options.size():
-			var o: Dictionary = options[oi]
-			var selected: bool = int(choices[gi]) == oi
-			var opt := UIKit.card(card, "", "HighlightPanel" if selected else "InsetPanel")
-			opt.add_child(UIKit.label(String(o.name), "StrongLabel", true))
-			opt.add_child(UIKit.label(_item_stats(o), "", true))
-			if String(o.get("description", "")) != "":
-				opt.add_child(UIKit.label(String(o.description), "MutedLabel", true))
-			opt.add_child(UIKit.button("Équipé" if selected else "Prendre", "PrimaryButton" if selected else "", func():
+			var item := Content.get_entry(content, "items", String(options[oi]))
+			if item.is_empty():
+				continue
+			var selected := gi < choices.size() and int(choices[gi]) == oi
+			var box := VBoxContainer.new()
+			card.add_child(box)
+			var shown := item.duplicate()
+			shown.equipped = selected
+			box.add_child(GameUI.item_card(shown, content))
+			var b := UIKit.button("Choisi" if selected else "Prendre", "PrimaryButton" if selected else "", func():
+				while choices.size() <= gi:
+					choices.append(0)
 				choices[gi] = oi
-				_show_step()))
+				_show_step())
+			box.add_child(b)
 	var kit: Array = cls.get("kit", [])
 	if not kit.is_empty():
-		var bag := UIKit.card(_content, "Aussi dans votre sac")
-		for i in kit:
-			bag.add_child(UIKit.label("%s%s — %s" % [i.name, " ×%d" % int(i.qty) if int(i.get("qty", 1)) > 1 else "", _item_stats(i) if _item_stats(i) != "" else String(i.get("description", ""))], "", true))
-	var abil := UIKit.card(_content, "Vos capacités")
-	for a in cls.get("abilities", []):
-		abil.add_child(UIKit.label(String(a.name), "StrongLabel", true))
-		abil.add_child(UIKit.label(_ability_text(a, String(universe.get("character", {}).get("resource_name", "Énergie"))), "MutedLabel", true))
+		var card := UIKit.card(_content, "Toujours fourni avec la classe")
+		for k in kit:
+			var item := Content.get_entry(content, "items", String(k.get("item", "")))
+			if not item.is_empty():
+				var shown := item.duplicate()
+				shown.qty = int(k.get("qty", 1))
+				shown.equipped = bool(k.get("equip", false))
+				card.add_child(GameUI.item_card(shown, content))
+	var gold := UIKit.card(_content, "")
+	gold.add_child(UIKit.label("Bourse de départ : %d pièces d'or." % int(Content.rule(content, "start_gold")), "StrongLabel", true))
 
 
-static func _item_stats(i: Dictionary) -> String:
-	match String(i.get("category", "")):
-		"arme":
-			var crit := int(i.get("crit", 20))
-			return "Arme · dégâts %s (%s) · critique %s · portée %d" % [i.get("damage", "1d4"), i.get("stat", "Force"), "20" if crit >= 20 else "%d-20" % crit, int(i.get("range", 1))]
-		"armure", "bouclier":
-			return "%s · défense +%d" % ["Bouclier" if i.category == "bouclier" else "Armure", int(i.get("defense", 0))]
-		"consommable":
-			return "À utiliser : soigne %s" % i.get("heal", "") if String(i.get("heal", "0")) not in ["", "0"] else "Consommable"
-	return ""
+# --- 5. Récapitulatif ---------------------------------------------------------
 
-
-static func _ability_text(a: Dictionary, res_name: String) -> String:
-	var parts: PackedStringArray = []
-	match String(a.get("kind", "")):
-		"attack":
-			parts.append("Attaque %s (+%s)" % [a.get("damage", ""), a.get("stat", "")])
-		"heal":
-			parts.append("Soin %s (+%s)" % [a.get("heal", ""), a.get("stat", "")])
-	if int(a.get("res_cost", 0)) > 0:
-		parts.append("coût %d %s" % [int(a.res_cost), res_name])
-	if int(a.get("range", 0)) > 1:
-		parts.append("portée %d" % int(a.range))
-	parts.append(String(a.get("description", "")))
-	return "  ·  ".join(parts)
-
-
-# --- 4. Identité ----------------------------------------------------------------
-
-func _step_identity() -> void:
-	var card := UIKit.card(_content, "")
-	var n := UIKit.line_edit(String(identity.name), "Nom de votre personnage")
-	n.text_changed.connect(func(t):
-		identity.name = t
-		_update_next())
-	UIKit.field(card, "Nom du personnage", n)
-	var species := UIKit.line_edit(String(identity.species), "Ex. : Humain")
-	species.text_changed.connect(func(t): identity.species = t)
-	var row := HBoxContainer.new()
-	row.add_child(species)
-	species.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var options: Array = universe.get("character", {}).get("species", [])
-	if not options.is_empty():
-		var menu := MenuButton.new()
-		menu.text = "Choisir"
-		menu.flat = false
-		menu.theme_type_variation = "Button"
-		menu.custom_minimum_size = Vector2(90, UIKit.TOUCH_HEIGHT)
-		for o in options:
-			menu.get_popup().add_item(String(o))
-		menu.get_popup().index_pressed.connect(func(i):
-			species.text = menu.get_popup().get_item_text(i)
-			identity.species = species.text)
-		row.add_child(menu)
-	card.add_child(UIKit.label("Espèce (facultatif)", "MutedLabel"))
-	card.add_child(row)
-	card.add_child(UIKit.label("Couleur de votre pion", "MutedLabel"))
-	var colors := HFlowContainer.new()
-	colors.add_theme_constant_override("h_separation", 6)
-	colors.add_theme_constant_override("v_separation", 6)
-	card.add_child(colors)
-	for c in CharacterData.PAWN_COLORS:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(46, 46)
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(c)
-		sb.set_corner_radius_all(23)
-		sb.set_border_width_all(4 if c == identity.color else 0)
-		sb.border_color = Palette.TEXT
-		for s in ["normal", "hover", "pressed", "focus"]:
-			b.add_theme_stylebox_override(s, sb)
-		b.pressed.connect(func():
-			identity.color = c
-			_show_step())
-		colors.add_child(b)
-	var look := TextEdit.new()
-	look.text = String(identity.appearance)
-	look.placeholder_text = "Apparence, une phrase sur son histoire… (facultatif)"
-	look.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	look.scroll_fit_content_height = true
-	look.custom_minimum_size.y = 80
-	look.text_changed.connect(func(): identity.appearance = look.text)
-	UIKit.field(card, "Description (facultatif)", look)
-	var recap := UIKit.card(_content, "Récapitulatif", "HighlightPanel")
+func _step_recap() -> void:
 	var sheet := _preview_sheet()
-	var d := Rules.derived(sheet, String(universe.get("id", "")))
-	recap.add_child(UIKit.label("%s  ·  PV %d  ·  Défense %d  ·  Vitesse %d" % [_cls().get("name", ""), d.hp_max, d.defense, d.speed], "StrongLabel", true))
-	for w in Rules.weapons(sheet):
-		recap.add_child(UIKit.label(_attack_text(Rules.attack_profile(sheet, String(universe.get("id", "")), w)), "MutedLabel", true))
+	var cls := _cls()
+	var d := Rules.derived(sheet, content)
+	var head := UIKit.card(_content, "", "HighlightPanel")
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	head.add_child(row)
+	row.add_child(Portrait.new(identity.portrait, Color(String(cls.get("color", identity.color))), 96))
+	var titles := VBoxContainer.new()
+	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(titles)
+	var n := UIKit.label(String(identity.name), "TitleLabel", true)
+	n.add_theme_font_size_override("font_size", 30)
+	titles.add_child(n)
+	titles.add_child(UIKit.label("%s%s · niveau 1" % [cls.get("name", ""), (" · " + String(identity.species)) if String(identity.species) != "" else ""], "StrongLabel", true))
+	var bars := VBoxContainer.new()
+	titles.add_child(bars)
+	var hp := ResourceBar.new("PV", Palette.HP, 24)
+	hp.set_values(int(d.hp_max), int(d.hp_max), false)
+	bars.add_child(hp)
+	var res := ResourceBar.new(String(d.res_name), Palette.MANA, 20)
+	res.set_values(int(d.res_max), int(d.res_max), false)
+	bars.add_child(res)
+	var stats := UIKit.card(_content, "Caractéristiques")
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 8)
+	flow.add_theme_constant_override("v_separation", 8)
+	stats.add_child(flow)
+	for s in Content.stat_names(content):
+		flow.add_child(GameUI.stat_tile(s, Rules.base_stat(sheet, s), content))
+	var vals := HFlowContainer.new()
+	vals.add_theme_constant_override("h_separation", 8)
+	vals.add_theme_constant_override("v_separation", 8)
+	stats.add_child(vals)
+	for spec in [["Défense", str(d.defense)], ["Initiative", "%+d" % int(d.initiative)], ["Vitesse", "%d cases" % int(d.speed)], ["Résistances", "%d / %d" % [d.resist_phys, d.resist_mag]]]:
+		var t := GameUI.value_tile(spec[0], spec[1])
+		t.custom_minimum_size.x = 120
+		t.size_flags_horizontal = Control.SIZE_FILL
+		vals.add_child(t)
+	var kit := UIKit.card(_content, "Passif et capacités")
+	kit.add_child(GameUI.passive_card(sheet.get("passive", {}), content))
+	for a in Rules.equipped_abilities(sheet):
+		kit.add_child(GameUI.ability_card(a, content, String(d.res_name)))
+	var gear := UIKit.card(_content, "Équipement")
+	for item in sheet.get("inventory", []):
+		gear.add_child(GameUI.item_card(item, content))
+	_content.add_child(GameUI.hint("Tu peux encore revenir en arrière. Une fois créé, ton personnage apparaît sur la carte de tout le monde."))
 
 
 func _finish() -> void:
-	var sheet := _preview_sheet()
-	sheet.name = Protocol.sanitize_name(identity.name)
-	sheet.species = identity.species
-	sheet.appearance = identity.appearance
-	sheet.pawn = {"color": identity.color, "symbol": ""}
-	finished.emit(sheet)
+	var portrait: Dictionary = identity.portrait
+	var payload := {
+		"class_id": class_id, "alloc": alloc.duplicate(), "choices": choices.duplicate(),
+		"identity": {
+			"name": String(identity.name).strip_edges(), "species": identity.species, "appearance": identity.appearance,
+			"background": identity.background, "personality": identity.personality,
+			"pawn": {"color": identity.color, "symbol": ""}, "portrait": portrait,
+		},
+	}
+	finished.emit(payload)

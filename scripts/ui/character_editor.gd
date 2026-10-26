@@ -1,8 +1,9 @@
 class_name CharacterEditor
 extends VBoxContainer
-## Éditeur de fiche libre : identité, pion, magie et pouvoirs, caractéristiques,
-## compétences, état, inventaire, histoire. Les listes de l'univers ne sont que
-## des suggestions : tout champ accepte du texte libre.
+## Éditeur de la partie « récit » d'une fiche : identité, pion, magie, histoire.
+## Pour le MJ, aussi les valeurs d'une fiche libre (PV, ressource, niveau, or,
+## caractéristiques saisies à la main, compétences). Les capacités et l'inventaire
+## se gèrent avec leurs propres outils (fiche, inventaire, outils du MJ).
 
 signal saved(sheet: Dictionary)
 signal cancelled
@@ -33,7 +34,7 @@ func _build() -> void:
 	var title := UIKit.label("Fiche de personnage", "TitleLabel")
 	title.add_theme_font_size_override("font_size", 30)
 	add_child(title)
-	add_child(UIKit.label("Tout est libre : les listes proposées ne sont que des idées. Laissez vide ce qui ne vous sert pas.", "MutedLabel", true))
+	add_child(UIKit.label("Tout est libre : les listes proposées ne sont que des idées. Laissez vide ce qui ne vous sert pas. Les caractéristiques, PV et objets sont gérés par le jeu.", "MutedLabel", true))
 
 	# --- Identité ---
 	var id := UIKit.card(self, "Identité")
@@ -102,50 +103,8 @@ func _build() -> void:
 	magic_card.add_child(pub)
 	_f["magic_public"] = pub
 
-	_list_section("abilities", "Capacités et techniques", "Ajouter une capacité", [
-		{"key": "name", "label": "Nom", "kind": "line"},
-		{"key": "description", "label": "Description", "kind": "text"},
-		{"key": "cost", "label": "Coût (ex. 3 AEC)", "kind": "line", "half": true},
-		{"key": "range", "label": "Portée", "kind": "line", "half": true},
-		{"key": "limits", "label": "Conditions et limites", "kind": "text"},
-	])
-
-	# --- Caractéristiques et compétences ---
-	_list_section("stats", "Caractéristiques", "Ajouter une caractéristique", [
-		{"key": "name", "label": "Nom", "kind": "line"}, {"key": "value", "label": "Valeur", "kind": "int"},
-	], true)
-	_list_section("skills", "Compétences", "Ajouter une compétence", [
-		{"key": "name", "label": "Nom", "kind": "line"}, {"key": "value", "label": "Bonus", "kind": "int"},
-	], true, _cfg("skills", []))
-
-	# --- État ---
-	var state := UIKit.card(self, "État")
-	var auto := CheckBox.new()
-	auto.text = "Calcul automatique (classe et points répartis) : PV, énergie, défense et caractéristiques sont recalculés à l'enregistrement"
-	auto.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	auto.button_pressed = bool(sheet.get("auto", false))
-	auto.disabled = String(sheet.get("class_id", "")) == ""
-	state.add_child(auto)
-	_f["auto"] = auto
-	var res_name := String(_cfg("resource_name", "Énergie"))
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 10)
-	state.add_child(grid)
-	for spec in [["hp", "Points de vie"], ["hp_max", "PV maximum"], ["res", res_name], ["res_max", res_name + " maximum"], ["level", "Niveau"], ["xp", "Expérience"]]:
-		var s := UIKit.spin(int(sheet.get(spec[0], 0)), -999, 99999)
-		UIKit.field(grid, spec[1], s)
-		_f[spec[0]] = s
-	var ranks: Array = _cfg("ranks", [])
-	if not ranks.is_empty():
-		_suggest_line(state, "rank", String(_cfg("rank_title", "Rang")), ranks)
-	_line(state, "status", "État actuel (blessures, effets…)", "Ex. : bras gauche blessé")
-
-	_list_section("inventory", "Inventaire", "Ajouter un objet", [
-		{"key": "name", "label": "Objet", "kind": "line"},
-		{"key": "qty", "label": "Qté", "kind": "int"},
-		{"key": "description", "label": "Description, effets", "kind": "text"},
-	])
+	if is_mj:
+		_mj_values()
 
 	# --- Histoire ---
 	var story := UIKit.card(self, "Histoire et personnalité")
@@ -160,12 +119,44 @@ func _build() -> void:
 	add_child(actions)
 	actions.add_child(UIKit.button("Annuler", "", func(): cancelled.emit()))
 	actions.add_child(UIKit.spacer(false))
-	var save := UIKit.button("Enregistrer la fiche", "PrimaryButton", func(): saved.emit(collect()))
+	var save := UIKit.button("Enregistrer", "PrimaryButton", func(): saved.emit(collect()))
 	save.custom_minimum_size.x = 200
 	actions.add_child(save)
 	var gap := Control.new()
 	gap.custom_minimum_size.y = 40
 	add_child(gap)
+
+
+## Valeurs modifiables par le MJ (fiche libre, PNJ, monstre).
+func _mj_values() -> void:
+	if not sheet.get("auto", false):
+		_list_section("stats", "Caractéristiques (fiche libre)", "Ajouter une caractéristique", [
+			{"key": "name", "label": "Nom", "kind": "line"}, {"key": "value", "label": "Valeur", "kind": "int"},
+		], true)
+	_list_section("skills", "Compétences (bonus libres)", "Ajouter une compétence", [
+		{"key": "name", "label": "Nom", "kind": "line"}, {"key": "value", "label": "Bonus", "kind": "int"},
+	], true, _cfg("skills", []))
+	var state := UIKit.card(self, "État")
+	var auto := CheckBox.new()
+	auto.text = "Calcul automatique (classe et points répartis) : PV, ressource, défense et caractéristiques sont recalculés par le jeu"
+	auto.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	auto.button_pressed = bool(sheet.get("auto", false))
+	auto.disabled = String(sheet.get("class_id", "")) == ""
+	state.add_child(auto)
+	_f["auto"] = auto
+	var res_name := String(sheet.get("res_name", _cfg("resource_name", "Énergie")))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	state.add_child(grid)
+	for spec in [["hp", "Points de vie"], ["hp_max", "PV maximum"], ["res", res_name], ["res_max", res_name + " maximum"], ["level", "Niveau"], ["xp", "Expérience"], ["gold", "Or"], ["xp_reward", "XP rapportée (monstre)"]]:
+		var s := UIKit.spin(int(sheet.get(spec[0], 0)), -999, 99999)
+		UIKit.field(grid, spec[1], s)
+		_f[spec[0]] = s
+	var ranks: Array = _cfg("ranks", [])
+	if not ranks.is_empty():
+		_suggest_line(state, "rank", String(_cfg("rank_title", "Rang")), ranks)
+	_line(state, "status", "État actuel (blessures, effets…)", "Ex. : bras gauche blessé")
 
 
 func _pick_color(c: String) -> void:
@@ -338,7 +329,7 @@ func collect() -> Dictionary:
 	var out := sheet.duplicate(true)
 	for key in ["name", "concept", "species", "origin", "age", "appearance", "rank", "status",
 			"personality", "goals", "background", "relations", "notes", "secret",
-			"hp", "hp_max", "res", "res_max", "level", "xp", "auto"]:
+			"hp", "hp_max", "res", "res_max", "level", "xp", "gold", "xp_reward", "auto"]:
 		if _f.has(key):
 			out[key] = _value(_f[key])
 	out.magic = {

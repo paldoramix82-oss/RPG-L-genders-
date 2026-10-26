@@ -6,7 +6,8 @@ extends VBoxContainer
 signal page_changed(key: String)
 
 var current := ""
-var _bar: HBoxContainer
+var _bar: Container
+var _flow := false
 var _bar_panel: PanelContainer
 var _stack: MarginContainer
 var _buttons := {}
@@ -16,15 +17,23 @@ var _group := ButtonGroup.new()
 var _bottom := false
 
 
-func _init(bottom: bool = false, margin: int = 12) -> void:
+## flow : les onglets passent à la ligne (colonne étroite, nombreux onglets).
+func _init(bottom: bool = false, margin: int = 12, flow: bool = false) -> void:
 	_bottom = bottom
+	_flow = flow
 	add_theme_constant_override("separation", 0)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bar_panel = PanelContainer.new()
 	_bar_panel.theme_type_variation = "NavPanel" if bottom else "BarPanel"
-	_bar = HBoxContainer.new()
-	_bar.add_theme_constant_override("separation", 4)
+	if flow:
+		var f := HFlowContainer.new()
+		f.add_theme_constant_override("h_separation", 2)
+		f.add_theme_constant_override("v_separation", 2)
+		_bar = f
+	else:
+		_bar = HBoxContainer.new()
+		_bar.add_theme_constant_override("separation", 4)
 	_bar_panel.add_child(_bar)
 	_stack = MarginContainer.new()
 	_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -43,8 +52,10 @@ func add_page(key: String, title: String, page: Control) -> void:
 	b.toggle_mode = true
 	b.button_group = _group
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.custom_minimum_size.y = 50
-	b.clip_text = true
+	b.custom_minimum_size.y = 50 if not _flow else 38
+	b.clip_text = not _flow
+	if _flow:
+		b.add_theme_font_size_override("font_size", 15)
 	if _bottom:
 		# Marges réduites : cinq onglets doivent tenir sur un écran de téléphone.
 		for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
@@ -62,6 +73,10 @@ func add_page(key: String, title: String, page: Control) -> void:
 	_pages[key] = page
 	if current == "":
 		show_page(key)
+
+
+func has_page(key: String) -> bool:
+	return _pages.has(key)
 
 
 func page(key: String) -> Control:

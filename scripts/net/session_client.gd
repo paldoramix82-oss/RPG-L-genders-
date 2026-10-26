@@ -19,6 +19,11 @@ signal music_changed
 signal command_failed(req_id: String, error: String)
 signal session_closed(reason: String)
 signal notice(text: String)
+signal content_changed
+signal quests_changed
+signal loot_changed
+## Retours visuels d'une action (dégâts, soins, effets) : [{token, type, amount, text}].
+signal fx(list: Array)
 
 var join_status := ""
 var session := {}
@@ -30,6 +35,11 @@ var characters: Array = []
 var map := {}
 var phase := {}
 var music := {}
+## Catalogue visible des joueurs : règles, caractéristiques, classes, capacités, statuts.
+var content := {}
+var quests: Array = []
+## Coffre commun du groupe.
+var loot: Array = []
 
 var _send: Callable  # func(cmd: String, payload: Dictionary)
 var _outbox := {}  # req_id -> {cmd, payload}
@@ -78,9 +88,43 @@ func answer_roll(message_id: String) -> String:
 	return send_command(Protocol.CMD_ROLL_ANSWER, {"message_id": message_id})
 
 
-## Action pendant son tour : « end », « attack », « ability », « item ».
-func turn_action(action: String, target: String = "", index: int = 0) -> String:
-	return send_command(Protocol.CMD_TURN, {"action": action, "target": target, "index": index})
+## Action pendant son tour : end, quick, power, defend, ability (extra.id), item (extra.uid).
+func turn_action(action: String, target: String = "", index: int = 0, extra: Dictionary = {}) -> String:
+	var payload := {"action": action, "target": target, "index": index}
+	payload.merge(extra, true)
+	return send_command(Protocol.CMD_TURN, payload)
+
+
+## Création avec l'assistant : l'hôte construit la fiche (classe, points, équipement, identité).
+func create_character(class_id: String, alloc: Dictionary, choices: Array, identity: Dictionary) -> String:
+	return send_command(Protocol.CMD_CHAR_CREATE, {"class_id": class_id, "alloc": alloc, "choices": choices, "identity": identity})
+
+
+## Inventaire : equip, unequip, use, drop, give (extra.to), read.
+func item_action(action: String, uid: String, extra: Dictionary = {}) -> String:
+	var payload := {"action": action, "uid": uid}
+	payload.merge(extra, true)
+	return send_command(Protocol.CMD_ITEM, payload)
+
+
+func take_loot(uid: String) -> String:
+	return send_command(Protocol.CMD_LOOT_TAKE, {"uid": uid})
+
+
+## Montée de niveau : {"stat": nom} | {"learn": id} | {"upgrade": id}.
+func level_choice(choice: Dictionary) -> String:
+	return send_command(Protocol.CMD_LEVEL, choice)
+
+
+func equip_ability(ability_id: String, equipped: bool) -> String:
+	return send_command(Protocol.CMD_ABILITY_EQUIP, {"id": ability_id, "equipped": equipped})
+
+
+## Quêtes en cours (principales d'abord).
+func active_quests() -> Array:
+	var list := quests.filter(func(q): return q.get("status", "") == "active")
+	list.sort_custom(func(a, b): return (a.get("kind", "") == "main") and b.get("kind", "") != "main")
+	return list
 
 
 func my_token() -> Dictionary:
@@ -152,6 +196,9 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 			map = payload.get("map", {})
 			phase = payload.get("phase", {})
 			music = payload.get("music", {})
+			content = payload.get("content", {})
+			quests = payload.get("quests", [])
+			loot = payload.get("loot", [])
 			messages.clear()
 			_message_index.clear()
 			for m in payload.get("messages", []):
@@ -165,6 +212,9 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 			map_changed.emit()
 			phase_changed.emit()
 			music_changed.emit()
+			content_changed.emit()
+			quests_changed.emit()
+			loot_changed.emit()
 			resend_pending()
 		Protocol.EVT_PLAYERS:
 			players = payload.get("players", [])
@@ -196,6 +246,19 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 		Protocol.EVT_PHASE:
 			phase = payload.get("phase", {})
 			phase_changed.emit()
+		Protocol.EVT_CONTENT:
+			content = payload.get("content", content)
+			content_changed.emit()
+			characters_changed.emit()
+		Protocol.EVT_QUESTS:
+			quests = payload.get("quests", [])
+			quests_changed.emit()
+		Protocol.EVT_LOOT:
+			loot = payload.get("loot", [])
+			loot_changed.emit()
+		Protocol.EVT_FX:
+			if payload.get("fx") is Array:
+				fx.emit(payload.fx)
 		Protocol.EVT_SETTINGS:
 			session = payload.get("session", session)
 			settings_changed.emit()

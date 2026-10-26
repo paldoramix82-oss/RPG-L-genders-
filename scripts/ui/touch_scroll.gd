@@ -71,10 +71,16 @@ func _process(delta: float) -> void:
 		_velocity = 0.0
 
 
-## Ignore les touchers quand un calque (plateau de dés…) recouvre l'écran :
-## ces calques s'inscrivent dans le groupe « touch_block ».
+## Ignore les touchers quand un calque (plateau de dés, panneau superposé…)
+## recouvre l'écran, sauf si cette liste fait partie du calque lui-même.
+## Ces calques s'inscrivent dans le groupe « touch_block ».
 func _is_on_top(_pos: Vector2) -> bool:
+	var blocked := false
 	for node in get_tree().get_nodes_in_group("touch_block"):
 		if node is CanvasItem and node.is_visible_in_tree():
-			return false
-	return true
+			if node.is_ancestor_of(self):
+				blocked = false
+				# Le calque le plus récent (dernier ajouté) prime.
+				continue
+			blocked = true
+	return not blocked

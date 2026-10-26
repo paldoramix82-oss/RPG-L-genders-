@@ -32,6 +32,10 @@ var focus_id := ""
 var reachable := {}
 ## Mode ciblage pour une attaque, une capacité ou un objet.
 var target_mode := false
+## Pions ciblables pendant le choix d'une cible (entourés en rouge).
+var target_ids: Array = []
+## Chiffres et textes flottants (dégâts, soins, effets) : {token, text, color, t}.
+var _floaters: Array = []
 
 var zoom := 1.0
 var offset := Vector2.ZERO
@@ -117,7 +121,8 @@ func recenter() -> void:
 	var t := MapData.token(map, focus_id)
 	if t.is_empty() or size.x <= 0:
 		return
-	var target_zoom := maxf(zoom, 34.0 / CELL)
+	# Environ 9 cases de large sur téléphone : pions lisibles.
+	var target_zoom := maxf(zoom, clampf(size.x / 9.0, 34.0, 56.0) / CELL)
 	if is_equal_approx(target_zoom, zoom):
 		return
 	zoom = target_zoom
@@ -194,8 +199,58 @@ func _process(delta: float) -> void:
 	for id in _display.keys():
 		if not seen.has(id):
 			_display.erase(id)
-	if moving or current_turn != "" or _dragging != "" or not reachable.is_empty():
+	for f in _floaters:
+		f.t = float(f.t) + delta
+	_floaters = _floaters.filter(func(f): return float(f.t) < 1.8)
+	if moving or current_turn != "" or _dragging != "" or not reachable.is_empty() or not _floaters.is_empty() or target_mode:
 		queue_redraw()
+
+
+## Retours visuels d'une action : chiffres de dégâts / soins, « Raté », « Critique ! »…
+func show_fx(list: Array) -> void:
+	var stagger := {}
+	for f in list:
+		var id := String(f.get("token", ""))
+		var amount := int(f.get("amount", 0))
+		var text := ""
+		var col := Palette.TEXT
+		match String(f.get("type", "")):
+			"dmg":
+				text = "−%d" % amount
+				col = Palette.HP.lightened(0.15)
+			"heal":
+				text = "+%d" % amount
+				col = Palette.HEAL
+			"res":
+				text = "%+d" % amount
+				col = Palette.MANA.lightened(0.2)
+			"miss":
+				text = "Raté"
+				col = Palette.MUTED
+			"crit":
+				text = "Critique !"
+				col = Palette.ULT
+			"ko":
+				text = "Hors de combat"
+				col = Palette.DANGER
+			"status":
+				text = String(f.get("text", ""))
+				col = Palette.PRIVATE
+			"passive":
+				text = "Passif : " + String(f.get("text", ""))
+				col = Palette.VIOLET.lightened(0.5)
+			"ultimate":
+				text = String(f.get("text", "Ultime")) + " !"
+				col = Palette.ULT
+			"ult":
+				text = "Ultime prêt"
+				col = Palette.ULT
+		if text == "" or (text.begins_with("−") and amount == 0):
+			continue
+		var n := int(stagger.get(id, 0))
+		stagger[id] = n + 1
+		_floaters.append({"token": id, "text": text, "color": col, "t": -0.25 * n, "big": f.get("type", "") in ["dmg", "heal", "crit"]})
+	queue_redraw()
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +307,30 @@ func _draw() -> void:
 	for t in tokens:
 		if t.id != _dragging:
 			_draw_token(t, _display.get(t.id, Vector2(float(t.x), float(t.y))), cs, 1.0)
+	if target_mode:
+		for id in target_ids:
+			var tt := MapData.token(map, String(id))
+			if not tt.is_empty():
+				var pc := cell_center(_display.get(tt.id, Vector2(float(tt.x), float(tt.y))))
+				draw_arc(pc, cs * (0.55 + 0.05 * sin(_time * 5.0)), 0, TAU, 28, Palette.DANGER.lightened(0.2), maxf(2.0, cs * 0.06), true)
+	for f in _floaters:
+		if float(f.t) < 0:
+			continue
+		var ft := MapData.token(map, String(f.token))
+		if ft.is_empty():
+			continue
+		var p := cell_center(_display.get(ft.id, Vector2(float(ft.x), float(ft.y))))
+		var k := float(f.t) / 1.8
+		var fsz := clampi(int(cs * (0.62 if f.big else 0.4)), 13, 34)
+		var txt := String(f.text)
+		var tw := _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fsz).x
+		var pos := p + Vector2(-tw * 0.5, -cs * 0.7 - k * cs * 1.1)
+		var a := clampf(1.6 - k * 1.6, 0.0, 1.0)
+		var sc := 1.0 + maxf(0.0, 0.25 - float(f.t)) * 1.6
+		var fs2 := int(fsz * sc)
+		for o in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1), Vector2(0, 2)]:
+			draw_string(_font, pos + o, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, Color(0, 0, 0, a * 0.85))
+		draw_string(_font, pos, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, Color(f.color, a))
 	if _dragging != "":
 		var t := MapData.token(map, _dragging)
 		if not t.is_empty():
@@ -367,6 +446,17 @@ func _draw_token(t: Dictionary, cell_pos: Vector2, cs: float, alpha: float) -> v
 		draw_rect(bar.grow(1), Color(0, 0, 0, 0.65 * alpha))
 		var hc := Palette.OK if ratio > 0.5 else (Palette.WARN if ratio > 0.25 else Palette.DANGER)
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * ratio, bar.size.y)), Color(hc, alpha))
+	var effects: Array = t.get("effects", [])
+	if not effects.is_empty() and cs >= 22:
+		var isz := clampf(cs * 0.3, 9, 18)
+		var n := mini(effects.size(), 4)
+		var start := center + Vector2(-isz * n * 0.5, -r * 1.1 - isz - 3)
+		for i in n:
+			var e: Dictionary = effects[i]
+			var ec := Color(String(e.get("color", "#a07cc9")))
+			var rect := Rect2(start + Vector2(i * isz, 0), Vector2(isz, isz))
+			draw_circle(rect.get_center(), isz * 0.5, Color(ec.darkened(0.7), 0.9 * alpha))
+			Icons.paint(self, String(e.get("icon", "sparkle")), rect.grow(-isz * 0.12), Color(ec.lightened(0.2), alpha))
 	if cs >= 30:
 		var name_text := String(t.get("name", ""))
 		var nfs := clampi(int(cs * 0.28), 9, 15)

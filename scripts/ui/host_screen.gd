@@ -1,6 +1,11 @@
 extends Control
 ## Écran du maître du jeu : préparation (nouvelle campagne ou reprise) puis
-## tableau de bord. S'adapte à la largeur : colonnes sur PC, onglets sur téléphone.
+## tableau de bord en quatre zones (PC) :
+##   - à gauche : comment rejoindre, les joueurs et l'état de leurs personnages ;
+##   - au centre : la carte et le récit (narration, événements, actions) ;
+##   - à droite : les outils (combat, monde, quêtes, créations, fiches, réseau) ;
+##   - en bas : la saisie (narration, messages, dés) et les événements rapides.
+## Sur téléphone, les mêmes zones deviennent des onglets.
 
 const NARROW_WIDTH := 900.0
 
@@ -46,10 +51,18 @@ var _pending_box: VBoxContainer
 var _pending_title: Label
 
 # Personnages
-var _char_list: HFlowContainer
-var _char_detail: VBoxContainer
+var _char_list: VBoxContainer
 var _char_selected := ""
-var _char_editing := false
+
+# Zones et panneaux
+var _tools_tabs: TabbedPages
+var _quest_panel: QuestPanel
+var _content_panel: ContentPanel
+var _loot_box: VBoxContainer
+var _overlay: OverlayPanel
+var _overlay_kind := ""
+var _char_tools: CharacterTools
+var _narrate_mode := true
 
 # Musique et dés
 var _music_select: OptionButton
@@ -238,7 +251,8 @@ func _build_dashboard() -> void:
 	_narrow = size.x < NARROW_WIDTH
 	var server := Net.server
 	for sig in [server.players_changed, server.message_added, server.message_updated, server.log_added,
-			server.characters_changed, server.maps_changed, server.phase_changed, server.saved]:
+			server.characters_changed, server.maps_changed, server.phase_changed, server.saved,
+			server.quests_changed, server.content_changed, server.loot_changed, server.fx]:
 		for c in sig.get_connections():
 			if c.callable.get_object() == self:
 				sig.disconnect(c.callable)
@@ -254,12 +268,18 @@ func _build_dashboard() -> void:
 	_lobby_bar.add_child(HBoxContainer.new())
 	outer.add_child(_lobby_bar)
 
-	_tabs = TabbedPages.new(_narrow, 12)
 	if _narrow:
+		_tabs = TabbedPages.new(false, 8, true)
+		_tools_tabs = _tabs
 		outer.add_child(_tabs)
 		var players_page := VBoxContainer.new()
 		_build_players_column(players_page)
 		_tabs.add_page("players", "Joueurs", players_page)
+		_tabs.add_page("table", "Carte", _build_map_center())
+		var story := VBoxContainer.new()
+		story.add_child(_build_story())
+		story.add_child(_build_bottom_bar())
+		_tabs.add_page("story", "Récit", story)
 	else:
 		var body := HBoxContainer.new()
 		body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -267,25 +287,57 @@ func _build_dashboard() -> void:
 		outer.add_child(body)
 		var left_margin := MarginContainer.new()
 		for side in ["left", "top", "bottom"]:
-			left_margin.add_theme_constant_override("margin_" + side, 12)
+			left_margin.add_theme_constant_override("margin_" + side, 10)
 		body.add_child(left_margin)
 		var left := VBoxContainer.new()
-		left.custom_minimum_size.x = 320
+		left.custom_minimum_size.x = 300
 		left_margin.add_child(left)
 		_build_players_column(left)
-		body.add_child(_tabs)
-	_tabs.add_page("table", "Table", _build_table())
-	_tabs.add_page("chars", "Fiches" if _narrow else "Personnages", _build_characters())
-	_tabs.add_page("story", "Récit", _build_story())
-	_tabs.add_page("codex", "Codex", CodexView.new(server.universe, true))
-	_tabs.add_page("net", "Réseau", _build_network())
-	_tabs.show_page("table")
+		var center := VBoxContainer.new()
+		center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		center.add_theme_constant_override("separation", 0)
+		body.add_child(center)
+		_tabs = TabbedPages.new(false, 8)
+		center.add_child(_tabs)
+		_tabs.add_page("table", "Carte", _build_map_center())
+		_tabs.add_page("story", "Récit", _build_story())
+		center.add_child(_build_bottom_bar())
+		var right := VBoxContainer.new()
+		right.custom_minimum_size.x = 400
+		body.add_child(right)
+		_tools_tabs = TabbedPages.new(false, 8, true)
+		right.add_child(_tools_tabs)
+	_tools_tabs.add_page("combat", "Combat", _build_combat_tools())
+	_tools_tabs.add_page("world", "Monde", _build_world_tools())
+	_quest_panel = QuestPanel.new()
+	_quest_panel.edit_requested.connect(_open_quest_editor)
+	_tools_tabs.add_page("quests", "Quêtes", _scroll_of(_quest_panel))
+	_content_panel = ContentPanel.new()
+	_content_panel.edit_requested.connect(_open_content_editor)
+	_content_panel.show_requested.connect(_show_info)
+	_tools_tabs.add_page("create", "Créer", _scroll_of(_content_panel))
+	_tools_tabs.add_page("chars", "Fiches", _build_characters())
+	_tools_tabs.add_page("codex", "Codex", CodexView.new(server.universe, true))
+	_tools_tabs.add_page("net", "Réseau", _build_network())
+	_show("table")
+	if not _narrow:
+		_tools_tabs.show_page("combat")
+	server.quests_changed.connect(func(): _quest_panel.rebuild())
+	_tools_tabs.page_changed.connect(func(key):
+		if key == "create":
+			_content_panel.rebuild()
+		elif key == "quests":
+			_quest_panel.rebuild())
+	server.content_changed.connect(_on_content_changed)
+	server.loot_changed.connect(_refresh_loot)
+	server.fx.connect(func(list): _map_view.show_fx(list))
 
 	server.players_changed.connect(_on_players_changed)
 	server.message_added.connect(_on_message_added)
 	server.message_updated.connect(_on_message_updated)
 	server.log_added.connect(_add_log)
 	server.characters_changed.connect(_refresh_characters)
+	server.characters_changed.connect(_refresh_players)
 	server.maps_changed.connect(_on_maps_changed)
 	server.phase_changed.connect(_refresh_phase)
 	server.saved.connect(_on_saved)
@@ -297,6 +349,7 @@ func _build_dashboard() -> void:
 	_refresh_map_select()
 	_load_edit_map()
 	_refresh_pending()
+	_refresh_loot()
 
 	_refresh_timer = Timer.new()
 	_refresh_timer.wait_time = 1.0
@@ -311,6 +364,29 @@ func _build_dashboard() -> void:
 	if not Music.changed.is_connected(_refresh_music_status):
 		Music.changed.connect(_refresh_music_status)
 	_refresh_music_status()
+
+
+## Bascule vers une page, qu'elle soit au centre ou dans la colonne d'outils.
+func _show(key: String) -> void:
+	if _tabs.has_page(key):
+		_tabs.show_page(key)
+	elif _tools_tabs != null and _tools_tabs.has_page(key):
+		_tools_tabs.show_page(key)
+
+
+func _badge(key: String, on: bool) -> void:
+	if _tabs.has_page(key):
+		_tabs.set_badge(key, on)
+	elif _tools_tabs != null:
+		_tools_tabs.set_badge(key, on)
+
+
+func _scroll_of(content: Control) -> Control:
+	var scroll := TouchScroll.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(content)
+	return scroll
 
 
 func _build_top_bar() -> Control:
@@ -387,11 +463,11 @@ func _refresh_players() -> void:
 			return a.online
 		return String(a.name).naturalnocasecmp_to(b.name) < 0)
 	if list.is_empty():
-		_players_list.add_child(UIKit.label("Aucun joueur pour l'instant. Donnez-leur l'adresse IP, le port et le code.", "MutedLabel", true))
+		_players_list.add_child(UIKit.label("Aucun joueur pour l'instant. Donnez-leur l'adresse IP affichée ci-dessus.", "MutedLabel", true))
 	for p in list:
 		_players_list.add_child(_player_row(p))
 	if _narrow and server.count_status(Protocol.STATUS_PENDING) > 0:
-		_tabs.set_badge("players", true)
+		_badge("players", true)
 	_refresh_live()
 
 
@@ -416,6 +492,25 @@ func _player_row(p: Dictionary) -> Control:
 			head.add_child(UIKit.chip("Refusé", Palette.DANGER))
 		_:
 			head.add_child(UIKit.chip("Connecté" if p.online else "Hors ligne", Palette.OK if p.online else Palette.FAINT))
+	if not sheet.is_empty() and p.status == Protocol.STATUS_ACCEPTED:
+		var srow := HBoxContainer.new()
+		srow.add_theme_constant_override("separation", 8)
+		body.add_child(srow)
+		srow.add_child(Portrait.for_sheet(sheet, Net.server.content, 44))
+		var bars := VBoxContainer.new()
+		bars.add_theme_constant_override("separation", 2)
+		bars.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		srow.add_child(bars)
+		var hp := ResourceBar.new("PV", Palette.HP, 18)
+		hp.set_values(int(sheet.get("hp", 0)), int(sheet.get("hp_max", 1)), false)
+		bars.add_child(hp)
+		if int(sheet.get("res_max", 0)) > 0:
+			var res := ResourceBar.new(String(sheet.get("res_name", "")), Palette.MANA, 14)
+			res.set_values(int(sheet.get("res", 0)), int(sheet.res_max), false)
+			bars.add_child(res)
+		bars.add_child(UIKit.label("Niv. %d · %d or" % [int(sheet.get("level", 1)), int(sheet.get("gold", 0))], "MutedLabel"))
+		if not (sheet.get("effects", []) as Array).is_empty():
+			body.add_child(GameUI.status_row(sheet.effects, 18))
 	var info := UIKit.label("", "MutedLabel", true)
 	body.add_child(info)
 	_player_widgets[p.id] = {"info": info}
@@ -431,14 +526,12 @@ func _player_row(p: Dictionary) -> Control:
 			actions.add_child(_small_button("Refuser", "DangerButton", func(): Net.server.refuse_player(pid)))
 		Protocol.STATUS_ACCEPTED:
 			actions.add_child(_small_button("Écrire", "", func():
-				_tabs.show_page("story")
+				_show("story")
 				_composer.select_target(pid)
 				_composer.focus_text()))
 			actions.add_child(_small_button("Jet", "", func(): _dialog_request_roll(pid, pname)))
 			if not sheet.is_empty():
-				actions.add_child(_small_button("Fiche", "", func():
-					_tabs.show_page("chars")
-					_select_character(pid)))
+				actions.add_child(_small_button("Fiche et outils", "PrimaryButton", func(): _open_char_tools(pid)))
 			if p.online:
 				actions.add_child(_small_button("Déconnecter", "", func(): Net.server.kick_player(pid)))
 			actions.add_child(_small_button("Retirer", "DangerButton", func(): _confirm("Retirer %s de la partie ? Sa fiche devient un PNJ." % pname, func(): Net.server.remove_player(pid))))
@@ -496,35 +589,50 @@ func _on_saved(error: String) -> void:
 # Table : carte, outils, sélection, combat
 # ---------------------------------------------------------------------------
 
-func _build_table() -> Control:
-	var page: BoxContainer = VBoxContainer.new() if _narrow else HBoxContainer.new()
-	page.add_theme_constant_override("separation", 12)
+func _build_map_center() -> Control:
 	_map_view = MapView.new()
 	_map_view.is_mj = true
 	_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_map_view.size_flags_stretch_ratio = 2.2 if _narrow else 1.4
 	_map_view.custom_minimum_size = Vector2(200, 260)
 	_map_view.move_requested.connect(func(id, x, y): Net.server.mj_update_token(_edit_map, id, {"x": x, "y": y}))
-	_map_view.token_selected.connect(func(_id): _refresh_inspector())
+	_map_view.token_selected.connect(func(_id):
+		_refresh_inspector()
+		if not _narrow:
+			_tools_tabs.show_page("combat"))
 	_map_view.paint_requested.connect(func(x, y): Net.server.mj_paint(_edit_map, x, y, _paint_code, _brush))
 	_map_view.cell_tapped.connect(_on_cell_tapped)
 	_map_view.target_picked.connect(_on_mj_target)
-	page.add_child(_map_view)
+	return _map_view
 
+
+func _side_scroll() -> Array:
 	var scroll := TouchScroll.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size.x = 0 if _narrow else 330
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	page.add_child(scroll)
 	var side := VBoxContainer.new()
 	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	side.add_theme_constant_override("separation", 12)
 	scroll.add_child(side)
+	return [scroll, side]
 
-	# --- Musique ---
-	# Phase et tours en premier : c'est ce que le MJ manipule le plus pendant la partie.
+
+## Combat : phase et tours, pion sélectionné, coffre du groupe.
+func _build_combat_tools() -> Control:
+	var parts := _side_scroll()
+	var side: VBoxContainer = parts[1]
 	_phase_box = UIKit.card(side, "", "HighlightPanel")
+	_inspector = UIKit.card(side, "")
+	var loot := UIKit.card(side, "Coffre du groupe")
+	_loot_box = VBoxContainer.new()
+	loot.add_child(_loot_box)
+	return parts[0]
+
+
+## Monde : musique, cartes, outils de dessin.
+func _build_world_tools() -> Control:
+	var parts := _side_scroll()
+	var side: VBoxContainer = parts[1]
 	var music := UIKit.card(side, "Ambiance musicale")
 	_music_select = OptionButton.new()
 	_music_select.custom_minimum_size.y = UIKit.TOUCH_HEIGHT
@@ -623,9 +731,8 @@ func _build_table() -> Control:
 	_tool_options = VBoxContainer.new()
 	tc.add_child(_tool_options)
 
-	_inspector = UIKit.card(side, "")
 	_set_tool(_tool)
-	return page
+	return parts[0]
 
 
 ## Morceau suivant de la même ambiance (au hasard).
@@ -924,9 +1031,28 @@ func _refresh_inspector() -> void:
 	_inspector.add_child(actions)
 	var cid: String = t.char_id if t.char_id != "" else t.owner
 	if Net.server.characters.has(cid):
-		actions.add_child(_small_button("Fiche", "", func():
-			_tabs.show_page("chars")
-			_select_character(cid)))
+		actions.add_child(_small_button("Fiche et outils", "PrimaryButton", func(): _open_char_tools(cid)))
+	if _edit_map == Net.server.active_map:
+		# Effets de statut sur le pion.
+		var st := OptionButton.new()
+		st.fit_to_longest_item = false
+		for s in Content.list(Net.server.content, "statuses"):
+			st.add_item(String(s.name))
+			st.set_item_metadata(st.item_count - 1, String(s.id))
+		var srow := HBoxContainer.new()
+		_inspector.add_child(srow)
+		st.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		srow.add_child(st)
+		var turns := UIKit.spin(2, 0, 99)
+		turns.prefix = "t."
+		srow.add_child(turns)
+		srow.add_child(_small_button("Appliquer", "", func():
+			if st.selected >= 0:
+				Net.server.mj_apply_status(tid, String(st.get_item_metadata(st.selected)), int(turns.value))
+				_refresh_inspector()))
+		var effects: Array = t.get("effects", [])
+		if not effects.is_empty():
+			_inspector.add_child(GameUI.status_row(effects, 22))
 	if Phases.def(Net.server.phase.type).turns and _edit_map == Net.server.active_map:
 		actions.add_child(_small_button("Retirer des tours" if Net.server.phase.order.has(tid) else "Ajouter aux tours", "", func():
 			Net.server.mj_turn_toggle(tid)
@@ -1018,42 +1144,74 @@ func _refresh_phase() -> void:
 		row.add_child(x)
 		_phase_box.add_child(row)
 	var current_token := MapData.token(map, current)
-	if not current_token.is_empty() and current_token.kind != "pc":
-		# C'est au tour d'un PNJ ou d'un monstre : le MJ le joue.
+	if String(phase.get("result", "")) == "victory":
+		var win := UIKit.card(_phase_box, "", "HighlightPanel")
+		win.add_child(UIKit.label("Victoire ! XP, or et butin ont été distribués.", "StrongLabel", true))
+		var next_row := HFlowContainer.new()
+		next_row.add_theme_constant_override("h_separation", 6)
+		win.add_child(next_row)
+		next_row.add_child(_small_button("Retour au récit libre", "PrimaryButton", func(): server.mj_set_phase("libre")))
+		next_row.add_child(_small_button("Exploration", "", func(): server.mj_set_phase("exploration")))
+		next_row.add_child(_small_button("Repos", "", func(): server.mj_set_phase("repos")))
+	elif String(phase.get("result", "")) == "defeat":
+		var lose := UIKit.card(_phase_box, "", "HighlightPanel")
+		lose.add_child(UIKit.label("Tout le groupe est à terre. À vous de raconter la suite (capture, sauvetage, réveil…).", "StrongLabel", true))
+		lose.add_child(_small_button("Retour au récit libre", "PrimaryButton", func(): server.mj_set_phase("libre")))
+	if not current_token.is_empty() and current_token.kind != "pc" and String(phase.get("result", "")) == "":
+		# C'est au tour d'un PNJ ou d'un monstre : le MJ le joue (ou le laisse jouer tout seul).
 		var npc := UIKit.card(_phase_box, "", "HighlightPanel")
-		npc.add_child(UIKit.label("À vous de jouer %s" % current_token.name, "StrongLabel", true))
-		var info := "Action : %s" % ("faite" if phase.action_used else "disponible")
+		npc.add_child(UIKit.label("À vous de jouer : %s" % current_token.name, "StrongLabel", true))
+		var ap := int(phase.get("ap", 0))
+		var info := "Points d'action : %d" % ap
 		if rules.move == "limit":
-			info = "Déplacement : %d cases (vous pouvez aussi le déplacer librement)  ·  " % int(phase.moves_left) + info
+			info += "  ·  déplacez le pion sur la carte (le MJ n'est pas limité)"
 		npc.add_child(UIKit.label(info, "MutedLabel", true))
 		var acts := HFlowContainer.new()
 		acts.add_theme_constant_override("h_separation", 6)
 		acts.add_theme_constant_override("v_separation", 6)
 		npc.add_child(acts)
+		var r := Content.rules(server.content)
+		var tid := String(current_token.id)
+		acts.add_child(_small_button("Jouer automatiquement", "PrimaryButton", func():
+			var err := server.turn_action(tid, {"action": "auto"})
+			if err != "":
+				_feed.add_notice(err, Palette.WARN)
+			_refresh_phase()))
+		var quick := _small_button("Attaque rapide (%d PA)" % int(r.quick_attack_ap), "", func(): _mj_target({"action": "quick", "label": "attaque rapide"}))
+		quick.disabled = ap < int(r.quick_attack_ap)
+		acts.add_child(quick)
+		var power := _small_button("Attaque puissante (%d PA)" % int(r.power_attack_ap), "", func(): _mj_target({"action": "power", "label": "attaque puissante"}))
+		power.disabled = ap < int(r.power_attack_ap)
+		acts.add_child(power)
+		var defend := _small_button("Se défendre", "", func():
+			server.turn_action(tid, {"action": "defend"})
+			_refresh_phase())
+		defend.disabled = ap < int(r.defend_ap)
+		acts.add_child(defend)
 		var sheet := server._sheet_for_token(current_token)
-		var weapons := Rules.weapons(sheet)
-		for i in weapons.size():
-			var wi := i
-			var b := _small_button("Attaque : " + String(weapons[i].name), "PrimaryButton", func(): _mj_target({"action": "attack", "index": wi}))
-			b.disabled = phase.action_used
-			acts.add_child(b)
-		var abilities: Array = sheet.get("abilities", [])
-		for i in abilities.size():
-			var ai := i
-			var a: Dictionary = abilities[i]
-			if String(a.get("kind", "")) == "":
-				continue
-			var b := _small_button(String(a.name), "", func(): _mj_target({"action": "ability", "index": ai}))
-			b.disabled = phase.action_used
+		for a in Rules.usable_abilities(sheet, server.content):
+			var id := String(a.get("id", ""))
+			var reason := server.combat.ability_block_reason(current_token, a)
+			var target := String(a.get("target", "enemy"))
+			var b := _small_button(String(a.name), "", func():
+				if target == "self" or (target.begins_with("area") and int(a.get("range", 0)) == 0):
+					var err := server.turn_action(tid, {"action": "ability", "id": id})
+					if err != "":
+						_feed.add_notice(err, Palette.WARN)
+					_refresh_phase()
+				else:
+					_mj_target({"action": "ability", "id": id, "label": String(a.name)}))
+			b.disabled = reason != ""
+			b.tooltip_text = reason if reason != "" else Effects.ability_costs(a)
 			acts.add_child(b)
 		if not _mj_pending.is_empty():
-			npc.add_child(UIKit.label("Touchez la cible sur la carte.", "StrongLabel", true))
+			npc.add_child(UIKit.label("Touchez la cible sur la carte (%s)." % _mj_pending.get("label", ""), "StrongLabel", true))
 			npc.add_child(_small_button("Annuler", "", func():
 				_mj_pending = {}
 				_map_view.target_mode = false
 				_refresh_phase()))
 	elif not current_token.is_empty():
-		_phase_box.add_child(UIKit.label("Au tour de %s (joueur)." % current_token.name, "MutedLabel", true))
+		_phase_box.add_child(UIKit.label("Au tour de %s (joueur). Il dispose de %d PA." % [current_token.name, int(phase.get("ap", 0))], "MutedLabel", true))
 	var next := UIKit.button("Tour suivant  ›", "PrimaryButton", func(): server.mj_next_turn())
 	_phase_box.add_child(next)
 
@@ -1061,6 +1219,8 @@ func _refresh_phase() -> void:
 func _mj_target(action: Dictionary) -> void:
 	_mj_pending = action
 	_map_view.target_mode = true
+	_map_view.target_ids = []
+	_show("table")
 	_map_view.queue_redraw()
 	_refresh_phase()
 
@@ -1071,7 +1231,9 @@ func _on_mj_target(token_id: String) -> void:
 	_map_view.target_mode = false
 	if action.is_empty():
 		return
-	var err := Net.server.turn_action(Net.server._current_token(), {"action": action.action, "index": action.index, "target": token_id})
+	var payload := action.duplicate()
+	payload.target = token_id
+	var err := Net.server.turn_action(Net.server._current_token(), payload)
 	if err != "":
 		_map_status.text = err
 		_map_status.add_theme_color_override("font_color", Palette.DANGER)
@@ -1159,58 +1321,41 @@ func _dialog_map_props() -> void:
 # ---------------------------------------------------------------------------
 
 func _build_characters() -> Control:
-	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 10)
+	var parts := _side_scroll()
+	var page: VBoxContainer = parts[1]
 	var top := HFlowContainer.new()
-	top.add_theme_constant_override("h_separation", 10)
+	top.add_theme_constant_override("h_separation", 8)
 	top.add_theme_constant_override("v_separation", 6)
 	page.add_child(top)
-	top.add_child(UIKit.button("+  Nouveau PNJ", "PrimaryButton", func():
+	top.add_child(_small_button("+  Nouveau PNJ", "PrimaryButton", func():
 		var c := Net.server.mj_create_npc()
-		_char_selected = c.id
-		_char_editing = true
-		_refresh_characters()
-		_open_character_editor()))
-	top.add_child(UIKit.button("Packs de PNJ…", "", _dialog_npc_packs))
+		_open_char_tools(c.id)))
+	top.add_child(_small_button("Packs de PNJ…", "", _dialog_npc_packs))
 	var lock := CheckBox.new()
-	lock.text = "Les joueurs peuvent modifier leur fiche"
+	lock.text = "Les joueurs peuvent modifier leur histoire et refaire leur personnage"
 	lock.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lock.button_pressed = Net.server.session.players_edit_sheets
 	lock.toggled.connect(func(on): Net.server.set_players_edit_sheets(on))
-	top.add_child(lock)
-	_char_list = HFlowContainer.new()
-	_char_list.add_theme_constant_override("h_separation", 6)
-	_char_list.add_theme_constant_override("v_separation", 6)
+	page.add_child(lock)
+	page.add_child(GameUI.hint("Les monstres du catalogue se placent depuis « Créer › Monstres » : leur fiche est créée automatiquement."))
+	_char_list = VBoxContainer.new()
+	_char_list.add_theme_constant_override("separation", 6)
 	page.add_child(_char_list)
-	page.add_child(HSeparator.new())
-	var scroll := TouchScroll.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	page.add_child(scroll)
-	var column := CenteredColumn.new()
-	column.max_width = 760
-	column.side_margin = 0
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(column)
-	_char_detail = VBoxContainer.new()
-	_char_detail.add_theme_constant_override("separation", 10)
-	column.add_child(_char_detail)
-	return page
+	return parts[0]
 
 
 func _select_character(id: String) -> void:
-	_char_selected = id
-	_char_editing = false
-	_refresh_characters()
+	_open_char_tools(id)
 
 
 func _refresh_characters() -> void:
 	_refresh_lobby_bar()
+	if _overlay_kind == "char" and _char_tools != null and is_instance_valid(_char_tools):
+		_char_tools.rebuild()
 	if _char_list == null:
 		return
 	var server := Net.server
 	UIKit.clear(_char_list)
-	var group := ButtonGroup.new()
 	var ids: Array = server.characters.keys()
 	ids.sort_custom(func(a, b):
 		var pa: bool = server.players.has(a)
@@ -1219,70 +1364,173 @@ func _refresh_characters() -> void:
 			return pa
 		return String(server.characters[a].name).naturalnocasecmp_to(server.characters[b].name) < 0)
 	if ids.is_empty():
-		_char_list.add_child(UIKit.label("Les fiches des joueurs apparaîtront ici dès qu'ils les auront créées. Créez vos PNJ, monstres importants et alliés avec « Nouveau PNJ ».", "MutedLabel", true))
+		_char_list.add_child(UIKit.label("Les fiches des joueurs apparaîtront ici dès qu'ils les auront créées.", "MutedLabel", true))
 	for id in ids:
 		var c: Dictionary = server.characters[id]
-		var who := String(server.players[id].name) if server.players.has(id) else "PNJ"
-		var b := _small_button("%s  ·  %s" % [c.name, who], "", _select_character.bind(id))
-		b.toggle_mode = true
-		b.button_group = group
-		b.button_pressed = id == _char_selected
-		_char_list.add_child(b)
-	if _char_editing:
-		return
-	UIKit.clear(_char_detail)
-	if not server.characters.has(_char_selected) and not ids.is_empty():
-		_char_selected = ids[0]
-		for b in _char_list.get_children():
-			if b is Button:
-				b.set_pressed_no_signal(true)
-				break
-	var sheet: Dictionary = server.characters.get(_char_selected, {})
-	if sheet.is_empty():
-		_char_detail.add_child(UIKit.label("Choisissez une fiche ci-dessus.", "MutedLabel", true))
-		return
-	var actions := HFlowContainer.new()
-	actions.add_theme_constant_override("h_separation", 8)
-	actions.add_theme_constant_override("v_separation", 6)
-	_char_detail.add_child(actions)
-	actions.add_child(UIKit.button("Modifier", "PrimaryButton", func():
-		_char_editing = true
-		_open_character_editor()))
-	var cid := _char_selected
-	if not server.players.has(cid):
-		actions.add_child(UIKit.button("Placer sur la carte affichée", "", func():
-			var t := server.mj_place_character(cid)
-			if not t.is_empty():
-				_edit_map = server.active_map
-				_refresh_map_select()
-				_load_edit_map()
-				_map_view.selected = t.id
-				_refresh_inspector()
-				_tabs.show_page("table")))
-		actions.add_child(UIKit.button("Supprimer", "DangerButton", func():
-			_confirm("Supprimer la fiche de %s ?" % sheet.name, func():
-				server.mj_delete_character(cid)
-				_char_selected = ""
-				_refresh_characters())))
-	_char_detail.add_child(CharacterSheet.new(sheet, server.universe))
+		var card := UIKit.card(_char_list, "", "InsetPanel")
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		card.add_child(row)
+		row.add_child(Portrait.for_sheet(c, server.content, 40))
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(col)
+		var who := String(server.players[id].name) if server.players.has(id) else ("Monstre" if c.get("kind", "") == "monster" else "PNJ")
+		col.add_child(UIKit.label("%s  ·  %s" % [c.name, who], "StrongLabel", true))
+		var hp := ResourceBar.new("PV", Palette.HP, 14)
+		hp.set_values(int(c.get("hp", 0)), int(c.get("hp_max", 1)), false)
+		col.add_child(hp)
+		var cid: String = id
+		row.add_child(_small_button("Ouvrir", "", func(): _open_char_tools(cid)))
 
 
-func _open_character_editor() -> void:
+## Panneau des outils du MJ pour un personnage.
+func _open_char_tools(cid: String) -> void:
 	var server := Net.server
-	var sheet: Dictionary = server.characters.get(_char_selected, {})
-	if sheet.is_empty():
-		_char_editing = false
+	if not server.characters.has(cid):
 		return
-	UIKit.clear(_char_detail)
+	var panel := _open_overlay("char", String(server.characters[cid].name), "person")
+	_char_tools = CharacterTools.new(cid)
+	_char_tools.edit_requested.connect(_open_character_editor)
+	_char_tools.create_item_requested.connect(func(target):
+		_open_content_editor("items", {"name": "Nouvel objet", "category": "unique", "rarity": "rare", "icon": "gem"}, target))
+	_char_tools.place_requested.connect(func(id):
+		var t := server.mj_place_character(id)
+		if not t.is_empty():
+			_edit_map = server.active_map
+			_refresh_map_select()
+			_load_edit_map()
+			_map_view.selected = t.id
+			_refresh_inspector()
+			_close_overlay()
+			_show("table"))
+	_char_tools.deleted.connect(_close_overlay)
+	panel.body.add_child(_char_tools)
+
+
+func _open_character_editor(cid: String) -> void:
+	var server := Net.server
+	var sheet: Dictionary = server.characters.get(cid, {})
+	if sheet.is_empty():
+		return
+	var panel := _open_overlay("edit", "Modifier %s" % sheet.name, "journal")
 	var editor := CharacterEditor.new(sheet, server.universe, true)
 	editor.saved.connect(func(data):
 		server.mj_save_character(data)
-		_char_editing = false
-		_refresh_characters())
+		_open_char_tools(cid))
+	editor.cancelled.connect(func(): _open_char_tools(cid))
+	panel.body.add_child(editor)
+
+
+# ---------------------------------------------------------------------------
+# Panneaux superposés, éditeurs de contenu et de quêtes
+# ---------------------------------------------------------------------------
+
+func _open_overlay(kind: String, title: String, icon_name: String = "") -> OverlayPanel:
+	_close_overlay()
+	_overlay = OverlayPanel.new(title, not _narrow, icon_name)
+	_overlay_kind = kind
+	_overlay.closed.connect(func():
+		_overlay = null
+		_overlay_kind = ""
+		_char_tools = null)
+	add_child(_overlay)
+	return _overlay
+
+
+func _close_overlay() -> void:
+	if _overlay != null and is_instance_valid(_overlay):
+		_overlay.close()
+	_overlay = null
+	_overlay_kind = ""
+	_char_tools = null
+
+
+func _show_info(title: String, content: Control) -> void:
+	var panel := _open_overlay("info", title, "star")
+	panel.body.add_child(content)
+
+
+## Éditeur d'une entrée du catalogue. give_to : personnage qui reçoit l'objet créé.
+func _open_content_editor(kind: String, entry: Dictionary, give_to: String = "", on_saved: Callable = Callable()) -> void:
+	var server := Net.server
+	var title := "%s : %s" % [ContentPanel.KIND_LABELS.get(kind, kind), entry.get("name", "")]
+	var panel := _open_overlay("content", title, "sparkle")
+	var editor := ContentEditor.new(kind, entry, server.content)
+	editor.saved.connect(func(k, data):
+		var clean := server.mj_content_save(k, data)
+		if clean.is_empty():
+			return
+		if on_saved.is_valid():
+			on_saved.call(clean)
+			return
+		if give_to != "" and k == "items":
+			server.mj_give_item(give_to, String(clean.id), 1)
+			_open_char_tools(give_to)
+			return
+		_close_overlay()
+		_content_panel.rebuild())
 	editor.cancelled.connect(func():
-		_char_editing = false
-		_refresh_characters())
-	_char_detail.add_child(editor)
+		if give_to != "":
+			_open_char_tools(give_to)
+		else:
+			_close_overlay())
+	panel.body.add_child(editor)
+
+
+func _on_content_changed() -> void:
+	if _overlay_kind != "content" and _content_panel != null:
+		_content_panel.rebuild()
+
+
+func _open_quest_editor(quest: Dictionary) -> void:
+	var server := Net.server
+	var panel := _open_overlay("quest", "Quête" if quest.is_empty() else String(quest.get("title", "Quête")), "journal")
+	var editor := QuestEditor.new(quest)
+	editor.saved.connect(func(data, give):
+		data["give"] = give
+		server.mj_quest_save(data)
+		_close_overlay())
+	editor.cancelled.connect(_close_overlay)
+	editor.create_item_requested.connect(func():
+		# L'objet sur mesure est ajouté au catalogue puis à la récompense.
+		var draft := editor.collect()
+		_open_content_editor("items", {"name": "Récompense", "category": "unique", "rarity": "rare", "icon": "gem"}, "", func(clean):
+			draft.rewards.items.append({"item": String(clean.id), "qty": 1})
+			_open_quest_editor(draft)))
+	panel.body.add_child(editor)
+
+
+## Coffre commun : ce que les joueurs peuvent se partager.
+func _refresh_loot() -> void:
+	if _loot_box == null:
+		return
+	var server := Net.server
+	UIKit.clear(_loot_box)
+	if server.loot.is_empty():
+		_loot_box.add_child(UIKit.label("Vide. Le butin des combats et certaines récompenses arrivent ici.", "MutedLabel", true))
+		return
+	for item in server.loot:
+		var row := HBoxContainer.new()
+		_loot_box.add_child(row)
+		row.add_child(GameUI.item_slot(item, 36))
+		var l := UIKit.label(String(item.name), "", true)
+		l.add_theme_color_override("font_color", Content.rarity_color(String(item.get("rarity", "commun"))).lightened(0.15))
+		row.add_child(l)
+		var uid := String(item.uid)
+		var menu := MenuButton.new()
+		menu.text = "Donner"
+		menu.flat = false
+		menu.theme_type_variation = "Button"
+		var targets: Array = []
+		for cid in server.characters:
+			if server.players.has(cid):
+				targets.append(cid)
+				menu.get_popup().add_item(String(server.characters[cid].name))
+		menu.get_popup().index_pressed.connect(func(i): server.give_loot_to(uid, String(targets[i])))
+		row.add_child(menu)
+		row.add_child(_small_button("×", "DangerButton", func(): server.mj_loot_remove(uid)))
 
 
 # ---------------------------------------------------------------------------
@@ -1290,8 +1538,8 @@ func _open_character_editor() -> void:
 # ---------------------------------------------------------------------------
 
 func _build_story() -> Control:
-	var page: BoxContainer = VBoxContainer.new() if _narrow else HBoxContainer.new()
-	page.add_theme_constant_override("separation", 12)
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", 8)
 	var main := VBoxContainer.new()
 	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1300,8 +1548,55 @@ func _build_story() -> Control:
 	_feed.resolve_requested.connect(_on_resolve)
 	_feed.roll_request_requested.connect(_on_request_action_roll)
 	main.add_child(_feed)
+	var pending := UIKit.card(null, "")
+	var pending_panel := pending.get_parent() as Control
+	_pending_title = UIKit.label("Actions en attente", "HeadingLabel")
+	pending.add_child(_pending_title)
+	_pending_box = UIKit.vscroll(pending)
+	_pending_box.add_theme_constant_override("separation", 8)
+	# Actions en attente au-dessus du fil (repliées quand il n'y en a pas).
+	pending_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	page.add_child(pending_panel)
+	page.add_child(main)
+	return page
+
+
+## Barre du bas : narration / messages / dés, et événements rapides.
+func _build_bottom_bar() -> Control:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = "NavPanel"
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	panel.add_child(col)
+	var quick := HFlowContainer.new()
+	quick.add_theme_constant_override("h_separation", 6)
+	quick.add_theme_constant_override("v_separation", 6)
+	col.add_child(quick)
+	var narr := CheckBox.new()
+	narr.text = "Narration (mise en forme récit)"
+	narr.button_pressed = _narrate_mode
+	narr.toggled.connect(func(on): _narrate_mode = on)
+	quick.add_child(narr)
+	var events := MenuButton.new()
+	events.text = "Événement rapide…"
+	events.flat = false
+	events.theme_type_variation = "PrimaryButton"
+	events.custom_minimum_size.y = 38
+	var actions := [["Épreuve de groupe (jet pour chacun)", _event_check], ["Dégâts ou soins de groupe", _event_group_hp],
+		["Récompense de groupe (XP, or, objet)", _event_reward], ["Embuscade (monstres + combat)", _event_ambush],
+		["Créer un objet", func(): _open_content_editor("items", {"name": "Nouvel objet", "category": "unique", "rarity": "rare", "icon": "gem"})],
+		["Nouvelle quête", func(): _open_quest_editor({})]]
+	for a in actions:
+		events.get_popup().add_item(a[0])
+	events.get_popup().index_pressed.connect(func(i): actions[i][1].call())
+	quick.add_child(events)
+	quick.add_child(_small_button("Nouvelle quête", "", func(): _open_quest_editor({})))
 	_composer = Composer.new([], [], false)
-	_composer.send_message.connect(func(to, text): Net.server.mj_send_message(to, text))
+	_composer.send_message.connect(func(to, text):
+		if _narrate_mode:
+			Net.server.mj_narrate(text, to)
+		else:
+			Net.server.mj_send_message(to, text))
 	_composer.send_roll.connect(func(to, expr, label):
 		_tray_waiting = true
 		_tray.start(expr, label)
@@ -1310,22 +1605,137 @@ func _build_story() -> Control:
 			_tray_waiting = false
 			_tray.visible = false
 			_feed.add_notice(err, Palette.DANGER))
-	main.add_child(_composer)
-	var pending := UIKit.card(null, "")
-	var pending_panel := pending.get_parent() as Control
-	_pending_title = UIKit.label("Actions en attente", "HeadingLabel")
-	pending.add_child(_pending_title)
-	_pending_box = UIKit.vscroll(pending)
-	_pending_box.add_theme_constant_override("separation", 8)
-	if _narrow:
-		pending_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		page.add_child(pending_panel)
-		page.add_child(main)
-	else:
-		pending_panel.custom_minimum_size.x = 340
-		page.add_child(main)
-		page.add_child(pending_panel)
-	return page
+	col.add_child(_composer)
+	return panel
+
+
+# --- Événements rapides ---
+
+func _event_form(title: String, build: Callable, on_ok: Callable) -> void:
+	var panel := _open_overlay("event", title, "sparkle")
+	var form := VBoxContainer.new()
+	form.add_theme_constant_override("separation", 8)
+	panel.body.add_child(form)
+	var getters: Dictionary = build.call(form)
+	var ok := UIKit.button("Lancer", "PrimaryButton", func():
+		var values := {}
+		for k in getters:
+			values[k] = getters[k].call()
+		var err: String = on_ok.call(values)
+		if err != "":
+			_feed.add_notice(err, Palette.DANGER)
+		_close_overlay())
+	ok.custom_minimum_size.y = 52
+	panel.body.add_child(ok)
+
+
+func _event_check() -> void:
+	_event_form("Épreuve de groupe", _form_check, func(v): return Net.server.mj_event("group_check", v))
+
+
+func _form_check(form: VBoxContainer) -> Dictionary:
+	form.add_child(UIKit.label("Chaque joueur reçoit une demande de jet. Avec une caractéristique, le jeu ajoute sa valeur au d20.", "MutedLabel", true))
+	var label := UIKit.line_edit("", "Ex. : Grimper la falaise")
+	UIKit.field(form, "Épreuve", label)
+	var st := OptionButton.new()
+	st.add_item("Aucune (d20 seul)")
+	st.set_item_metadata(0, "")
+	for s in Content.stat_names(Net.server.content):
+		st.add_item(String(s))
+		st.set_item_metadata(st.item_count - 1, String(s))
+	UIKit.field(form, "Caractéristique", st)
+	var diff := UIKit.spin(15, 1, 40)
+	UIKit.field(form, "Difficulté (10 facile, 15 moyen, 20 difficile)", diff)
+	var getters := {}
+	getters["text"] = func(): return label.text
+	getters["stat"] = func(): return String(st.get_item_metadata(st.selected))
+	getters["difficulty"] = func(): return int(diff.value)
+	return getters
+
+
+func _event_group_hp() -> void:
+	_event_form("Dégâts ou soins de groupe", _form_group_hp, func(v): return Net.server.mj_event("group_damage" if int(v.kind) == 0 else "group_heal", v))
+
+
+func _form_group_hp(form: VBoxContainer) -> Dictionary:
+	var kind := OptionButton.new()
+	kind.add_item("Dégâts (piège, explosion, chute…)")
+	kind.add_item("Soins (source, bénédiction…)")
+	UIKit.field(form, "Type", kind)
+	var dice := UIKit.line_edit("2d6", "2d6, 1d10+2…")
+	UIKit.field(form, "Dés (tirés pour chacun)", dice)
+	var text := UIKit.line_edit("", "Ex. : Le sol s'effondre sous vos pieds !")
+	UIKit.field(form, "Ce qui se passe", text)
+	var getters := {}
+	getters["kind"] = func(): return kind.selected
+	getters["dice"] = func(): return dice.text
+	getters["text"] = func(): return text.text
+	return getters
+
+
+func _event_reward() -> void:
+	_event_form("Récompense de groupe", _form_reward, func(v): return Net.server.mj_event("group_reward", v))
+
+
+func _form_reward(form: VBoxContainer) -> Dictionary:
+	var xp := UIKit.spin(50, 0, 99999)
+	UIKit.field(form, "XP pour chacun", xp)
+	var gold := UIKit.spin(0, -9999, 99999)
+	UIKit.field(form, "Or pour chacun", gold)
+	var item := OptionButton.new()
+	item.add_item("(aucun objet)")
+	item.set_item_metadata(0, "")
+	for e in Content.list(Net.server.content, "items"):
+		item.add_item("%s (%s)" % [e.name, GameUI.rarity_name(e)])
+		item.set_item_metadata(item.item_count - 1, String(e.id))
+	UIKit.field(form, "Objet (dans le coffre du groupe)", item)
+	var text := UIKit.line_edit("", "Ex. : Le roi vous remercie.")
+	UIKit.field(form, "Message", text)
+	var getters := {}
+	getters["xp"] = func(): return int(xp.value)
+	getters["gold"] = func(): return int(gold.value)
+	getters["item"] = func(): return String(item.get_item_metadata(item.selected))
+	getters["text"] = func(): return text.text
+	return getters
+
+
+func _event_ambush() -> void:
+	_event_form("Embuscade", _form_ambush, func(v): return Net.server.mj_event("ambush", v))
+
+
+func _form_ambush(form: VBoxContainer) -> Dictionary:
+	form.add_child(UIKit.label("Les monstres apparaissent près du point de départ de la carte affichée, puis le combat commence.", "MutedLabel", true))
+	var pickers: Array = []
+	for i in 3:
+		var row := HBoxContainer.new()
+		form.add_child(row)
+		var o := OptionButton.new()
+		o.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		o.add_item("(aucun)")
+		o.set_item_metadata(0, "")
+		for m in Content.list(Net.server.content, "monsters"):
+			o.add_item("%s (%d PV)" % [m.name, int(m.hp)])
+			o.set_item_metadata(o.item_count - 1, String(m.id))
+		if i == 0 and o.item_count > 1:
+			o.select(1)
+		row.add_child(o)
+		var n := UIKit.spin(2 if i == 0 else 1, 1, 8)
+		n.prefix = "×"
+		row.add_child(n)
+		pickers.append([o, n])
+	var text := UIKit.line_edit("", "Ex. : Des silhouettes surgissent des fourrés !")
+	UIKit.field(form, "Annonce", text)
+	var getters := {}
+	getters["monsters"] = func():
+		var ids: Array = []
+		for p in pickers:
+			var id := String(p[0].get_item_metadata(p[0].selected))
+			if id != "":
+				for k in int(p[1].value):
+					ids.append(id)
+		return ids
+	getters["text"] = func(): return text.text
+	return getters
 
 
 func _refresh_composer_targets() -> void:
@@ -1346,7 +1756,7 @@ func _on_message_added(m: Dictionary) -> void:
 		_tray_waiting = false
 		_tray.finish(m.get("roll", {}), String(m.get("text", "")))
 	if m.get("from", "") != Protocol.MJ_ID:
-		_tabs.set_badge("story", true)
+		_badge("story", true)
 	if m.get("kind", "") == Protocol.KIND_ACTION:
 		_refresh_pending()
 
@@ -1431,11 +1841,13 @@ func _refresh_pending() -> void:
 	UIKit.clear(_pending_box)
 	var pending := Net.server.pending_actions()
 	_pending_title.text = "Actions en attente (%d)" % pending.size()
-	if _narrow:
-		(_pending_box.get_parent() as Control).custom_minimum_size.y = 0 if pending.is_empty() else 220
+	(_pending_box.get_parent() as Control).custom_minimum_size.y = 0 if pending.is_empty() else 240
+	(_pending_box.get_parent() as Control).visible = not pending.is_empty()
 	if pending.is_empty():
-		_pending_box.add_child(UIKit.label("Aucune. Les joueurs déclarent leurs actions depuis l'onglet Aventure (mode « Action »).", "MutedLabel", true))
+		_pending_title.text = "Aucune action en attente : les joueurs déclarent leurs actions depuis le Récit (mode « Action »)."
+		_pending_title.add_theme_font_size_override("font_size", 15)
 		return
+	_pending_title.remove_theme_font_size_override("font_size")
 	for m in pending:
 		var card := UIKit.card(_pending_box, "", "InsetPanel")
 		card.add_child(UIKit.label("%s  ·  %s%s" % [m.from_name, Protocol.format_time(m.ts), "  · privé" if m.to != Protocol.TO_ALL else ""], "MutedLabel", true))

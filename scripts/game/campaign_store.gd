@@ -4,7 +4,8 @@ extends RefCounted
 ## Écriture sûre : fichier temporaire, puis l'ancienne sauvegarde devient .bak,
 ## puis le temporaire prend sa place. En cas de fichier abîmé, le .bak est relu.
 
-const FORMAT := 1
+## 2 : catalogue de campagne, quêtes, coffre, fiches au nouveau système de règles.
+const FORMAT := 2
 
 ## Dossier des sauvegardes (App le place dans le profil local).
 static var dir_path := "user://campaigns"

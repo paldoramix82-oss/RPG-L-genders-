@@ -163,6 +163,13 @@ Guerrier, Mage, Assassin, **Gardien** (nouveau), Soigneur (le Prêtre actuel), R
 - Un objet = données : modificateurs (caractéristiques, PV, mana, défense, dégâts, résistances), effets à l'utilisation (même moteur d'effets), effets spéciaux (débloquer une capacité, effet en combat).
 - Tables de butin : entrées avec probabilité, quantité min–max, garanties, objets uniques (une seule fois par campagne). Le MJ peut aussi donner directement.
 
+### 3.8 Quêtes, or et créations à tout moment
+
+- **Quêtes** données par le MJ à tout moment, à un joueur, à plusieurs ou à tout le groupe : **principales** ou **secondaires**, avec description, objectifs à cocher, état (en cours, réussie, échouée) et **récompenses** : XP, **or**, objets. Le MJ peut préparer une quête en brouillon puis la donner plus tard. À la réussite, l'hôte distribue les récompenses **une seule fois**.
+- **Or** : nouvelle ressource sur chaque fiche (gagnée par quêtes, butin, dons du MJ).
+- **Créations à tout moment** : le MJ peut créer un objet en pleine partie (nom, rareté, catégorie, effets…) et le donner immédiatement, ou le mettre dans le butin. Même chose pour les monstres, les effets de statut et les capacités.
+- **Événements rapides du MJ** : annonce narrative, épreuve de groupe (jet demandé à tous), dégâts ou soins de groupe, récompense de groupe, embuscade (monstres placés + combat lancé).
+
 ---
 
 ## 4. Plan par phases
@@ -189,7 +196,8 @@ Chaque phase se termine par : tests automatiques, captures PC + téléphone, mis
 1. XP, niveaux, choix à la montée de niveau, capacités connues / équipées.
 2. Inventaire en données (identifiants, raretés, quantités), équiper avec aperçu « Défense 12 → 16 », utiliser, consommer, déposer, comparer.
 3. Tables de butin, écran de victoire, distribution sans doublon.
-4. Journal : quêtes (objectifs, état), notes, factions simples.
+4. **Quêtes** principales et secondaires (objectifs, état, récompenses XP / or / objets distribuées une seule fois), **or**, journal des quêtes côté joueur.
+5. Création d'objets et dons du MJ à tout moment ; événements rapides (annonce, épreuve de groupe, dégâts / soins de groupe, récompense, embuscade).
 
 ### Phase 5 — Refonte de l'interface joueur (puis MJ)
 1. Écran joueur en 3 zones : bandeau (lieu, situation, objectif), centre (récit / carte), **barre inférieure permanente** (portrait, PV, mana, 3 capacités + ultime, Inventaire, Fiche, Journal).

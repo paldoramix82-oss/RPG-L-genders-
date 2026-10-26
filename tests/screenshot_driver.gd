@@ -1,7 +1,10 @@
 extends Node
 ## Pilote de captures : joue une petite scène réelle (hôte + joueur en réseau)
-## puis photographie l'onglet demandé.
-## Arguments : --shot=menu|join|host|player  --tab=<onglet>  --phase=none|exploration|combat  --out=<png>
+## puis photographie l'écran ou le panneau demandé.
+## Arguments : --shot=menu|join|setup|host|player  --tab=<vue ou panneau>
+##             --phase=none|exploration|combat  --map=<modèle>  --out=<png>
+## Joueur : wizard1..wizard5, lobby, story, map, sheet, inventory, chest, journal, ability, help, levelup
+## Hôte : table, story, combat, world, quests, create, chars, char, item_editor, quest_editor, ambush
 
 const PORT := 17800
 
@@ -48,38 +51,67 @@ func _host() -> void:
 		if server.maps[id].get("template", "") == map_template:
 			server.mj_set_active_map(id)
 	App.goto(App.SCENE_HOST)
-	server.mj_send_message(Protocol.TO_ALL, "Vous êtes téléportés au hasard sur l'île. Dix jours pour trouver le point de rendez-vous.")
+	server.mj_narrate("Vous êtes téléportés au hasard sur l'île. Dix jours pour trouver le point de rendez-vous.", Protocol.TO_ALL, "Le test de survie")
 	await get_tree().create_timer(4.0).timeout
 	var map_id := server.active_map
-	server.mj_add_token(map_id, {"kind": "monster", "name": "Croc blanc", "x": 13, "y": 12, "color": "#d9dee4", "hp": 22, "hp_max": 22})
-	server.mj_add_token(map_id, {"kind": "npc", "name": "Candidat rival", "x": 16, "y": 9, "color": "#6f9fc9", "hp": 15, "hp_max": 15})
-	for p in server.players.values():
-		server.mj_request_roll(p.id, "d20", "Perception", 12, true)
-	var packs := NpcLibrary.packs("legenders")
-	server.mj_import_npcs(packs[0].npcs.slice(0, 3))
-	for id in server.characters.keys():
-		if not server.players.has(id):
-			var t := server.mj_place_character(id)
-			server.mj_update_token(map_id, t.id, {"hidden": false})
+	var player_ids: Array = server.players.keys()
+	var pawn := MapData.token(server.maps[map_id], "pawn_" + String(player_ids[0])) if not player_ids.is_empty() else {}
+	var px := int(pawn.get("x", 12))
+	var py := int(pawn.get("y", 10))
+	server.mj_spawn_monster("loup", px + 1, py, false)
+	server.mj_spawn_monster("loup_alpha", px + 2, py + 1, false)
+	server.mj_spawn_monster("bandit", px + 3, py - 1, true)
+	server.mj_quest_save({"title": "Survivre dix jours", "kind": "main", "description": "Atteindre le point de rendez-vous avant la fin du test.",
+		"objectives": [{"text": "Trouver de l'eau douce"}, {"text": "Rejoindre le pic central"}], "rewards": {"xp": 200, "gold": 50, "items": [{"item": "amulette_vie", "qty": 1}]}, "give": true})
+	server.mj_quest_save({"title": "Le candidat disparu", "kind": "side", "objectives": [{"text": "Retrouver Mako"}], "rewards": {"xp": 80}, "give": true})
+	server.add_loot(Content.item_instance(server.content, "lame_runique"), "Coffre ancien")
+	server.add_loot(Content.item_instance(server.content, "potion_soin_sup", 2), "Coffre ancien")
 	server.mj_music("poing_de_braise", true)
+	for id in player_ids:
+		server.mj_give_item(String(id), "bottes_vent", 1, false)
+		server.mj_give_item(String(id), "livre_second_souffle", 1, false)
 	if phase != "none":
 		server.mj_start_game("exploration")
 		if phase == "combat":
 			server.mj_set_phase("combat")
 			# Le joueur commence, pour montrer son panneau de tour.
-			var pawns := server.players.keys().map(func(id): return "pawn_" + String(id))
+			var pawns := player_ids.map(func(id): return "pawn_" + String(id))
 			for i in server.phase.order.size():
 				if pawns.has(server.phase.order[i]):
 					server.phase.turn = i
-					server._begin_turn()
+					server._start_turn_loop()
 					server._phase_changed()
 					break
+	if tab == "levelup":
+		await get_tree().create_timer(2.0).timeout
+		for id in server.players.keys():
+			server.grant_xp(String(id), 120)
 	await get_tree().create_timer(1.0).timeout
 	var screen := get_tree().current_scene
-	if tab != "" and screen.get("_tabs"):
-		screen._tabs.show_page(tab)
+	match tab:
+		"story":
+			screen._show("story")
+		"combat", "world", "quests", "create", "chars", "net":
+			screen._show(tab)
+		"char":
+			if not player_ids.is_empty():
+				screen._open_char_tools(String(player_ids[0]))
+		"item_editor":
+			screen._open_content_editor("items", Content.get_entry(server.content, "items", "croc_vampirique"))
+		"quest_editor":
+			screen._open_quest_editor(server.quests[0])
+		"ambush":
+			screen._event_ambush()
 	# Laisse le téléphone se photographier avant que l'hôte ne ferme.
 	await get_tree().create_timer(4.0).timeout
+
+
+## Débogage de mise en page : contrôles plus larges que l'écran.
+func _report_wide(node: Node, limit: float) -> void:
+	for child in node.get_children():
+		if child is Control and child.get_combined_minimum_size().x > limit:
+			print("LARGE ", child.get_path(), " ", child.get_class(), " ", child.get_combined_minimum_size())
+		_report_wide(child, limit)
 
 
 func _player() -> void:
@@ -90,42 +122,51 @@ func _player() -> void:
 	var c := Net.client
 	if c == null:
 		return
+	for i in 30:
+		if c.is_accepted() and not c.content.is_empty():
+			break
+		await get_tree().create_timer(0.2).timeout
 	var screen := get_tree().current_scene
 	if tab.begins_with("wizard"):
-		# Assistant de création : wizard1..wizard4.
 		screen._open_wizard()
 		var wizard: CreationWizard = screen._creation.get_child(0)
 		wizard.class_id = "briseur"
-		wizard.alloc = Rules.get_class_def("legenders", "briseur").recommended.duplicate()
-		wizard.step = int(tab.substr(6)) - 1
+		wizard.alloc = Rules.get_class_def(c.content, "briseur").recommended.duplicate()
+		wizard.choices = [0]
 		wizard.identity.name = "Shin"
+		wizard.identity.portrait = {"face": 1, "skin": 2, "hair": 5, "hair_color": 4, "eyes": 1, "beard": 0, "mark": 1}
+		wizard.step = int(tab.substr(6)) - 1
 		wizard._show_step()
 		await get_tree().create_timer(1.0).timeout
+		if OS.get_cmdline_user_args().has("--debug-width"):
+			_report_wide(get_tree().current_scene, get_viewport().get_visible_rect().size.x - 130)
 		return
-	var base := CharacterData.create(c.universe, c.me.id, c.me.id, "Shin")
-	var sheet := Rules.build_sheet(base, "legenders", "briseur", Rules.get_class_def("legenders", "briseur").recommended, [0])
-	sheet.concept = "Gardien du Dragon (débutant)"
-	sheet.species = "Humain"
-	sheet.pawn.color = "#b0605a"
-	sheet.magic.name = "Renforcement des flammes"
-	sheet.goals = "Devenir mage d'État et réveiller Sol'fyr pour de bon."
-	c.save_character(sheet)
+	c.create_character("briseur", Rules.get_class_def(c.content, "briseur").recommended, [0], {
+		"name": "Shin", "species": "Humain", "appearance": "Cheveux en bataille, cicatrice de brûlure.",
+		"portrait": {"face": 1, "skin": 2, "hair": 5, "hair_color": 4, "eyes": 1, "beard": 0, "mark": 1},
+		"pawn": {"color": "#b0605a"}, "magic": {"name": "Renforcement des flammes", "category": "Renforcement", "public": true}})
 	await get_tree().create_timer(1.0).timeout
 	c.declare_action(Protocol.TO_ALL, "J'escalade le pic central pour repérer le point de rendez-vous.")
 	c.roll("d20+2", Protocol.TO_ALL, "Escalade")
 	c.send_chat(Protocol.TO_MJ, "Je garde une flamme allumée dans ma main, discrètement.")
-	await get_tree().create_timer(2.5).timeout
-	if tab == "dice":
-		screen._roll(Protocol.TO_ALL, "2d6+3", "Escalade")
-		await get_tree().create_timer(0.5).timeout
-		return
-	if tab == "request":
-		screen._tabs.show_page("adventure")
-		await get_tree().create_timer(1.0).timeout
-		return
-	if tab == "editor":
-		screen._tabs.show_page("sheet")
-		screen._open_editor(screen._sheet_box)
-	elif tab != "" and screen.get("_tabs"):
-		screen._tabs.show_page(tab)
+	await get_tree().create_timer(4.5).timeout
+	match tab:
+		"story":
+			screen._show_view("story")
+		"map", "":
+			screen._show_view("map")
+		"sheet", "levelup":
+			screen._open_sheet()
+		"inventory":
+			screen._open_inventory("bag")
+		"chest":
+			screen._open_inventory("chest")
+		"journal":
+			screen._open_journal("quests")
+		"help":
+			screen._open_help()
+		"ability":
+			var abilities := Rules.usable_abilities(c.my_character(), c.content)
+			if not abilities.is_empty():
+				screen._open_ability(abilities[0])
 	await get_tree().create_timer(1.0).timeout

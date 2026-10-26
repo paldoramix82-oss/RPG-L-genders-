@@ -109,6 +109,16 @@ func focus_text() -> void:
 	_text.grab_focus()
 
 
+## Passe en mode « Action » avec un début de phrase à compléter (actions contextuelles).
+func start_action(prefix: String) -> void:
+	if _mode_buttons.has("action"):
+		_mode_buttons.action.button_pressed = true
+	_set_mode("action")
+	_text.text = prefix
+	_text.grab_focus()
+	_text.caret_column = prefix.length()
+
+
 func select_target(target: String) -> void:
 	for i in _target.item_count:
 		if _target.get_item_metadata(i) == target:

@@ -9,7 +9,7 @@ extends RefCounted
 ## décide quelles données envoyer à quel client.
 
 ## À incrémenter dès que le format des messages change de façon incompatible.
-const VERSION := 4
+const VERSION := 5
 const APP_ID := "legenders-rpg"
 
 const DEFAULT_PORT := 7777
@@ -54,8 +54,18 @@ const CMD_ROLL := "dice_roll"
 const CMD_CHAR_SAVE := "char_save"
 const CMD_PAWN_MOVE := "pawn_move"
 const CMD_ROLL_ANSWER := "roll_answer"
-## Action de tour : fin du tour, attaque, capacité, objet.
+## Action de tour : fin du tour, attaque rapide / puissante, défense, capacité, objet.
 const CMD_TURN := "turn"
+## Création d'un personnage avec l'assistant (classe, répartition, choix d'équipement, identité).
+const CMD_CHAR_CREATE := "char_create"
+## Inventaire hors combat : équiper, déséquiper, utiliser, déposer, donner, lire.
+const CMD_ITEM := "item"
+## Prendre un objet dans le coffre commun du groupe.
+const CMD_LOOT_TAKE := "loot_take"
+## Montée de niveau : placer un point de caractéristique, apprendre ou améliorer une capacité.
+const CMD_LEVEL := "level"
+## Équiper / retirer une capacité connue de la barre rapide.
+const CMD_ABILITY_EQUIP := "ability_equip"
 
 # --- Événements serveur -> client ---
 const EVT_JOIN_STATUS := "join_status"
@@ -72,6 +82,13 @@ const EVT_PHASE := "phase"
 const EVT_SETTINGS := "settings"
 const EVT_TOKENS := "tokens"
 const EVT_MUSIC := "music"
+## Catalogue visible des joueurs (règles, classes, capacités, statuts).
+const EVT_CONTENT := "content"
+const EVT_QUESTS := "quests"
+## Coffre commun du groupe (butin à se partager).
+const EVT_LOOT := "loot"
+## Retours visuels d'une action (dégâts, soins, effets…) pour les animations.
+const EVT_FX := "fx"
 
 # --- Types de messages du fil ---
 const KIND_CHAT := "chat"
@@ -79,6 +96,12 @@ const KIND_ACTION := "action"
 const KIND_ROLL := "roll"
 const KIND_SYSTEM := "system"
 const KIND_ROLL_REQUEST := "roll_request"
+## Résultat mécanique d'une action de combat (lignes colorées).
+const KIND_COMBAT := "combat"
+## Narration du MJ (mise en forme « récit »).
+const KIND_NARRATION := "narration"
+## Annonce de quête, de récompense ou de montée de niveau.
+const KIND_REWARD := "reward"
 
 # --- Statut d'une action déclarée ---
 const ACTION_PENDING := "pending"

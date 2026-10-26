@@ -20,3 +20,17 @@ const OK := Color("8fb28a")
 const WARN := Color("d1a15e")
 const DANGER := Color("c26b62")
 const PRIVATE := Color("b39ad8")
+
+# --- Couleurs fonctionnelles ---
+## Dégâts, danger, PV perdus.
+const HP := Color("c9544c")
+const HP_DEEP := Color("4a2224")
+## Soins, PV récupérés.
+const HEAL := Color("7fc47a")
+## Magie, mana et ressources.
+const MANA := Color("6f8fd9")
+const MANA_DEEP := Color("232b44")
+## Jauge d'ultime.
+const ULT := Color("e3b55a")
+## Expérience.
+const XP := Color("8fb2e0")

@@ -37,7 +37,7 @@ static func card(parent: Node, title: String = "", variation: String = "CardPane
 	var body := VBoxContainer.new()
 	panel.add_child(body)
 	if title != "":
-		body.add_child(label(title, "HeadingLabel"))
+		body.add_child(label(title, "HeadingLabel", true))
 		body.add_child(HSeparator.new())
 	return body
 
