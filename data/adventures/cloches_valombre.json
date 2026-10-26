@@ -1,0 +1,259 @@
+{
+ "id": "cloches_valombre",
+ "universe": "fantasy",
+ "map": "valombre_ville",
+ "music": "taverne",
+ "name": "Les cloches de Valombre",
+ "length": "1 à 2 séances · 2 à 5 joueurs · niveau 1",
+ "tagline": "Chaque nuit, à minuit, les cloches du temple sonnent toutes seules.",
+ "description": "Une petite ville tranquille, une prêtresse inquiète, un champ brûlé sans flammes et une crypte qu'on n'ouvre plus. Idéal pour une première partie : discussions, enquête, un peu d'exploration et un combat final.",
+ "npcs": [
+  {
+   "pack": "fantasy_valombre",
+   "name": "Bertrand",
+   "x": 6,
+   "y": 9,
+   "hidden": false,
+   "note": ""
+  },
+  {
+   "pack": "fantasy_valombre",
+   "name": "Sœur Aveline",
+   "x": 14,
+   "y": 9,
+   "hidden": false,
+   "note": ""
+  },
+  {
+   "pack": "fantasy_valombre",
+   "name": "Dorn",
+   "x": 7,
+   "y": 15,
+   "hidden": false,
+   "note": ""
+  },
+  {
+   "pack": "fantasy_valombre",
+   "name": "Bourgmestre Hallis",
+   "x": 14,
+   "y": 15,
+   "hidden": false,
+   "note": ""
+  },
+  {
+   "pack": "fantasy_valombre",
+   "name": "Mirelle",
+   "x": 27,
+   "y": 14,
+   "hidden": false,
+   "note": ""
+  },
+  {
+   "pack": "fantasy_valombre",
+   "name": "Capitaine Roderic",
+   "x": 11,
+   "y": 11,
+   "hidden": false,
+   "note": ""
+  },
+  {
+   "pack": "fantasy_valombre",
+   "name": "Le Voyageur encapuchonné",
+   "x": 5,
+   "y": 7,
+   "hidden": false,
+   "note": "Sait ce qui se cache sous le temple ; ne parle que si on lui offre à boire."
+  }
+ ],
+ "monsters": [
+  {
+   "id": "squelette",
+   "x": 13,
+   "y": 6,
+   "hidden": true
+  },
+  {
+   "id": "squelette",
+   "x": 15,
+   "y": 6,
+   "hidden": true
+  },
+  {
+   "id": "ombre_errante",
+   "x": 14,
+   "y": 5,
+   "hidden": true
+  },
+  {
+   "id": "ombre_errante",
+   "x": 28,
+   "y": 5,
+   "hidden": true
+  }
+ ],
+ "chests": [
+  {
+   "name": "Coffre du sonneur",
+   "x": 16,
+   "y": 6,
+   "loot": "coffre",
+   "hidden": true
+  },
+  {
+   "name": "Caisse abandonnée",
+   "x": 29,
+   "y": 16,
+   "loot": "brigand",
+   "hidden": false
+  }
+ ],
+ "labels": [
+  {
+   "x": 14,
+   "y": 6,
+   "text": "Crypte (entrée sous l'autel)",
+   "hidden": true
+  }
+ ],
+ "quests": [
+  {
+   "title": "Les cloches de minuit",
+   "kind": "main",
+   "giver": "Sœur Aveline",
+   "description": "Les cloches sonnent seules chaque nuit depuis l'incendie du champ. Sœur Aveline craint que quelque chose se soit réveillé sous le temple.",
+   "objectives": [
+    {
+     "text": "Interroger les habitants sur les cloches"
+    },
+    {
+     "text": "Examiner le champ calciné"
+    },
+    {
+     "text": "Trouver l'entrée de la crypte"
+    },
+    {
+     "text": "Faire taire ce qui sonne les cloches"
+    }
+   ],
+   "rewards": {
+    "xp": 300,
+    "gold": 60,
+    "items": [
+     {
+      "item": "amulette_vie",
+      "qty": 1
+     }
+    ]
+   }
+  },
+  {
+   "title": "Le minerai de Dorn",
+   "kind": "side",
+   "giver": "Dorn",
+   "description": "Le forgeron manque de fer depuis que la route de la forêt n'est plus sûre.",
+   "objectives": [
+    {
+     "text": "Rapporter du minerai de fer à Dorn"
+    }
+   ],
+   "rewards": {
+    "xp": 100,
+    "gold": 25,
+    "items": [
+     {
+      "item": "marteau_armes",
+      "qty": 1
+     }
+    ]
+   }
+  },
+  {
+   "title": "Les herbes du marais",
+   "kind": "side",
+   "giver": "Mirelle",
+   "description": "L'herboriste n'ose plus aller cueillir au marais : des lueurs y dansent la nuit.",
+   "objectives": [
+    {
+     "text": "Cueillir des herbes médicinales au marais"
+    },
+    {
+     "text": "Découvrir l'origine des lueurs"
+    }
+   ],
+   "rewards": {
+    "xp": 80,
+    "gold": 10,
+    "items": [
+     {
+      "item": "potion_soin",
+      "qty": 2
+     }
+    ]
+   }
+  },
+  {
+   "title": "Une ardoise bien chargée",
+   "kind": "side",
+   "giver": "Bertrand",
+   "description": "Un client est parti sans payer… en laissant un sac étrange derrière lui.",
+   "objectives": [
+    {
+     "text": "Retrouver le mauvais payeur"
+    },
+    {
+     "text": "Ouvrir (ou rendre) le sac"
+    }
+   ],
+   "rewards": {
+    "xp": 60,
+    "gold": 15,
+    "items": [
+     {
+      "item": "lettre_scellee",
+      "qty": 1
+     }
+    ]
+   }
+  }
+ ],
+ "scenes": [
+  {
+   "title": "Arrivée à Valombre",
+   "narration": "La route de la forêt débouche enfin sur Valombre. Les toits fument, un garde bâille à l'entrée, et la taverne du Corbeau Rieur promet une soupe chaude. Au loin, le clocher du temple domine la place.",
+   "tips": "Laissez chaque joueur présenter son personnage à Bertrand le tavernier. Personne ne parle des cloches tant qu'on ne pose pas la question."
+  },
+  {
+   "title": "Minuit",
+   "narration": "À minuit pile, les cloches du temple se mettent à sonner. Douze coups. Puis un treizième. Dans la taverne, plus personne ne parle.",
+   "tips": "Sœur Aveline arrive essoufflée et demande de l'aide : donnez la quête « Les cloches de minuit ».",
+   "action": {
+    "type": "give_quest",
+    "quest": 0
+   }
+  },
+  {
+   "title": "Le champ calciné",
+   "narration": "L'herbe est noire sur un cercle parfait. Les cendres sont encore tièdes, alors que personne n'a vu de flammes. Au centre, la terre semble avoir été poussée de l'intérieur.",
+   "tips": "Épreuve d'Esprit (difficulté 13) : ceux qui réussissent sentent une magie froide qui « tire » vers le temple. Une ombre errante rôde ici (cachée).",
+   "action": {
+    "type": "group_check",
+    "stat": "Esprit",
+    "difficulty": 13,
+    "title": "Que ressentez-vous ?"
+   }
+  },
+  {
+   "title": "La crypte",
+   "narration": "Sous l'autel fendu, un escalier descend dans le noir. L'air sent la cire froide. Quelque chose cliquette en bas… comme des os qui s'entrechoquent au rythme des cloches.",
+   "tips": "Révélez les monstres cachés près du temple et lancez le combat. Le coffre du sonneur est dans la crypte.",
+   "action": {
+    "type": "reveal_combat"
+   }
+  },
+  {
+   "title": "Le silence",
+   "narration": "La dernière ombre se dissipe. Pour la première fois depuis des semaines, minuit passe sans un seul coup de cloche. Sœur Aveline pleure de soulagement.",
+   "tips": "Cochez les objectifs puis « Réussie : distribuer ». Le Voyageur encapuchonné laisse entendre que ce n'était que le début…"
+  }
+ ]
+}

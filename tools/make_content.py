@@ -251,6 +251,14 @@ acc("couronne_epines", "Couronne d'épines", "crown", "epique", "+3 dégâts mai
 acc("pendentif_phenix", "Pendentif du phénix", "amulet", "legendaire", "Une fois par combat, accorde « Renaissance ».", {"hp_max": 5}, 400,
     grants=["renaissance"], unique=True)
 
+# Outils et lumière (équipement de départ, voir STARTER_KIT)
+acc("torche", "Torche", "fire", "commun", "Éclaire autour de vous : +2 cases de vision (accessoire).", {"vision": 2}, 2)
+acc("lanterne", "Lanterne sourde", "sun", "peu_commun", "Lumière stable : +3 cases de vision (accessoire).", {"vision": 3}, 25)
+item("corde", "Corde (15 m)", "chain", "outil", "commun", "Pour grimper, attacher, descendre dans un puits… Le MJ décide de ce qu'elle permet.", 2)
+item("crochets", "Outils de crochetage", "key", "outil", "commun", "Ouvrir serrures et coffres (épreuve de Dextérité, au choix du MJ).", 10)
+item("sac_couchage", "Sac de couchage", "bag", "outil", "commun", "Repos plus confortable en pleine nature.", 2)
+potion("trousse_soins", "Trousse de soins", "cross", "commun", "Bandages et onguents : rend 1d4 + 3 PV.", [heal("1d4", 3, "self")], 5, "consommable")
+
 # Consommables
 potion("potion_soin", "Potion de soin", "potion", "commun", "Rend 2d6+2 PV.", [heal("2d6", 2, "self")], 10)
 potion("potion_soin_sup", "Potion de soin supérieure", "potion", "peu_commun", "Rend 4d6+4 PV.", [heal("4d6", 4, "self")], 30)
@@ -445,6 +453,25 @@ FANTASY = [
           kit(("armure_cuir", 1, True), ("potion_soin", 1, False)),
           [choice("Votre instrument", "luth_lame", "rapiere", "anneau_esprit")],
           rec(FOR=0, DEX=3, CON=3, INT=2, ESP=2, CHA=5)),
+    klass("druide", "Druide", "Gardien des bêtes et des forêts.", "Invocateur et soutien", "#6f8f4a", "leaf",
+          "Appelle des animaux à ses côtés, entrave ses ennemis avec des ronces et soigne avec la sève. Les bêtes se battent pour lui.",
+          {"Esprit": 1, "Constitution": 1}, 16, 5, "Sève", "Esprit", 8, 5,
+          passive("Lien sauvage", "Au début de votre tour, vous et vos alliés à 2 cases regagnez 1 PV.", "turn_start", "paw",
+                  effects=[{"type": "heal", "amount": 1, "on": "allies", "radius": 2}]),
+          [ab("appel_loup", "Appel du loup", "paw", "Un loup (14 PV, 1d6) surgit à vos côtés et se bat pour vous.", 4, 2, 1, "self",
+              [summon("Loup", 14, "1d6", 12, "#9a9a9a")], "Esprit", 3, short="Loup"),
+           ab("ronces", "Ronces", "leaf", "Des ronces jaillissent à 5 cases : 1d6 + Esprit et Immobilisé 1 tour.", 3, 1, 5, "enemy",
+              [dmg("1d6", element="magique"), st("immobilise", 1)], "Esprit", 1, element="magique"),
+           ab("seve_vitale", "Sève vitale", "herb", "Soigne un allié à 4 cases : 1d8 + Esprit, et Régénération 2 tours.", 3, 1, 4, "ally",
+              [heal("1d8"), st("regeneration", 2)], "Esprit", 1, element="soin", short="Sève")],
+          ab("fureur_sauvage", "Fureur sauvage", "dragon", "ULTIME : un ours-esprit (30 PV, 2d6) rejoint le combat ; vos alliés à 3 cases sont Renforcés.", 0, 2, 0, "self",
+             [summon("Ours-esprit", 30, "2d6", 13, "#6b4a2a"), {"type": "status", "status": "renforce", "turns": 2, "on": "allies", "radius": 3}], "Esprit", ultimate=True, short="Fureur"),
+          [{"ability": ab("peau_ecorce", "Peau d'écorce", "leaf", "Bouclier de 8 sur vous pendant 2 tours.", 2, 1, 0, "self", [shield(8, 2, "self")], "Constitution", 3), "level": 2},
+           {"ability": ab("nuee", "Nuée d'insectes", "wind", "Zone de rayon 1 à 5 cases : 2d6 et 40 % d'empoisonner.", 4, 2, 5, "area_enemy",
+                          [dmg("2d6"), st("poison", 3, 40)], "Esprit", 2, radius=1), "level": 3}],
+          kit(("armure_cuir", 1, True), ("herbes_medicinales", 2, False)),
+          [choice("Votre arme", "baton_chene", "lance", "arc_court")],
+          rec(FOR=2, DEX=3, CON=3, INT=0, ESP=5, CHA=2), difficulty=2),
 ]
 
 LEGENDERS = [
@@ -661,8 +688,123 @@ MONSTERS = [
 ]
 
 
+# --- Peuples -------------------------------------------------------------------
+# Chaque peuple : bonus de caractéristiques, bonus de jeu (mods), un trait, parfois
+# une capacité innée, et des synergies avec certaines classes (un elfe mage a plus
+# de mana qu'un demi-orc mage ; un demi-orc druide appelle la horde…).
+
+ab("rage_sang", "Rage du sang", "fist", "Une fois par combat : +2 Force et Renforcé pendant 2 tours.", 0, 1, 0, "self",
+   [statmod("Force", 2, 2, "self"), st("renforce", 2, on="self")], "Force", 99, short="Rage")
+ab("appel_horde", "Appel de la horde", "paw", "Un loup de guerre (18 PV, 1d8) rejoint le combat.", 4, 2, 1, "self",
+   [summon("Loup de guerre", 18, "1d8", 13, "#7a6a5a")], "Esprit", 4, short="Horde")
+ab("flammes_infernales", "Flammes infernales", "fire", "2d6 dégâts magiques à 4 cases, 30 % de brûlure.", 3, 1, 4, "enemy",
+   [dmg("2d6", element="magique"), st("brulure", 2, 30)], "Charisme", 3, element="magique", short="Flammes")
+ab("souffle_ancestral", "Pas du vent", "wind", "Vous devenez Invisible 1 tour (sortie de combat, embuscade).", 2, 1, 0, "self",
+   [st("invisible", 1, on="self")], "Dextérité", 4, short="Vent")
+ab("chant_profondeurs", "Chant des profondeurs", "music", "Une cible à 5 cases est Affaiblie 2 tours.", 3, 1, 5, "enemy",
+   [st("affaibli", 2)], "Charisme", 3, roll="none", short="Chant")
+ab("charge_cornue", "Charge cornue", "horn", "1d10 + Force à 3 cases et repousse de 2 cases.", 3, 1, 3, "enemy",
+   [dmg("1d10"), push(2)], "Force", 3, short="Cornes")
+
+
+def species(id_, name, desc, icon, stats=None, mods=None, trait="", trait_desc="", abilities=(), synergies=None):
+    return {"id": id_, "name": name, "description": desc, "icon": icon, "stats": stats or {}, "mods": mods or {},
+            "trait": {"name": trait, "description": trait_desc}, "abilities": list(abilities), "synergies": synergies or {}}
+
+
+def syn(name, desc, mods=None, abilities=()):
+    return {"name": name, "description": desc, "mods": mods or {}, "abilities": list(abilities)}
+
+
+SPECIES_FANTASY = [
+    species("humain", "Humain", "Ambitieux et adaptables : bons partout, excellents nulle part… au début.", "person",
+            {"Charisme": 1}, {"to_hit": 1}, "Détermination", "+1 au toucher, +1 Charisme.",
+            synergies={"guerrier": syn("Vétéran", "Des années de guerre : +4 PV max.", {"hp_max": 4}),
+                       "soigneur": syn("Vocation", "+10 % aux soins prodigués.", {"heal_pct": 10}),
+                       "barde": syn("Orateur né", "+2 Inspiration max.", {"res_max": 2})}),
+    species("elfe", "Elfe", "Gracieux, anciens, liés à la magie. Fragiles mais perçants.", "leaf",
+            {"Dextérité": 1, "Intelligence": 1, "Constitution": -1}, {"res_max": 4, "vision": 2}, "Sang ancien",
+            "+4 de mana (ou ressource) et vision elfique (+2 cases).",
+            synergies={"mage": syn("Héritage arcanique", "Un elfe mage puise plus loin : +4 mana et +1 dégât.", {"res_max": 4, "damage": 1}),
+                       "rodeur": syn("Œil de l'elfe", "+1 au toucher, +1 case de vision.", {"to_hit": 1, "vision": 1}),
+                       "druide": syn("Ami des forêts", "+10 % aux soins prodigués.", {"heal_pct": 10})}),
+    species("nain", "Nain", "Trapus, têtus, increvables. Ils ont vu le fond des montagnes.", "hammer",
+            {"Constitution": 2, "Dextérité": -1}, {"hp_max": 4, "resist_phys": 1}, "Robuste", "+4 PV max et +1 résistance physique.",
+            synergies={"gardien": syn("Mur de pierre", "+1 Défense et +1 résistance physique.", {"defense": 1, "resist_phys": 1}),
+                       "guerrier": syn("Forgé dans la roche", "+6 PV max.", {"hp_max": 6})}),
+    species("demi_orc", "Demi-orc", "Le sang des steppes : force brute, colère froide, loyauté farouche.", "fist",
+            {"Force": 2, "Intelligence": -1}, {"hp_max": 2, "damage": 1}, "Sang sauvage", "+1 dégât, +2 PV max, et la Rage du sang.",
+            ["rage_sang"],
+            {"druide": syn("Appel de la horde", "Un demi-orc druide parle aux loups de guerre : capacité « Appel de la horde », +2 PV max.", {"hp_max": 2}, ["appel_horde"]),
+             "guerrier": syn("Brute", "+1 dégât.", {"damage": 1}),
+             "rodeur": syn("Chasseur des steppes", "+1 dégât, +1 vitesse.", {"damage": 1, "speed": 1})}),
+    species("halfelin", "Halfelin", "Petits, discrets, chanceux. On ne les voit jamais venir.", "boots",
+            {"Dextérité": 2, "Force": -1}, {"defense": 1, "crit": 1}, "Chanceux", "+1 Défense, critique un cran plus tôt.",
+            synergies={"assassin": syn("Ombre minuscule", "Critique encore un cran plus tôt.", {"crit": 1}),
+                       "barde": syn("Conteur de tavernes", "+1 Charisme, +2 Inspiration.", {"Charisme": 1, "res_max": 2}),
+                       "rodeur": syn("Pas léger", "+1 au toucher.", {"to_hit": 1})}),
+    species("gnome", "Gnome", "Curieux, inventifs, bavards. La magie est un jouet sérieux.", "gear",
+            {"Intelligence": 2, "Force": -1}, {"res_max": 2, "resist_mag": 1}, "Esprit vif", "+2 mana, +1 résistance magique.",
+            synergies={"mage": syn("Bricoleur d'arcanes", "+1 dégât des sorts.", {"damage": 1}),
+                       "soigneur": syn("Herboriste", "+10 % aux soins.", {"heal_pct": 10})}),
+    species("tieffelin", "Tieffelin", "Une ascendance infernale : cornes, regard ardent, flammes au bout des doigts.", "fire",
+            {"Charisme": 1, "Intelligence": 1}, {"resist_mag": 1}, "Héritage infernal", "+1 résistance magique et Flammes infernales.",
+            ["flammes_infernales"],
+            {"mage": syn("Pacte ardent", "+1 dégât.", {"damage": 1}),
+             "assassin": syn("Regard infernal", "Critique un cran plus tôt.", {"crit": 1}),
+             "barde": syn("Voix envoûtante", "+2 Inspiration.", {"res_max": 2})}),
+]
+
+SPECIES_LEGENDERS = [
+    species("humain", "Humain", "La majorité de Kurtzuma : une affinité moyenne avec l'AEC, beaucoup de ressources.", "person",
+            {"Charisme": 1}, {"res_max": 2}, "Adaptable", "+1 Charisme, +2 AEC.",
+            synergies={"tacticien": syn("Stratège né", "+1 au toucher.", {"to_hit": 1})}),
+    species("sans_magie", "Humain sans-magie", "Aucune AEC dans le sang… et un corps endurci pour compenser.", "fist",
+            {"Force": 1, "Dextérité": 1, "Constitution": 1}, {"res_max": -6, "resist_mag": 2}, "Insensible à l'AEC",
+            "+1 FOR / DEX / CON, +2 résistance magique, mais −6 AEC.",
+            synergies={"briseur": syn("Poings nus", "+1 dégât.", {"damage": 1}), "tacticien": syn("Œil froid", "+1 au toucher.", {"to_hit": 1})}),
+    species("mutant", "Mutant", "Le cristal a réécrit votre corps.", "spiral",
+            {"Constitution": 1, "Force": 1}, {"hp_max": 4}, "Mutation", "+4 PV max.",
+            synergies={"mutant": syn("Mutation stable", "+4 PV max, +1 résistance physique.", {"hp_max": 4, "resist_phys": 1}),
+                       "metamorphe": syn("Chair fluide", "+1 vitesse.", {"speed": 1})}),
+    species("ombre_nee", "Ombré", "Né de l'ombre, à moitié dans ce monde.", "mask",
+            {"Dextérité": 2}, {"vision": 2}, "Né de l'ombre", "Voit dans le noir (+2 vision) et Pas du vent.", ["souffle_ancestral"],
+            {"ombre": syn("Ombre parmi les ombres", "Critique un cran plus tôt.", {"crit": 1})}),
+    species("homme_lezard", "Homme-lézard", "Écailles, sang froid, patience de chasseur.", "scale",
+            {"Constitution": 1, "Dextérité": 1}, {"resist_phys": 1, "speed": 1}, "Écailles", "+1 résistance physique, +1 vitesse.",
+            synergies={"briseur": syn("Carapace", "+1 Défense.", {"defense": 1})}),
+    species("sirene", "Sirène", "Peuple des eaux : la voix est une arme.", "wave",
+            {"Charisme": 1, "Esprit": 1}, {"res_max": 2}, "Chant des profondeurs", "+2 AEC et le Chant des profondeurs.", ["chant_profondeurs"],
+            {"soigneur": syn("Marée apaisante", "+10 % aux soins.", {"heal_pct": 10}), "psychique": syn("Voix intérieure", "+2 AEC.", {"res_max": 2})}),
+    species("centaure", "Centaure", "Mi-homme, mi-cheval : la plaine leur appartient.", "horn",
+            {"Force": 1, "Constitution": 1}, {"speed": 2}, "Galop", "+2 vitesse.",
+            synergies={"tacticien": syn("Éclaireur", "+1 vitesse, +1 vision.", {"speed": 1, "vision": 1})}),
+    species("minotaure", "Minotaure", "Cornes, muscles et colère.", "horn",
+            {"Force": 2, "Intelligence": -1}, {"hp_max": 4}, "Charge cornue", "+4 PV max et la Charge cornue.", ["charge_cornue"],
+            {"briseur": syn("Bélier vivant", "+1 dégât.", {"damage": 1})}),
+    species("esprit", "Esprit", "Une conscience faite d'AEC pure, à peine retenue par un corps.", "spirit",
+            {"Esprit": 2, "Constitution": -1}, {"res_max": 4, "resist_mag": 1}, "Corps d'AEC", "+4 AEC, +1 résistance magique.",
+            synergies={"invocateur": syn("Pont entre les mondes", "+4 AEC.", {"res_max": 4}), "psychique": syn("Résonance", "+1 dégât.", {"damage": 1})}),
+    species("demon", "Démon", "Venu d'ailleurs, toléré, rarement aimé.", "fire",
+            {"Force": 1, "Charisme": 1}, {"resist_mag": 1, "damage": 1}, "Sang infernal", "+1 dégât, +1 résistance magique, Flammes infernales.",
+            ["flammes_infernales"], {"createur": syn("Forge infernale", "+1 dégât.", {"damage": 1})}),
+]
+
+# Équipement donné à tous les personnages à la création (en plus du kit de classe).
+STARTER_KIT = [{"item": "potion_soin", "qty": 1}, {"item": "ration", "qty": 2}, {"item": "torche", "qty": 1},
+               {"item": "corde", "qty": 1}, {"item": "trousse_soins", "qty": 1}]
+
+
 def build(universe, classes):
+    species_list = SPECIES_FANTASY if universe == "fantasy" else SPECIES_LEGENDERS
     used = set()
+    for sp in species_list:
+        used.update(sp["abilities"])
+        for cid, sy in sp["synergies"].items():
+            assert any(c["id"] == cid for c in classes), (universe, sp["id"], cid)
+            used.update(sy["abilities"])
+    for k in STARTER_KIT:
+        assert k["item"] in ITEMS, k
     for c in classes:
         for a in c["abilities"] + [c["ultimate"]] + [l["ability"] for l in c["learnable"]]:
             used.add(a)
@@ -690,6 +832,7 @@ def build(universe, classes):
         "abilities": {k: v for k, v in ABILITIES.items() if k in used},
         "statuses": {s["id"]: s for s in STATUSES},
         "items": ITEMS, "loot": {t["id"]: t for t in LOOT}, "monsters": {m["id"]: m for m in MONSTERS},
+        "species": {s["id"]: s for s in species_list}, "starter_kit": STARTER_KIT,
     }
 
 
@@ -699,7 +842,7 @@ def main():
         data = build(name, classes)
         with open(os.path.join(OUT, name + ".json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=1)
-        print(name, len(data["classes"]), "classes,", len(data["abilities"]), "capacités,", len(data["items"]), "objets,",
+        print(name, len(data["classes"]), "classes,", len(data["species"]), "peuples,", len(data["abilities"]), "capacités,", len(data["items"]), "objets,",
               len(data["monsters"]), "monstres")
 
 

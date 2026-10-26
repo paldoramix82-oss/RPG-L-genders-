@@ -37,6 +37,8 @@ var _tool_buttons := {}
 var _tool_options: VBoxContainer
 var _paint_code := "."
 var _brush := 0
+var _stroke := false
+var _rect_start := Vector2i(-1, -1)
 var _token_tpl := {"kind": "monster", "name": "Monstre", "color": "#b0605a", "hp": 10, "hidden": true}
 var _label_tpl := {"text": "", "hidden": false}
 var _inspector: VBoxContainer
@@ -72,6 +74,7 @@ var _music_status: Label
 var _tray: DiceTray
 var _tray_waiting := false
 var _journal_list: VBoxContainer
+var _adventure_box: VBoxContainer
 var _events_menu: MenuButton
 var _notifier: Notifier
 
@@ -138,15 +141,34 @@ func _build_setup() -> void:
 		universe.set_item_metadata(universe.item_count - 1, u.id)
 		if u.id == App.get_setting("host", "universe", Universe.DEFAULT_ID):
 			universe.select(universe.item_count - 1)
+	var adventure := OptionButton.new()
+	var adv_text := UIKit.label("", "MutedLabel", true)
+	var fill_adventures := func():
+		adventure.clear()
+		adventure.add_item("Aucune : je prépare tout moi-même")
+		adventure.set_item_metadata(0, "")
+		for a in Adventures.all(String(universe.get_item_metadata(universe.selected))):
+			adventure.add_item("%s  (%s)" % [a.name, a.get("length", "")])
+			adventure.set_item_metadata(adventure.item_count - 1, String(a.id))
+		adventure.select(mini(1, adventure.item_count - 1))
+	var show_adventure := func(_i: int = 0):
+		var a := Adventures.get_by_id(String(adventure.get_item_metadata(adventure.selected)))
+		adv_text.text = ("%s\n%s" % [a.get("tagline", ""), a.get("description", "")]) if not a.is_empty() else "Une campagne vide : cartes de l'univers, à vous de créer quêtes et rencontres."
 	var show_tagline := func(_i: int = 0):
 		for u in universes:
 			if u.id == universe.get_item_metadata(universe.selected):
 				tagline.text = "%s\n%s" % [u.get("tagline", ""), u.get("description", "")]
+		fill_adventures.call()
+		show_adventure.call()
 	universe.item_selected.connect(show_tagline)
+	adventure.item_selected.connect(show_adventure)
 	UIKit.field(form, "Univers", universe)
 	form.add_child(tagline)
+	UIKit.field(form, "Aventure prête à jouer (conseillé pour débuter)", adventure)
+	form.add_child(adv_text)
 	show_tagline.call()
 	_inputs.universe = universe
+	_inputs.adventure = adventure
 	form.add_child(UIKit.label("L'univers fournit le codex, des cartes et des suggestions (espèces, magies, rangs) ; tout reste modifiable.", "MutedLabel", true))
 	var start := UIKit.button("Créer la campagne et ouvrir la partie", "PrimaryButton", _on_new_pressed)
 	start.custom_minimum_size.y = 56
@@ -213,7 +235,13 @@ func _on_new_pressed() -> void:
 	for key in ["name", "mj_name", "universe"]:
 		App.set_setting("host", key, settings[key])
 	App.save_settings()
+	var adv := _inputs.adventure as OptionButton
+	var adv_id := String(adv.get_item_metadata(adv.selected)) if adv != null else ""
 	_start(settings, {})
+	if Net.server != null and adv_id != "":
+		Net.server.mj_load_adventure(adv_id)
+		Net.server.save()
+		_show_tools("adventure")
 
 
 func _on_load_pressed(id: String) -> void:
@@ -257,7 +285,7 @@ func _build_dashboard() -> void:
 	var server := Net.server
 	for sig in [server.players_changed, server.message_added, server.message_updated, server.log_added,
 			server.characters_changed, server.maps_changed, server.phase_changed, server.saved,
-			server.quests_changed, server.content_changed, server.loot_changed, server.fx]:
+			server.quests_changed, server.content_changed, server.loot_changed, server.fx, server.adventure_changed]:
 		for c in sig.get_connections():
 			if c.callable.get_object() == self:
 				sig.disconnect(c.callable)
@@ -324,6 +352,7 @@ func _build_dashboard() -> void:
 		rest.add_child(right)
 		_tools_tabs = TabbedPages.new(false, 8, true)
 		right.add_child(_tools_tabs)
+	_tools_tabs.add_page("adventure", "Aventure", _build_adventure_panel())
 	_tools_tabs.add_page("combat", "Combat", _build_combat_tools())
 	_tools_tabs.add_page("world", "Monde", _build_world_tools())
 	_quest_panel = QuestPanel.new()
@@ -345,6 +374,7 @@ func _build_dashboard() -> void:
 			_content_panel.rebuild()
 		elif key == "quests":
 			_quest_panel.rebuild())
+	server.adventure_changed.connect(_refresh_adventure)
 	server.content_changed.connect(_on_content_changed)
 	server.loot_changed.connect(_refresh_loot)
 	server.fx.connect(func(list): _map_view.show_fx(list))
@@ -393,6 +423,77 @@ func _show(key: String) -> void:
 		_tabs.show_page(key)
 	elif _tools_tabs != null and _tools_tabs.has_page(key):
 		_tools_tabs.show_page(key)
+
+
+func _show_tools(key: String) -> void:
+	if _tools_tabs != null and _tools_tabs.has_page(key):
+		_tools_tabs.show_page(key)
+
+
+# --- Aventure prête à jouer ---
+
+func _build_adventure_panel() -> Control:
+	_adventure_box = VBoxContainer.new()
+	_adventure_box.add_theme_constant_override("separation", 10)
+	_refresh_adventure()
+	return _scroll_of(_adventure_box)
+
+
+## Guide de l'aventure chargée (scènes à raconter, conseils, actions en un clic),
+## ou la liste des aventures disponibles pour cet univers.
+func _refresh_adventure() -> void:
+	if _adventure_box == null:
+		return
+	var server := Net.server
+	UIKit.clear(_adventure_box)
+	var adv: Dictionary = server.adventure
+	if not adv.is_empty():
+		var head := GameUI.section(_adventure_box, String(adv.name), "book", "HighlightPanel")
+		head.add_child(UIKit.label(String(adv.get("tagline", "")), "StrongLabel", true))
+		head.add_child(UIKit.label(String(adv.get("description", "")), "MutedLabel", true))
+		var row := HFlowContainer.new()
+		row.add_theme_constant_override("h_separation", 6)
+		head.add_child(row)
+		if String(adv.get("music", "")) != "":
+			row.add_child(_small_button("Lancer sa musique", "", func(): server.mj_music(String(adv.music), true)))
+		row.add_child(_small_button("Voir les quêtes", "", func(): _show_tools("quests")))
+		row.add_child(_small_button("Révéler les monstres cachés", "", func():
+			var n := server.mj_reveal_monsters()
+			_notifier.push("%d monstre%s révélé%s." % [n, "s" if n > 1 else "", "s" if n > 1 else ""], "warning")))
+		_adventure_box.add_child(GameUI.hint("Jouez les scènes dans l'ordre (ou non !) : « Raconter » envoie le texte aux joueurs et déclenche l'action indiquée. Les conseils ne sont visibles que par vous."))
+		var done: Array = adv.get("done", [])
+		var scenes: Array = adv.get("scenes", [])
+		for i in scenes.size():
+			var sc: Dictionary = scenes[i]
+			var card := GameUI.section(_adventure_box, "%d. %s" % [i + 1, sc.get("title", "")], "star" if not done.has(i) else "sparkle", "InsetPanel" if done.has(i) else "CardPanel")
+			card.add_child(UIKit.label(String(sc.get("narration", "")), "", true))
+			var tip := UIKit.label("Conseil MJ : " + String(sc.get("tips", "")), "MutedLabel", true)
+			tip.add_theme_color_override("font_color", Palette.PRIVATE)
+			card.add_child(tip)
+			var action: Dictionary = sc.get("action", {})
+			var what: String = {"give_quest": " + donner la quête", "group_check": " + épreuve de groupe", "reveal_combat": " + révéler et combattre", "start_combat": " + lancer le combat"}.get(String(action.get("type", "")), "")
+			var idx := i
+			card.add_child(_small_button(("Raconter à nouveau" if done.has(i) else "Raconter") + what, "" if done.has(i) else "PrimaryButton", func(): server.mj_play_scene(idx)))
+		_adventure_box.add_child(UIKit.label("Une autre aventure ?", "HeadingLabel"))
+	else:
+		_adventure_box.add_child(GameUI.hint("Une aventure prête à jouer installe une carte, des PNJ, des monstres cachés, des coffres et des quêtes en brouillon, avec des scènes à raconter. Parfait pour découvrir le jeu."))
+	for a in Adventures.all(String(server.universe.get("id", ""))):
+		if String(a.id) == String(adv.get("id", "")):
+			continue
+		var card := UIKit.card(_adventure_box, "", "InsetPanel")
+		card.add_child(UIKit.label(String(a.name), "StrongLabel", true))
+		card.add_child(UIKit.label("%s · %s" % [a.get("tagline", ""), a.get("length", "")], "MutedLabel", true))
+		var aid := String(a.id)
+		var aname := String(a.name)
+		card.add_child(_small_button("Charger cette aventure", "", func():
+			_confirm("Charger « %s » ? Une nouvelle carte est créée et montrée aux joueurs ; vos cartes et quêtes actuelles sont conservées." % aname, func():
+				var err := server.mj_load_adventure(aid)
+				if err != "":
+					_notifier.push(err, "danger")
+				else:
+					_edit_map = server.active_map
+					_refresh_map_select()
+					_load_edit_map())))
 
 
 func _badge(key: String, on: bool) -> void:
@@ -634,7 +735,13 @@ func _build_map_center() -> Control:
 		_refresh_inspector()
 		if not _narrow:
 			_tools_tabs.show_page("combat"))
-	_map_view.paint_requested.connect(func(x, y): Net.server.mj_paint(_edit_map, x, y, _paint_code, _brush))
+	_map_view.paint_requested.connect(func(x, y):
+		if not _stroke:
+			# Début d'un coup de pinceau : on mémorise pour pouvoir annuler.
+			_stroke = true
+			Net.server.mj_snapshot(_edit_map)
+		Net.server.mj_paint(_edit_map, x, y, _paint_code, _brush))
+	_map_view.paint_finished.connect(func(): _stroke = false)
 	_map_view.cell_tapped.connect(_on_cell_tapped)
 	_map_view.target_picked.connect(_on_mj_target)
 	return _map_view
@@ -729,6 +836,7 @@ func _build_world_tools() -> Control:
 	row.add_theme_constant_override("h_separation", 6)
 	row.add_theme_constant_override("v_separation", 6)
 	mc.add_child(row)
+	row.add_child(_small_button("Générer…", "PrimaryButton", _dialog_generate_map))
 	row.add_child(_small_button("Nouvelle", "", _dialog_new_map))
 	row.add_child(_small_button("Propriétés", "", _dialog_map_props))
 	row.add_child(_small_button("Dupliquer", "", func():
@@ -770,12 +878,17 @@ func _build_world_tools() -> Control:
 	tools.add_theme_constant_override("v_separation", 6)
 	tc.add_child(tools)
 	var group := ButtonGroup.new()
-	for spec in [["move", "Déplacer"], ["paint", "Peindre"], ["token", "Pion"], ["label", "Étiquette"], ["erase", "Gomme"], ["spawn", "Départ"]]:
+	for spec in [["move", "Déplacer"], ["paint", "Peindre"], ["fill", "Remplir"], ["rect", "Rectangle"], ["room", "Pièce"], ["token", "Pion"], ["label", "Étiquette"], ["erase", "Gomme"], ["spawn", "Départ"]]:
 		var b := _small_button(spec[1], "", _set_tool.bind(spec[0]))
 		b.toggle_mode = true
 		b.button_group = group
 		_tool_buttons[spec[0]] = b
 		tools.add_child(b)
+	var undo := _small_button("Annuler la dernière retouche", "", func():
+		if not Net.server.mj_undo(_edit_map):
+			_notifier.push("Rien à annuler sur cette carte.", "warning"))
+	undo.tooltip_text = "Ctrl + Z"
+	tc.add_child(undo)
 	_tool_options = VBoxContainer.new()
 	tc.add_child(_tool_options)
 
@@ -864,13 +977,17 @@ func _on_maps_changed() -> void:
 func _set_tool(tool: String) -> void:
 	_tool = tool
 	_map_view.tool = tool
+	_rect_start = Vector2i(-1, -1)
 	if _tool_buttons.has(tool):
 		_tool_buttons[tool].set_pressed_no_signal(true)
 	UIKit.clear(_tool_options)
 	match tool:
 		"move":
 			_tool_options.add_child(UIKit.label("Touchez un pion pour le sélectionner, puis une case pour l'y déplacer (ou glissez-le). Molette ou deux doigts : zoom.", "MutedLabel", true))
-		"paint":
+		"paint", "fill", "rect", "room":
+			var hint: String = {"paint": "Glissez sur la carte pour peindre.", "fill": "Touchez une zone : elle est entièrement repeinte (même terrain, d'un seul tenant).",
+				"rect": "Touchez un coin, puis le coin opposé : le rectangle est rempli.", "room": "Touchez un coin, puis le coin opposé : une pièce (sol choisi, murs autour)."}[tool]
+			_tool_options.add_child(GameUI.hint(hint))
 			var palette := GridContainer.new()
 			palette.columns = 4
 			palette.add_theme_constant_override("h_separation", 4)
@@ -879,9 +996,10 @@ func _set_tool(tool: String) -> void:
 			var pgroup := ButtonGroup.new()
 			for code in MapData.TERRAINS:
 				palette.add_child(_terrain_button(code, pgroup))
-			var brush := UIKit.spin(_brush, 0, 4)
-			brush.value_changed.connect(func(v): _brush = int(v))
-			UIKit.field(_tool_options, "Taille du pinceau (0 = une case)", brush)
+			if tool == "paint":
+				var brush := UIKit.spin(_brush, 0, 4)
+				brush.value_changed.connect(func(v): _brush = int(v))
+				UIKit.field(_tool_options, "Taille du pinceau (0 = une case)", brush)
 		"token":
 			var kind := OptionButton.new()
 			for k in MapData.KINDS:
@@ -987,6 +1105,16 @@ func _on_cell_tapped(x: int, y: int) -> void:
 	if map.is_empty():
 		return
 	match _tool:
+		"fill":
+			server.mj_fill(_edit_map, x, y, _paint_code)
+		"rect", "room":
+			if _rect_start.x < 0:
+				_rect_start = Vector2i(x, y)
+				_map_status.text = "Premier coin posé (%d, %d) : touchez le coin opposé." % [x, y]
+				_map_status.add_theme_color_override("font_color", Palette.GOLD)
+			else:
+				server.mj_paint_rect(_edit_map, _rect_start, Vector2i(x, y), _paint_code, _tool == "room")
+				_rect_start = Vector2i(-1, -1)
 		"token":
 			var p := Vector2i(x, y)
 			if not MapData.token_at(map, x, y).is_empty():
@@ -1330,6 +1458,34 @@ func _refresh_lobby_bar() -> void:
 
 
 # --- Dialogues de carte ---
+
+## Carte générée en un clic : type, taille, nom. Le MJ la retouche ensuite.
+func _dialog_generate_map() -> void:
+	var panel := _open_overlay("generate", "Générer une carte", "map")
+	panel.body.add_child(GameUI.hint("Une carte jouable en un clic, avec des lieux nommés (et quelques secrets pour le MJ). Retouchez-la ensuite avec Peindre, Remplir, Rectangle ou Pièce."))
+	var kind := OptionButton.new()
+	for k in MapGen.KINDS:
+		kind.add_item(MapGen.KINDS[k])
+		kind.set_item_metadata(kind.item_count - 1, k)
+	UIKit.field(panel.body, "Type de lieu", kind)
+	var size := OptionButton.new()
+	for spec in [["petite", "Petite (24 × 16)"], ["moyenne", "Moyenne (34 × 22)"], ["grande", "Grande (48 × 32)"]]:
+		size.add_item(spec[1])
+		size.set_item_metadata(size.item_count - 1, spec[0])
+	size.select(1)
+	UIKit.field(panel.body, "Taille", size)
+	var name_edit := UIKit.line_edit("", "Ex. : Bois des Murmures (facultatif)")
+	UIKit.field(panel.body, "Nom", name_edit)
+	panel.body.add_child(UIKit.button("Générer", "PrimaryButton", func():
+		var m := Net.server.mj_generate_map(String(kind.get_item_metadata(kind.selected)), String(size.get_item_metadata(size.selected)), name_edit.text)
+		if m.is_empty():
+			return
+		_edit_map = m.id
+		_refresh_map_select()
+		_load_edit_map()
+		_close_overlay()
+		_notifier.push("Carte « %s » créée. Pas à votre goût ? Générez-en une autre." % m.name, "success")))
+
 
 func _dialog_new_map() -> void:
 	var box := VBoxContainer.new()
@@ -1992,7 +2148,8 @@ func _journal_message(m: Dictionary) -> void:
 ## Raccourcis clavier du MJ (PC).
 const SHORTCUTS := [
 	["Ctrl + S", "Sauvegarder"], ["F1 / F2", "Carte / Récit"], ["F5", "Tour suivant (combat)"],
-	["Ctrl + E", "Événement rapide"], ["Ctrl + Q", "Nouvelle quête"], ["Ctrl + N", "Écrire au groupe"], ["Échap", "Fermer un panneau"],
+	["Ctrl + E", "Événement rapide"], ["Ctrl + Q", "Nouvelle quête"], ["Ctrl + N", "Écrire au groupe"], ["Ctrl + Z", "Annuler la dernière retouche de carte"],
+	["Échap", "Fermer un panneau"],
 ]
 
 
@@ -2016,6 +2173,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_open_quest_editor({})
 	elif k.ctrl_pressed and k.keycode == KEY_N:
 		_composer.focus_text()
+	elif k.ctrl_pressed and k.keycode == KEY_Z:
+		Net.server.mj_undo(_edit_map)
 	else:
 		handled = false
 	if handled:

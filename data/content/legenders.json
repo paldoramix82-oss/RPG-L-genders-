@@ -2404,6 +2404,112 @@
     }
    ],
    "ultimate": false
+  },
+  "flammes_infernales": {
+   "id": "flammes_infernales",
+   "name": "Flammes infernales",
+   "short": "Flammes",
+   "icon": "fire",
+   "description": "2d6 dégâts magiques à 4 cases, 30 % de brûlure.",
+   "cost": 3,
+   "ap": 1,
+   "range": 4,
+   "cooldown": 3,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Charisme",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6",
+     "element": "magique"
+    },
+    {
+     "type": "status",
+     "status": "brulure",
+     "turns": 2,
+     "chance": 30
+    }
+   ],
+   "ultimate": false
+  },
+  "souffle_ancestral": {
+   "id": "souffle_ancestral",
+   "name": "Pas du vent",
+   "short": "Vent",
+   "icon": "wind",
+   "description": "Vous devenez Invisible 1 tour (sortie de combat, embuscade).",
+   "cost": 2,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 4,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Dextérité",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "invisible",
+     "turns": 1,
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "chant_profondeurs": {
+   "id": "chant_profondeurs",
+   "name": "Chant des profondeurs",
+   "short": "Chant",
+   "icon": "music",
+   "description": "Une cible à 5 cases est Affaiblie 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 5,
+   "cooldown": 3,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Charisme",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "affaibli",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "charge_cornue": {
+   "id": "charge_cornue",
+   "name": "Charge cornue",
+   "short": "Cornes",
+   "icon": "horn",
+   "description": "1d10 + Force à 3 cases et repousse de 2 cases.",
+   "cost": 3,
+   "ap": 1,
+   "range": 3,
+   "cooldown": 3,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "1d10"
+    },
+    {
+     "type": "push",
+     "cells": 2
+    }
+   ],
+   "ultimate": false
   }
  },
  "statuses": {
@@ -3415,6 +3521,92 @@
    },
    "grants": [
     "renaissance"
+   ]
+  },
+  "torche": {
+   "id": "torche",
+   "name": "Torche",
+   "icon": "fire",
+   "category": "accessoire",
+   "rarity": "commun",
+   "description": "Éclaire autour de vous : +2 cases de vision (accessoire).",
+   "value": 2,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "vision": 2
+   }
+  },
+  "lanterne": {
+   "id": "lanterne",
+   "name": "Lanterne sourde",
+   "icon": "sun",
+   "category": "accessoire",
+   "rarity": "peu_commun",
+   "description": "Lumière stable : +3 cases de vision (accessoire).",
+   "value": 25,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "vision": 3
+   }
+  },
+  "corde": {
+   "id": "corde",
+   "name": "Corde (15 m)",
+   "icon": "chain",
+   "category": "outil",
+   "rarity": "commun",
+   "description": "Pour grimper, attacher, descendre dans un puits… Le MJ décide de ce qu'elle permet.",
+   "value": 2,
+   "slot": "",
+   "stackable": false,
+   "unique": false
+  },
+  "crochets": {
+   "id": "crochets",
+   "name": "Outils de crochetage",
+   "icon": "key",
+   "category": "outil",
+   "rarity": "commun",
+   "description": "Ouvrir serrures et coffres (épreuve de Dextérité, au choix du MJ).",
+   "value": 10,
+   "slot": "",
+   "stackable": false,
+   "unique": false
+  },
+  "sac_couchage": {
+   "id": "sac_couchage",
+   "name": "Sac de couchage",
+   "icon": "bag",
+   "category": "outil",
+   "rarity": "commun",
+   "description": "Repos plus confortable en pleine nature.",
+   "value": 2,
+   "slot": "",
+   "stackable": false,
+   "unique": false
+  },
+  "trousse_soins": {
+   "id": "trousse_soins",
+   "name": "Trousse de soins",
+   "icon": "cross",
+   "category": "consommable",
+   "rarity": "commun",
+   "description": "Bandages et onguents : rend 1d4 + 3 PV.",
+   "value": 5,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "heal",
+     "dice": "1d4",
+     "on": "self",
+     "bonus": 3
+    }
    ]
   },
   "potion_soin": {
@@ -4434,5 +4626,354 @@
    "res": 10,
    "icon": "dragon"
   }
- }
+ },
+ "species": {
+  "humain": {
+   "id": "humain",
+   "name": "Humain",
+   "description": "La majorité de Kurtzuma : une affinité moyenne avec l'AEC, beaucoup de ressources.",
+   "icon": "person",
+   "stats": {
+    "Charisme": 1
+   },
+   "mods": {
+    "res_max": 2
+   },
+   "trait": {
+    "name": "Adaptable",
+    "description": "+1 Charisme, +2 AEC."
+   },
+   "abilities": [],
+   "synergies": {
+    "tacticien": {
+     "name": "Stratège né",
+     "description": "+1 au toucher.",
+     "mods": {
+      "to_hit": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "sans_magie": {
+   "id": "sans_magie",
+   "name": "Humain sans-magie",
+   "description": "Aucune AEC dans le sang… et un corps endurci pour compenser.",
+   "icon": "fist",
+   "stats": {
+    "Force": 1,
+    "Dextérité": 1,
+    "Constitution": 1
+   },
+   "mods": {
+    "res_max": -6,
+    "resist_mag": 2
+   },
+   "trait": {
+    "name": "Insensible à l'AEC",
+    "description": "+1 FOR / DEX / CON, +2 résistance magique, mais −6 AEC."
+   },
+   "abilities": [],
+   "synergies": {
+    "briseur": {
+     "name": "Poings nus",
+     "description": "+1 dégât.",
+     "mods": {
+      "damage": 1
+     },
+     "abilities": []
+    },
+    "tacticien": {
+     "name": "Œil froid",
+     "description": "+1 au toucher.",
+     "mods": {
+      "to_hit": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "mutant": {
+   "id": "mutant",
+   "name": "Mutant",
+   "description": "Le cristal a réécrit votre corps.",
+   "icon": "spiral",
+   "stats": {
+    "Constitution": 1,
+    "Force": 1
+   },
+   "mods": {
+    "hp_max": 4
+   },
+   "trait": {
+    "name": "Mutation",
+    "description": "+4 PV max."
+   },
+   "abilities": [],
+   "synergies": {
+    "mutant": {
+     "name": "Mutation stable",
+     "description": "+4 PV max, +1 résistance physique.",
+     "mods": {
+      "hp_max": 4,
+      "resist_phys": 1
+     },
+     "abilities": []
+    },
+    "metamorphe": {
+     "name": "Chair fluide",
+     "description": "+1 vitesse.",
+     "mods": {
+      "speed": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "ombre_nee": {
+   "id": "ombre_nee",
+   "name": "Ombré",
+   "description": "Né de l'ombre, à moitié dans ce monde.",
+   "icon": "mask",
+   "stats": {
+    "Dextérité": 2
+   },
+   "mods": {
+    "vision": 2
+   },
+   "trait": {
+    "name": "Né de l'ombre",
+    "description": "Voit dans le noir (+2 vision) et Pas du vent."
+   },
+   "abilities": [
+    "souffle_ancestral"
+   ],
+   "synergies": {
+    "ombre": {
+     "name": "Ombre parmi les ombres",
+     "description": "Critique un cran plus tôt.",
+     "mods": {
+      "crit": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "homme_lezard": {
+   "id": "homme_lezard",
+   "name": "Homme-lézard",
+   "description": "Écailles, sang froid, patience de chasseur.",
+   "icon": "scale",
+   "stats": {
+    "Constitution": 1,
+    "Dextérité": 1
+   },
+   "mods": {
+    "resist_phys": 1,
+    "speed": 1
+   },
+   "trait": {
+    "name": "Écailles",
+    "description": "+1 résistance physique, +1 vitesse."
+   },
+   "abilities": [],
+   "synergies": {
+    "briseur": {
+     "name": "Carapace",
+     "description": "+1 Défense.",
+     "mods": {
+      "defense": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "sirene": {
+   "id": "sirene",
+   "name": "Sirène",
+   "description": "Peuple des eaux : la voix est une arme.",
+   "icon": "wave",
+   "stats": {
+    "Charisme": 1,
+    "Esprit": 1
+   },
+   "mods": {
+    "res_max": 2
+   },
+   "trait": {
+    "name": "Chant des profondeurs",
+    "description": "+2 AEC et le Chant des profondeurs."
+   },
+   "abilities": [
+    "chant_profondeurs"
+   ],
+   "synergies": {
+    "soigneur": {
+     "name": "Marée apaisante",
+     "description": "+10 % aux soins.",
+     "mods": {
+      "heal_pct": 10
+     },
+     "abilities": []
+    },
+    "psychique": {
+     "name": "Voix intérieure",
+     "description": "+2 AEC.",
+     "mods": {
+      "res_max": 2
+     },
+     "abilities": []
+    }
+   }
+  },
+  "centaure": {
+   "id": "centaure",
+   "name": "Centaure",
+   "description": "Mi-homme, mi-cheval : la plaine leur appartient.",
+   "icon": "horn",
+   "stats": {
+    "Force": 1,
+    "Constitution": 1
+   },
+   "mods": {
+    "speed": 2
+   },
+   "trait": {
+    "name": "Galop",
+    "description": "+2 vitesse."
+   },
+   "abilities": [],
+   "synergies": {
+    "tacticien": {
+     "name": "Éclaireur",
+     "description": "+1 vitesse, +1 vision.",
+     "mods": {
+      "speed": 1,
+      "vision": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "minotaure": {
+   "id": "minotaure",
+   "name": "Minotaure",
+   "description": "Cornes, muscles et colère.",
+   "icon": "horn",
+   "stats": {
+    "Force": 2,
+    "Intelligence": -1
+   },
+   "mods": {
+    "hp_max": 4
+   },
+   "trait": {
+    "name": "Charge cornue",
+    "description": "+4 PV max et la Charge cornue."
+   },
+   "abilities": [
+    "charge_cornue"
+   ],
+   "synergies": {
+    "briseur": {
+     "name": "Bélier vivant",
+     "description": "+1 dégât.",
+     "mods": {
+      "damage": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "esprit": {
+   "id": "esprit",
+   "name": "Esprit",
+   "description": "Une conscience faite d'AEC pure, à peine retenue par un corps.",
+   "icon": "spirit",
+   "stats": {
+    "Esprit": 2,
+    "Constitution": -1
+   },
+   "mods": {
+    "res_max": 4,
+    "resist_mag": 1
+   },
+   "trait": {
+    "name": "Corps d'AEC",
+    "description": "+4 AEC, +1 résistance magique."
+   },
+   "abilities": [],
+   "synergies": {
+    "invocateur": {
+     "name": "Pont entre les mondes",
+     "description": "+4 AEC.",
+     "mods": {
+      "res_max": 4
+     },
+     "abilities": []
+    },
+    "psychique": {
+     "name": "Résonance",
+     "description": "+1 dégât.",
+     "mods": {
+      "damage": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "demon": {
+   "id": "demon",
+   "name": "Démon",
+   "description": "Venu d'ailleurs, toléré, rarement aimé.",
+   "icon": "fire",
+   "stats": {
+    "Force": 1,
+    "Charisme": 1
+   },
+   "mods": {
+    "resist_mag": 1,
+    "damage": 1
+   },
+   "trait": {
+    "name": "Sang infernal",
+    "description": "+1 dégât, +1 résistance magique, Flammes infernales."
+   },
+   "abilities": [
+    "flammes_infernales"
+   ],
+   "synergies": {
+    "createur": {
+     "name": "Forge infernale",
+     "description": "+1 dégât.",
+     "mods": {
+      "damage": 1
+     },
+     "abilities": []
+    }
+   }
+  }
+ },
+ "starter_kit": [
+  {
+   "item": "potion_soin",
+   "qty": 1
+  },
+  {
+   "item": "ration",
+   "qty": 2
+  },
+  {
+   "item": "torche",
+   "qty": 1
+  },
+  {
+   "item": "corde",
+   "qty": 1
+  },
+  {
+   "item": "trousse_soins",
+   "qty": 1
+  }
+ ]
 }

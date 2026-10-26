@@ -20,6 +20,7 @@ signal loot_changed
 signal content_changed
 ## Retours visuels d'une action (le tableau de bord du MJ les anime aussi).
 signal fx(list: Array)
+signal adventure_changed
 
 var session := {}
 var universe := {}
@@ -53,6 +54,9 @@ var _rate := {}  # peer_id -> Array[float]
 var _auth_failures := {}  # ip -> {count, until}
 var _next_message := 1
 var _rng := RandomNumberGenerator.new()
+## Aventure prête chargée : {id, name, tagline, description, length, music, scenes, map_id, quest_ids}.
+var adventure := {}
+var _undo := {}  # map_id -> [cells…] (annuler les retouches de terrain)
 var _dirty := {}  # "map" / "tokens" / "characters" / "phase" / "music" -> true : diffusion groupée
 var _unsaved := false
 
@@ -255,6 +259,8 @@ func handle_command(peer_id: int, cmd: Variant, payload: Variant) -> void:
 			error = _cmd_level(player, payload)
 		Protocol.CMD_ABILITY_EQUIP:
 			error = _cmd_ability_equip(player, payload)
+		Protocol.CMD_OPEN:
+			error = _cmd_open(player, payload)
 		_:
 			error = "Commande inconnue."
 
@@ -363,7 +369,10 @@ func _cmd_char_create(player: Dictionary, payload: Dictionary) -> String:
 	base = CharacterData.sanitize_narrative(payload.get("identity", {}), base)
 	if String(base.name) == "":
 		base.name = player.name
-	var sheet := Rules.build_sheet(base, content, class_id, clean_alloc, choices)
+	var species_id := String(payload.get("species_id", ""))
+	if species_id != "" and Rules.get_species(content, species_id).is_empty():
+		return "Peuple inconnu."
+	var sheet := Rules.build_sheet(base, content, class_id, clean_alloc, choices, species_id)
 	sheet.id = player.id
 	sheet.owner = player.id
 	sheet.kind = "pc"
@@ -666,30 +675,34 @@ func mj_create_npc(npc_name: String = "") -> Dictionary:
 func mj_import_npcs(entries: Array) -> int:
 	var count := 0
 	for entry in entries:
-		if not entry is Dictionary:
-			continue
-		var id := "npc_" + Protocol.random_hex(4)
-		var raw: Dictionary = entry.duplicate(true)
-		raw.id = id
-		raw.owner = ""
-		if Migrate.needs(raw):
-			raw = Migrate.sheet(raw, content, universe)
-		var sheet := CharacterData.sanitize(raw, CharacterData.create(universe, id, "", "", content))
-		sheet.id = id
-		sheet.owner = ""
-		if String(sheet.get("kind", "")) == "monster":
-			sheet.side = "enemies"
-			sheet.xp_reward = maxi(int(sheet.get("xp_reward", 0)), int(sheet.hp_max))
-			if String(sheet.get("loot", "")) == "":
-				sheet.loot = "bete"
-		for a in sheet.abilities:
-			a.equipped = true
-		characters[id] = sheet
-		count += 1
+		if entry is Dictionary and _import_npc(entry) != "":
+			count += 1
 	if count > 0:
 		_unsaved = true
 		characters_changed.emit()
 	return count
+
+
+## Importe une fiche de PNJ ; renvoie son identifiant.
+func _import_npc(entry: Dictionary) -> String:
+	var id := "npc_" + Protocol.random_hex(4)
+	var raw: Dictionary = entry.duplicate(true)
+	raw.id = id
+	raw.owner = ""
+	if Migrate.needs(raw):
+		raw = Migrate.sheet(raw, content, universe)
+	var sheet := CharacterData.sanitize(raw, CharacterData.create(universe, id, "", "", content))
+	sheet.id = id
+	sheet.owner = ""
+	if String(sheet.get("kind", "")) == "monster":
+		sheet.side = "enemies"
+		sheet.xp_reward = maxi(int(sheet.get("xp_reward", 0)), int(sheet.hp_max))
+		if String(sheet.get("loot", "")) == "":
+			sheet.loot = "bete"
+	for a in sheet.abilities:
+		a.equipped = true
+	characters[id] = sheet
+	return id
 
 
 func mj_delete_character(id: String) -> void:
@@ -844,6 +857,225 @@ func mj_paint(map_id: String, x: int, y: int, code: String, radius: int = 0) -> 
 	if changed:
 		map_changed(map_id)
 	return changed
+
+
+# --- Aventures prêtes à jouer ---
+
+## Charge une aventure : nouvelle carte (affichée aux joueurs), PNJ, monstres
+## (souvent cachés), coffres, étiquettes, quêtes en brouillon et scènes.
+func mj_load_adventure(adv_id: String) -> String:
+	var adv := Adventures.get_by_id(adv_id)
+	if adv.is_empty():
+		return "Aventure introuvable."
+	var map := mj_create_map(String(adv.name), 0, 0, String(adv.get("map", "")))
+	if map.is_empty():
+		return "Carte introuvable : %s." % adv.get("map", "?")
+	mj_set_active_map(map.id)
+	for n in adv.get("npcs", []):
+		var entry := NpcLibrary.find(String(n.get("pack", "")), String(n.get("name", "")))
+		if entry.is_empty():
+			continue
+		var id := _import_npc(entry)
+		var t := mj_place_character(id)
+		if t.is_empty():
+			continue
+		var p := MapData.free_cell_near(map, int(n.get("x", 0)), int(n.get("y", 0)))
+		t.x = p.x
+		t.y = p.y
+		t.hidden = bool(n.get("hidden", false))
+		if String(n.get("note", "")) != "":
+			t.note = Protocol.sanitize_text(n.note, 500)
+	for m in adv.get("monsters", []):
+		mj_spawn_monster(String(m.get("id", "")), int(m.get("x", 0)), int(m.get("y", 0)), bool(m.get("hidden", true)))
+	for c in adv.get("chests", []):
+		var p := MapData.free_cell_near(map, int(c.get("x", 0)), int(c.get("y", 0)))
+		var t := MapData.add_token(map, {"kind": "object", "name": String(c.get("name", "Coffre")), "x": p.x, "y": p.y,
+			"color": "#8a6a3a", "hidden": bool(c.get("hidden", false)), "note": "Coffre : à ouvrir sur place (butin « %s »)." % c.get("loot", "")})
+		if not t.is_empty():
+			t["loot"] = String(c.get("loot", "coffre"))
+	for l in adv.get("labels", []):
+		MapData.add_label(map, int(l.x), int(l.y), String(l.text), bool(l.get("hidden", false)))
+	var qids: Array = []
+	for q in adv.get("quests", []):
+		qids.append(String(mj_quest_save((q as Dictionary).duplicate(true)).get("id", "")))
+	adventure = {"id": adv_id, "name": adv.name, "tagline": adv.get("tagline", ""), "description": adv.get("description", ""),
+		"length": adv.get("length", ""), "music": adv.get("music", ""), "scenes": adv.get("scenes", []), "map_id": map.id, "quest_ids": qids,
+		"done": []}
+	map_changed(map.id)
+	_unsaved = true
+	characters_changed.emit()
+	adventure_changed.emit()
+	_mj_log("Aventure chargée : %s (carte, %d PNJ, %d monstres, %d quêtes en brouillon)." % [adv.name, (adv.get("npcs", []) as Array).size(),
+		(adv.get("monsters", []) as Array).size(), qids.size()])
+	return ""
+
+
+## Joue une scène de l'aventure : narration aux joueurs, puis son action
+## éventuelle (donner une quête, épreuve de groupe, révéler et combattre).
+func mj_play_scene(index: int) -> String:
+	var scenes: Array = adventure.get("scenes", [])
+	if index < 0 or index >= scenes.size():
+		return "Scène introuvable."
+	var sc: Dictionary = scenes[index]
+	mj_narrate(String(sc.get("narration", "")), Protocol.TO_ALL, String(sc.get("title", "")))
+	var done: Array = adventure.get("done", [])
+	if not done.has(index):
+		done.append(index)
+	adventure.done = done
+	var action: Dictionary = sc.get("action", {})
+	match String(action.get("type", "")):
+		"give_quest":
+			var qi := int(action.get("quest", 0))
+			var ids: Array = adventure.get("quest_ids", [])
+			if qi < ids.size():
+				mj_quest_give(String(ids[qi]))
+		"group_check":
+			mj_event("group_check", {"stat": action.get("stat", "Esprit"), "difficulty": action.get("difficulty", 12), "text": action.get("title", "Épreuve")})
+		"reveal_combat":
+			mj_reveal_monsters()
+			mj_set_phase("combat")
+		"start_combat":
+			mj_set_phase("combat")
+	_unsaved = true
+	adventure_changed.emit()
+	return ""
+
+
+## Révèle tous les monstres cachés de la carte affichée (embuscade, crypte…).
+func mj_reveal_monsters() -> int:
+	var map: Dictionary = maps.get(active_map, {})
+	var n := 0
+	for t in map.get("tokens", []):
+		if String(t.get("kind", "")) == "monster" and t.get("hidden", false):
+			t.hidden = false
+			n += 1
+	if n > 0:
+		map_changed(active_map, true)
+	return n
+
+
+## Coffre posé sur la carte : le butin va dans le sac de celui qui l'ouvre (ou au
+## coffre du groupe si c'est le MJ qui l'ouvre). Une seule fois.
+func open_chest(token_id: String, player_id: String = "") -> String:
+	var map: Dictionary = maps.get(active_map, {})
+	var t := MapData.token(map, token_id)
+	if t.is_empty() or String(t.get("kind", "")) != "object" or String(t.get("loot", "")) == "":
+		return "Rien à ouvrir ici."
+	var drop := Inventory.roll_loot(content, String(t.loot), _rng)
+	t.erase("loot")
+	t.name = "%s (vide)" % t.name
+	var who := String(characters.get(player_id, {}).get("name", "Le groupe"))
+	var lines := give_drop(player_id, drop, String(t.name).trim_suffix(" (vide)"))
+	if lines.is_empty():
+		lines = [{"t": "info", "text": "Il est vide…"}]
+	_add_message({"kind": Protocol.KIND_REWARD, "from": Protocol.MJ_ID, "from_name": session.mj_name, "to": Protocol.TO_ALL,
+		"text": "%s ouvre : %s" % [who, String(t.name).trim_suffix(" (vide)")], "lines": lines})
+	characters_changed.emit()
+	map_changed(active_map, true)
+	return ""
+
+
+func _cmd_open(player: Dictionary, payload: Dictionary) -> String:
+	var map: Dictionary = maps.get(active_map, {})
+	var t := MapData.token(map, String(payload.get("token", "")))
+	var me := MapData.token(map, "pawn_" + String(player.id))
+	if t.is_empty() or t.get("hidden", false):
+		return "Coffre introuvable."
+	if me.is_empty() or Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))) > 1:
+		return "Approchez-vous d'abord (case voisine)."
+	return open_chest(String(t.id), String(player.id))
+
+
+## Mémorise le terrain avant une modification (pour « Annuler »), 20 étapes.
+func mj_snapshot(map_id: String) -> void:
+	var map: Dictionary = maps.get(map_id, {})
+	if map.is_empty():
+		return
+	var stack: Array = _undo.get(map_id, [])
+	if not stack.is_empty() and String(stack[-1]) == String(map.cells):
+		return
+	stack.append(String(map.cells))
+	if stack.size() > 20:
+		stack.pop_front()
+	_undo[map_id] = stack
+
+
+func mj_undo(map_id: String) -> bool:
+	var map: Dictionary = maps.get(map_id, {})
+	var stack: Array = _undo.get(map_id, [])
+	if map.is_empty() or stack.is_empty():
+		return false
+	var cells := String(stack.pop_back())
+	if cells.length() != int(map.w) * int(map.h):
+		return false
+	map.cells = cells
+	map_changed(map_id)
+	return true
+
+
+func can_undo(map_id: String) -> bool:
+	return not (_undo.get(map_id, []) as Array).is_empty()
+
+
+## Remplit la zone d'un même terrain (pot de peinture).
+func mj_fill(map_id: String, x: int, y: int, code: String) -> bool:
+	var map: Dictionary = maps.get(map_id, {})
+	if map.is_empty() or not MapData.in_bounds(map, x, y) or not MapData.TERRAINS.has(code):
+		return false
+	var target := MapData.cell(map, x, y)
+	if target == code:
+		return false
+	mj_snapshot(map_id)
+	var w := int(map.w)
+	var buf := String(map.cells).to_ascii_buffer()
+	var t := target.to_ascii_buffer()[0]
+	var c := code.to_ascii_buffer()[0]
+	var todo: Array[Vector2i] = [Vector2i(x, y)]
+	while not todo.is_empty():
+		var p: Vector2i = todo.pop_back()
+		if p.x < 0 or p.y < 0 or p.x >= w or p.y >= int(map.h) or buf[p.y * w + p.x] != t:
+			continue
+		buf[p.y * w + p.x] = c
+		todo.append_array([p + Vector2i.LEFT, p + Vector2i.RIGHT, p + Vector2i.UP, p + Vector2i.DOWN])
+	map.cells = buf.get_string_from_ascii()
+	map_changed(map_id)
+	return true
+
+
+## Rectangle plein entre deux coins ; « room » : sol à l'intérieur, murs autour.
+func mj_paint_rect(map_id: String, a: Vector2i, b: Vector2i, code: String, room: bool = false) -> bool:
+	var map: Dictionary = maps.get(map_id, {})
+	if map.is_empty() or not MapData.TERRAINS.has(code):
+		return false
+	mj_snapshot(map_id)
+	var r := Rect2i(Vector2i(mini(a.x, b.x), mini(a.y, b.y)), (a - b).abs() + Vector2i.ONE)
+	for y in range(r.position.y, r.end.y):
+		for x in range(r.position.x, r.end.x):
+			var edge := x == r.position.x or y == r.position.y or x == r.end.x - 1 or y == r.end.y - 1
+			MapData.set_cell(map, x, y, "#" if room and edge else code)
+	map_changed(map_id)
+	return true
+
+
+## Crée une carte générée (forêt, village, donjon…) et la renvoie.
+func mj_generate_map(kind: String, size_key: String, map_name: String = "", seed_value: int = -1) -> Dictionary:
+	var size: Vector2i = MapGen.SIZES.get(size_key, MapGen.SIZES.moyenne)
+	if seed_value < 0:
+		seed_value = _rng.randi()
+	var gen := MapGen.generate(kind, size.x, size.y, seed_value)
+	var title := map_name.strip_edges() if map_name.strip_edges() != "" else String(MapGen.KINDS.get(kind, "Carte")).get_slice(" (", 0)
+	var map := MapData.blank(title, size.x, size.y)
+	map.cells = gen.cells
+	map.spawn = gen.spawn
+	map["seed"] = seed_value
+	map["generator"] = kind
+	for l in gen.labels:
+		MapData.add_label(map, int(l.x), int(l.y), String(l.text), bool(l.hidden))
+	maps[map.id] = map
+	map_order.append(map.id)
+	_unsaved = true
+	maps_changed.emit()
+	return map
 
 
 func mj_add_token(map_id: String, data: Dictionary) -> Dictionary:
@@ -1010,6 +1242,7 @@ func mj_turn_toggle(token_id: String) -> void:
 
 
 func _advance_turn() -> void:
+	combat.remove_defeated()
 	var map: Dictionary = maps.get(active_map, {})
 	for i in phase.order.size():
 		phase.turn = int(phase.turn) + 1
@@ -1296,7 +1529,7 @@ func _learn(c: Dictionary, ability_id: String) -> String:
 	if a.is_empty():
 		return "Capacité introuvable."
 	var slots := int(Content.rule(content, "slots_basic")) if not a.get("ultimate", false) else int(Content.rule(content, "slots_ultimate"))
-	var used := (c.get("abilities", []) as Array).filter(func(x): return x.get("equipped", false) and bool(x.get("ultimate", false)) == bool(a.get("ultimate", false))).size()
+	var used := (c.get("abilities", []) as Array).filter(func(x): return x.get("equipped", false) and not x.get("innate", false) and bool(x.get("ultimate", false)) == bool(a.get("ultimate", false))).size()
 	a.equipped = used < slots
 	if not c.get("abilities") is Array:
 		c.abilities = []
@@ -1321,8 +1554,8 @@ func set_ability_equipped(char_id: String, ability_id: String, equipped: bool) -
 	if equipped and not a.get("equipped", false):
 		var ult := bool(a.get("ultimate", false))
 		var slots := int(Content.rule(content, "slots_ultimate" if ult else "slots_basic"))
-		var used := (c.abilities as Array).filter(func(x): return x.get("equipped", false) and bool(x.get("ultimate", false)) == ult).size()
-		if used >= slots:
+		var used := (c.abilities as Array).filter(func(x): return x.get("equipped", false) and not x.get("innate", false) and bool(x.get("ultimate", false)) == ult).size()
+		if used >= slots and not a.get("innate", false):
 			return "Plus d'emplacement libre (%d maximum) : retirez d'abord une capacité." % slots
 	a.equipped = equipped
 	_mark("characters")
@@ -1402,6 +1635,42 @@ func _use_item_offmap(c: Dictionary, item: Dictionary) -> String:
 	Inventory.consume(c, String(item.uid), 1)
 	_system_message("%s utilise %s." % [c.name, item.name])
 	return ""
+
+
+## Butin d'un adversaire vaincu : au joueur qui l'a vaincu (règle « loot_to_killer »),
+## sinon au coffre du groupe ; l'or va au vainqueur ou est partagé. Renvoie les
+## lignes à afficher dans le récit du combat.
+func give_drop(player_id: String, drop: Dictionary, source: String) -> Array:
+	var lines: Array = []
+	var c: Dictionary = characters.get(player_id, {})
+	var to_killer: bool = not c.is_empty() and bool(Content.rule(content, "loot_to_killer"))
+	var names: PackedStringArray = []
+	for it in drop.get("items", []):
+		var label := "%s%s" % [it.name, (" ×%d" % int(it.qty)) if int(it.get("qty", 1)) > 1 else ""]
+		names.append(label)
+		if to_killer and not Inventory.add(c, it).is_empty():
+			lines.append({"t": "loot", "text": "%s récupère sur %s : %s" % [c.name, source, label], "rarity": String(it.get("rarity", "commun"))})
+		else:
+			add_loot(it, source)
+			lines.append({"t": "loot", "text": "%s laisse : %s (coffre du groupe)" % [source, label], "rarity": String(it.get("rarity", "commun"))})
+	var gold := int(drop.get("gold", 0))
+	if gold > 0:
+		if not c.is_empty():
+			c.gold = int(c.get("gold", 0)) + gold
+			lines.append({"t": "gold", "text": "%s ramasse %d pièces d'or" % [c.name, gold]})
+		else:
+			var heroes := characters.values().filter(func(h): return String(h.get("kind", "")) == "pc" and players.has(String(h.get("owner", ""))))
+			if not heroes.is_empty():
+				for h in heroes:
+					h.gold = int(h.get("gold", 0)) + maxi(1, gold / heroes.size())
+				lines.append({"t": "gold", "text": "%d pièces d'or partagées" % gold})
+	if not names.is_empty():
+		var log: Array = phase.get("loot_log", [])
+		log.append_array(Array(names))
+		phase["loot_log"] = log
+	_mark("characters")
+	_unsaved = true
+	return lines
 
 
 ## Ajoute un objet au coffre commun (butin à se partager).
@@ -1727,8 +1996,9 @@ func mj_set_rules(values: Dictionary) -> void:
 	for spec in Content.RULE_FIELDS:
 		if values.has(spec[0]):
 			content.rules[spec[0]] = clampi(int(values[spec[0]]), int(spec[2]), int(spec[3]))
-	if values.has("swap_in_combat"):
-		content.rules.swap_in_combat = bool(values.swap_in_combat)
+	for key in ["swap_in_combat", "loot_to_killer", "remove_dead"]:
+		if values.has(key):
+			content.rules[key] = bool(values[key])
 	if values.has("shared_vision"):
 		content.rules.shared_vision = bool(values.shared_vision)
 		_mark("map")
@@ -2452,7 +2722,7 @@ func save() -> String:
 	var error := CampaignStore.save({
 		"session": session, "players": players_out, "characters": characters, "maps": maps,
 		"map_order": map_order, "active_map": active_map, "messages": messages, "next_message": _next_message, "music": music,
-		"content": content, "quests": quests, "loot": loot, "phase": phase,
+		"content": content, "quests": quests, "loot": loot, "phase": phase, "adventure": adventure,
 	})
 	if error == "":
 		_unsaved = false
@@ -2515,6 +2785,7 @@ func _load(data: Dictionary, settings: Dictionary) -> void:
 		music.playing = false
 	quests = data.get("quests", []) if data.get("quests") is Array else []
 	loot = data.get("loot", []) if data.get("loot") is Array else []
+	adventure = data.get("adventure", {}) if data.get("adventure") is Dictionary else {}
 	if data.get("phase") is Dictionary and Phases.DEFS.has(String(data.phase.get("type", ""))):
 		phase.merge(data.phase, true)
 		for key in ["turn", "round", "moves_left", "ap"]:

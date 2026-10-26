@@ -8,7 +8,7 @@ signal edit_requested(kind: String, entry: Dictionary)
 signal show_requested(title: String, content: Control)
 
 const KIND_LABELS := {"items": "Objets", "abilities": "Capacités", "statuses": "Effets", "monsters": "Monstres",
-	"classes": "Classes", "loot": "Butin", "rules": "Règles"}
+	"classes": "Classes", "species": "Peuples", "loot": "Butin", "rules": "Règles"}
 
 var _kind := "items"
 var _filter := ""
@@ -68,6 +68,8 @@ func _blank() -> Dictionary:
 			return {"name": "Nouvelle classe", "hp_base": 14, "speed": 5, "resource": {"name": "Mana", "stat": "Esprit", "base": 8}}
 		"loot":
 			return {"name": "Nouveau butin", "gold": [0, 10], "entries": []}
+		"species":
+			return {"name": "Nouveau peuple", "icon": "person", "stats": {}, "mods": {}, "trait": {"name": "", "description": ""}, "abilities": [], "synergies": {}}
 	return {}
 
 
@@ -156,6 +158,8 @@ func _summary(e: Dictionary) -> String:
 			return "%d PV · %s · %d XP%s" % [int(e.get("hp", 0)), e.get("weapon", {}).get("damage", "?"), int(e.get("xp", 0)), " · BOSS" if e.get("boss", false) else ""]
 		"classes":
 			return "%s · %d PV · passif : %s" % [e.get("role", ""), int(e.get("hp_base", 0)), e.get("passive", {}).get("name", "—")]
+		"species":
+			return "%s — %s" % [CreationWizard.species_bonus_text(e, content), e.get("trait", {}).get("name", "")]
 		"loot":
 			var g: Array = e.get("gold", [0, 0])
 			return "%d–%d or · %d objets possibles" % [int(g[0]), int(g[1]), (e.get("entries", []) as Array).size()]
@@ -226,8 +230,18 @@ func _rules() -> void:
 	shared.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	shared.button_pressed = bool(rules.get("shared_vision", false))
 	card.add_child(shared)
+	var killer := CheckBox.new()
+	killer.text = "Le butin d'un monstre va directement à celui qui l'a vaincu (sinon : coffre du groupe)"
+	killer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	killer.button_pressed = bool(rules.get("loot_to_killer", true))
+	card.add_child(killer)
+	var dead := CheckBox.new()
+	dead.text = "Les monstres vaincus disparaissent de la carte"
+	dead.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dead.button_pressed = bool(rules.get("remove_dead", true))
+	card.add_child(dead)
 	card.add_child(UIKit.button("Appliquer les règles", "PrimaryButton", func():
-		var values := {"swap_in_combat": swap.button_pressed, "shared_vision": shared.button_pressed}
+		var values := {"swap_in_combat": swap.button_pressed, "shared_vision": shared.button_pressed, "loot_to_killer": killer.button_pressed, "remove_dead": dead.button_pressed}
 		for k in spins:
 			values[k] = int(spins[k].value)
 		server.mj_set_rules(values)

@@ -66,6 +66,7 @@ var _baked_cells := ""
 var _baked_size := Vector2i.ZERO
 var _fog_tex: ImageTexture
 var _fog_key := ""
+var _dice_hud: DiceHud
 
 
 func _ready() -> void:
@@ -92,6 +93,9 @@ func _ready() -> void:
 		b.add_theme_font_size_override("font_size", 16)
 		b.focus_mode = Control.FOCUS_NONE
 		bar.add_child(b)
+	_dice_hud = DiceHud.new()
+	add_child(_dice_hud)
+	move_child(_dice_hud, 0)
 	resized.connect(func():
 		if _map_key == "":
 			return
@@ -214,6 +218,8 @@ func _process(delta: float) -> void:
 
 ## Retours visuels d'une action : chiffres de dégâts / soins, « Raté », « Critique ! »…
 func show_fx(list: Array) -> void:
+	if _dice_hud != null:
+		_dice_hud.push_fx(list)
 	var stagger := {}
 	for f in list:
 		var id := String(f.get("token", ""))
@@ -255,7 +261,11 @@ func show_fx(list: Array) -> void:
 			continue
 		var n := int(stagger.get(id, 0))
 		stagger[id] = n + 1
-		_floaters.append({"token": id, "text": text, "color": col, "t": -0.25 * n, "big": f.get("type", "") in ["dmg", "heal", "crit"]})
+		# Position mémorisée : le chiffre reste visible même si le pion disparaît
+		# (monstre vaincu retiré de la carte).
+		var tk := MapData.token(map, id)
+		var at: Vector2 = _display.get(id, Vector2(float(tk.get("x", -99)), float(tk.get("y", -99))))
+		_floaters.append({"token": id, "text": text, "color": col, "t": -0.25 * n, "big": f.get("type", "") in ["dmg", "heal", "crit"], "at": at, "ko": f.get("type", "") == "ko"})
 	queue_redraw()
 
 
@@ -324,10 +334,14 @@ func _draw() -> void:
 		if float(f.t) < 0:
 			continue
 		var ft := MapData.token(map, String(f.token))
-		if ft.is_empty():
+		var cellp: Vector2 = _display.get(ft.id, Vector2(float(ft.x), float(ft.y))) if not ft.is_empty() else f.get("at", Vector2(-99, -99))
+		if cellp.x < -50:
 			continue
-		var p := cell_center(_display.get(ft.id, Vector2(float(ft.x), float(ft.y))))
+		var p := cell_center(cellp)
 		var k := float(f.t) / 1.8
+		if f.get("ko", false) and ft.is_empty():
+			# Pion vaincu et retiré : un crâne qui s'efface à sa place.
+			Icons.paint(self, "skull", Rect2(p - Vector2(cs, cs) * 0.35, Vector2(cs, cs) * 0.7), Color(Palette.DANGER, clampf(1.0 - k, 0.0, 1.0)))
 		var fsz := clampi(int(cs * (0.62 if f.big else 0.4)), 13, 34)
 		var txt := String(f.text)
 		var tw := _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fsz).x

@@ -99,8 +99,8 @@ func turn_action(action: String, target: String = "", index: int = 0, extra: Dic
 
 
 ## Création avec l'assistant : l'hôte construit la fiche (classe, points, équipement, identité).
-func create_character(class_id: String, alloc: Dictionary, choices: Array, identity: Dictionary) -> String:
-	return send_command(Protocol.CMD_CHAR_CREATE, {"class_id": class_id, "alloc": alloc, "choices": choices, "identity": identity})
+func create_character(class_id: String, alloc: Dictionary, choices: Array, identity: Dictionary, species_id: String = "") -> String:
+	return send_command(Protocol.CMD_CHAR_CREATE, {"class_id": class_id, "species_id": species_id, "alloc": alloc, "choices": choices, "identity": identity})
 
 
 ## Inventaire : equip, unequip, use, drop, give (extra.to), read.
@@ -108,6 +108,10 @@ func item_action(action: String, uid: String, extra: Dictionary = {}) -> String:
 	var payload := {"action": action, "uid": uid}
 	payload.merge(extra, true)
 	return send_command(Protocol.CMD_ITEM, payload)
+
+
+func open_chest(token_id: String) -> String:
+	return send_command(Protocol.CMD_OPEN, {"token": token_id})
 
 
 func take_loot(uid: String) -> String:

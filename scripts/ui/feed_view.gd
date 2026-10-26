@@ -22,11 +22,12 @@ const LINE_COLORS := {
 	"status": Color("c4a8e8"), "buff": Color("e3c27a"), "ko": Color("e05a50"), "passive": Color("b8a8e0"),
 	"res": Color("8fa8ef"), "ult": Color("f0c75a"), "info": Color("bdb6aa"), "xp": Color("9fc0ec"),
 	"gold": Color("e8c25a"), "loot": Color("e8dcc0"), "level": Color("9fc0ec"), "quest": Color("e3c27a"),
+	"hit": Color("e8dcc0"),
 }
 const LINE_ICONS := {
 	"dmg": "sword", "heal": "heart", "miss": "wind", "crit": "star", "status": "spiral", "buff": "star",
 	"ko": "skull", "passive": "sparkle", "res": "drop", "ult": "sun", "info": "", "xp": "xp", "gold": "coin",
-	"loot": "chest", "level": "star", "quest": "journal",
+	"loot": "chest", "level": "star", "quest": "journal", "hit": "target",
 }
 
 

@@ -15,7 +15,7 @@ const PAWN_COLORS := ["#c9a96e", "#b0605a", "#6f9fc9", "#8fb28a", "#a07cc9", "#d
 const TEXT_FIELDS := {
 	"name": SHORT, "age": 20, "species": SHORT, "origin": SHORT, "concept": SHORT,
 	"appearance": LONG, "background": LONG, "personality": LONG, "goals": LONG,
-	"relations": LONG, "notes": LONG, "secret": LONG, "status": SHORT, "rank": 10, "kind": 10, "class_id": 60,
+	"relations": LONG, "notes": LONG, "secret": LONG, "status": SHORT, "rank": 10, "kind": 10, "class_id": 60, "species_id": 60,
 	"res_name": 20, "loot": 60, "side": 12,
 }
 ## Champs narratifs qu'un joueur peut modifier lui-même (le reste : règles, calculé par l'hôte).
@@ -24,7 +24,7 @@ const NARRATIVE_FIELDS := ["name", "age", "species", "origin", "concept", "appea
 const INT_FIELDS := ["level", "xp", "hp", "hp_max", "res", "res_max", "defense", "speed", "gold", "ult", "xp_reward", "defense_bonus", "schema"]
 ## Champs visibles par les autres joueurs (le reste : propriétaire + MJ).
 const PUBLIC_FIELDS := ["id", "owner", "name", "species", "origin", "concept", "appearance", "rank", "level", "hp", "hp_max",
-	"res", "res_max", "res_name", "pawn", "portrait", "status", "class_id", "effects", "kind"]
+	"res", "res_max", "res_name", "pawn", "portrait", "status", "class_id", "species_id", "effects", "kind"]
 const PORTRAIT_KEYS := ["face", "skin", "hair", "hair_color", "eyes", "beard", "mark"]
 
 
@@ -41,7 +41,7 @@ static func create(universe: Dictionary, id: String, owner: String, char_name: S
 	return {
 		"id": id, "owner": owner, "name": char_name, "age": "", "species": "", "origin": "", "concept": "",
 		"appearance": "", "background": "", "personality": "", "goals": "", "relations": "",
-		"notes": "", "secret": "", "status": "", "rank": "", "kind": "npc", "class_id": "", "auto": false, "alloc": {}, "trained": {},
+		"notes": "", "secret": "", "status": "", "rank": "", "kind": "npc", "class_id": "", "species_id": "", "auto": false, "alloc": {}, "trained": {},
 		"defense": 0, "speed": 0, "defense_bonus": 0, "side": "",
 		"level": 1, "xp": 0, "gold": 0, "hp": hp, "hp_max": hp, "res": res, "res_max": res,
 		"res_name": String(cfg.get("resource_name", "Énergie")),
@@ -116,6 +116,8 @@ static func sanitize(input: Variant, base: Dictionary) -> Dictionary:
 				var clean := Content.sanitize_ability(a)
 				clean.rank = clampi(_int(a.get("rank", 1)), 1, 9)
 				clean.equipped = bool(a.get("equipped", false))
+				if a.get("innate", false):
+					clean.innate = true
 				if clean.id == "":
 					clean.id = Content.make_id("ab_", clean.name)
 				list.append(clean)

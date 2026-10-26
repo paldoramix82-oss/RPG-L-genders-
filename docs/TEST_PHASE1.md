@@ -91,6 +91,14 @@ Cocher chaque ligne et noter les remarques.
 - [ ] J9. Notifications : soin reçu, objet obtenu, ultime disponible, action refusée — courtes, en haut, sans bloquer.
 - [ ] J10. Inventaire : filtres par catégorie ; utiliser une potion commune sans confirmation, un objet rare avec confirmation ; jeter demande confirmation.
 
+### K. Peuples, dés, butin, aventures, cartes
+- [ ] K1. Créer un elfe mage et un demi-orc mage : l'elfe a nettement plus de mana ; un demi-orc druide a « Appel de la horde » dans sa barre.
+- [ ] K2. En combat, chaque attaque montre le d20 qui roule, le total contre la Défense, puis les dés de dégâts et le total ; tout le monde voit le jet.
+- [ ] K3. Un monstre vaincu disparaît ; son butin arrive dans le sac du vainqueur avec la fenêtre « Butin ! ».
+- [ ] K4. Toucher un coffre à côté de soi : « Ouvrir le coffre » → contenu dans le sac ; il ne s'ouvre qu'une fois.
+- [ ] K5. Nouvelle campagne avec *Les cloches de Valombre* : carte, PNJ, quêtes en brouillon ; jouer les scènes depuis l'onglet Aventure.
+- [ ] K6. Monde › Générer… une carte de chaque type ; Remplir, Rectangle, Pièce, puis Annuler.
+
 ## Rapport
 
 Merci d'indiquer, pour chaque ligne en échec : modèle de téléphone, version d'Android, type de réseau (box / partage de connexion de quel téléphone), et le message affiché. Ces informations permettent de corriger avant la phase 2.

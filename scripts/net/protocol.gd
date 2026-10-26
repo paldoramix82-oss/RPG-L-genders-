@@ -66,6 +66,8 @@ const CMD_LOOT_TAKE := "loot_take"
 const CMD_LEVEL := "level"
 ## Équiper / retirer une capacité connue de la barre rapide.
 const CMD_ABILITY_EQUIP := "ability_equip"
+## Ouvrir un coffre posé sur la carte (il faut être à côté) : le butin va dans le sac.
+const CMD_OPEN := "open_chest"
 
 # --- Événements serveur -> client ---
 const EVT_JOIN_STATUS := "join_status"

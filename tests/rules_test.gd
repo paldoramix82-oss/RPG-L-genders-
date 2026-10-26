@@ -17,6 +17,10 @@ func _ready() -> void:
 	_test_progression_and_quests()
 	_test_migration()
 	_test_vision()
+	_test_kills()
+	_test_species()
+	_test_adventures()
+	_test_map_tools()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -319,3 +323,160 @@ func _test_vision() -> void:
 	server.mj_reset_fog(m.id)
 	_expect(not Vision.is_set(server._map_view(a.id).fog.explored, map, 24, 6), "le MJ peut faire oublier l'exploration")
 	_expect(not server.fog_preview(m.id).is_empty(), "aperçu du brouillard pour le MJ")
+
+
+func _test_kills() -> void:
+	print("\n— Monstres vaincus, butin et dés")
+	var server := _server()
+	var p := _add_player(server, "Kira")
+	server._cmd_char_create(p, {"class_id": "guerrier", "alloc": {"Force": 5, "Dextérité": 3, "Constitution": 4, "Intelligence": 0, "Esprit": 0, "Charisme": 3}, "choices": [0], "identity": {"name": "Kira"}})
+	var m := server.mj_create_map("Arène", 20, 12)
+	server.mj_set_active_map(m.id)
+	server.mj_start_game("exploration")
+	var map: Dictionary = server.maps[server.active_map]
+	var pawn := MapData.token(map, "pawn_" + p.id)
+	pawn.x = 5
+	pawn.y = 5
+	var wolf := server.mj_spawn_monster("loup", 6, 5, false)
+	wolf.x = 6
+	wolf.y = 5
+	var wsheet := server._sheet_for_token(wolf)
+	wsheet.loot = "boss"
+	var other := server.mj_spawn_monster("loup", 15, 5, false)
+	server.mj_set_phase("combat")
+	server.phase.order.erase(pawn.id)
+	server.phase.order.push_front(pawn.id)
+	server.phase.turn = 0
+	server._start_turn_loop()
+	wolf.hp = 1
+	var gold_before := int(server.characters[p.id].gold)
+	var inv_before: int = (server.characters[p.id].inventory as Array).size()
+	var guard := 0
+	_sent.clear()
+	while not MapData.token(map, wolf.id).is_empty() and guard < 12:
+		server.phase.turn = server.phase.order.find(pawn.id)
+		server.phase.ap = 2
+		server.turn_action(pawn.id, {"action": "quick", "target": wolf.id})
+		guard += 1
+	_expect(MapData.token(map, wolf.id).is_empty() and not server.phase.order.has(wolf.id), "le monstre vaincu disparaît de la carte et de l'ordre des tours")
+	var c: Dictionary = server.characters[p.id]
+	_expect((c.inventory as Array).size() > inv_before and int(c.gold) > gold_before, "le vainqueur reçoit le butin dans son sac (+%d or)" % (int(c.gold) - gold_before))
+	var lines: Array = []
+	for msg in server.messages:
+		lines.append_array(msg.get("lines", []))
+	_expect(lines.any(func(l): return String(l.get("t", "")) == "loot" and String(l.text).contains("récupère sur")), "le récit annonce ce qu'il a récupéré")
+	_expect(lines.any(func(l): return String(l.get("t", "")) == "hit" or String(l.get("t", "")) == "miss" or String(l.get("t", "")) == "crit"), "le récit montre chaque jet (d20 + bonus contre Défense)")
+	var fx: Array = []
+	for s in _sent:
+		if s[1] == Protocol.EVT_FX:
+			fx.append_array(s[2].fx)
+	var all_fx: Array = []
+	server.fx.connect(func(l): all_fx.append_array(l))
+	# Coup suivant sur l'autre loup, pour récupérer les retours visuels.
+	other.x = 6
+	other.y = 5
+	server.phase.turn = server.phase.order.find(pawn.id)
+	server.phase.ap = 2
+	server.turn_action(pawn.id, {"action": "quick", "target": other.id})
+	var roll: Array = all_fx.filter(func(f): return String(f.get("type", "")) == "roll")
+	_expect(roll.size() == 1 and int(roll[0].d20) >= 1 and int(roll[0].d20) <= 20 and roll[0].has("vs") and roll[0].has("outcome"), "le jet de dé est envoyé aux écrans (d20 = %s)" % (str(roll[0].d20) if not roll.is_empty() else "?"))
+	var hits: Array = all_fx.filter(func(f): return String(f.get("type", "")) == "dmg_roll")
+	_expect(String(roll[0].outcome) in ["miss", "fumble"] or (hits.size() == 1 and not (hits[0].faces as Array).is_empty()), "dés de dégâts envoyés quand le coup porte")
+	other.hp = 1
+	guard = 0
+	while server.phase.result == "" and guard < 12:
+		server.phase.turn = server.phase.order.find(pawn.id)
+		server.phase.ap = 2
+		server.turn_action(pawn.id, {"action": "quick", "target": other.id})
+		guard += 1
+	_expect(server.phase.result == "victory" and int(server.characters[p.id].xp) > 0, "victoire après le dernier monstre retiré, XP distribuée")
+
+
+func _test_species() -> void:
+	print("\n— Peuples, synergies, équipement de départ")
+	var c := Content.default_for("fantasy")
+	_expect(Content.list(c, "species").size() >= 7 and not Rules.get_class_def(c, "druide").is_empty(), "7 peuples et la classe Druide")
+	var alloc: Dictionary = Rules.get_class_def(c, "mage").recommended
+	var elfe := Rules.build_sheet(CharacterData.create({}, "a", "a", "Lys", c), c, "mage", alloc, [0], "elfe")
+	var orc := Rules.build_sheet(CharacterData.create({}, "b", "b", "Grok", c), c, "mage", alloc, [0], "demi_orc")
+	_expect(int(elfe.res_max) >= int(orc.res_max) + 8, "un elfe mage a plus de mana qu'un demi-orc mage (%d contre %d)" % [int(elfe.res_max), int(orc.res_max)])
+	_expect(Rules.base_stat(orc, "Force") == Rules.base_stat(elfe, "Force") + 2, "bonus de Force du demi-orc")
+	_expect(int(Rules.derived(elfe, c).vision) > int(Rules.derived(orc, c).vision), "vision elfique")
+	var druide := Rules.build_sheet(CharacterData.create({}, "d", "d", "Urg", c), c, "druide", Rules.get_class_def(c, "druide").recommended, [0], "demi_orc")
+	var ids: Array = (druide.abilities as Array).map(func(a): return String(a.id))
+	_expect(ids.has("appel_horde") and ids.has("rage_sang") and ids.has("appel_loup"), "un demi-orc druide appelle la horde (capacités de peuple et de synergie)")
+	_expect(Rules.equipped_abilities(druide).size() == 6, "capacités de peuple équipées sans prendre d'emplacement")
+	var inv: Array = (elfe.inventory as Array).map(func(i): return String(i.get("id", i.get("item_id", ""))))
+	var names: Array = (elfe.inventory as Array).map(func(i): return String(i.name))
+	_expect(names.has("Torche") and names.has("Corde (15 m)") and names.has("Trousse de soins"), "équipement de départ : torche, corde, trousse de soins")
+	var server := _server()
+	var p := _add_player(server, "Lys")
+	_expect(server._cmd_char_create(p, {"class_id": "mage", "species_id": "elfe", "alloc": alloc, "choices": [0], "identity": {"name": "Lys"}}) == "", "création d'un elfe mage par l'hôte")
+	_expect(server._cmd_char_create(_add_player(server, "X"), {"class_id": "mage", "species_id": "dragon_volant", "alloc": alloc, "choices": [0], "identity": {"name": "X"}}) != "", "peuple inconnu refusé")
+	var sheet: Dictionary = server.characters[p.id]
+	var torch: Dictionary = (sheet.inventory as Array).filter(func(i): return String(i.name) == "Torche")[0]
+	var v0 := int(Rules.derived(sheet, server.content).vision)
+	Inventory.equip(sheet, String(torch.uid))
+	_expect(int(Rules.derived(sheet, server.content).vision) == v0 + 2, "équiper la torche : +2 cases de vision")
+
+
+func _test_adventures() -> void:
+	print("\n— Aventures prêtes à jouer")
+	var advs := Adventures.all()
+	_expect(advs.size() >= 6, "%d aventures disponibles" % advs.size())
+	for adv in advs:
+		var server := _server(String(adv.universe))
+		var err := server.mj_load_adventure(String(adv.id))
+		var map: Dictionary = server.maps.get(server.active_map, {})
+		var drafts: Array = server.quests.filter(func(q): return String(q.status) == "draft")
+		var npcs: Array = (map.get("tokens", []) as Array).filter(func(t): return String(t.kind) == "npc" and String(t.char_id) != "")
+		var chests: Array = (map.get("tokens", []) as Array).filter(func(t): return String(t.get("loot", "")) != "")
+		var ok: bool = err == "" and drafts.size() == (adv.quests as Array).size() and npcs.size() >= (adv.npcs as Array).size() and chests.size() == (adv.chests as Array).size()
+		_expect(ok, "%s : carte, %d PNJ, %d quêtes en brouillon, %d coffres (%s)" % [adv.name, npcs.size(), drafts.size(), chests.size(), err])
+	# Scènes et coffres, sur « Les cloches de Valombre ».
+	var s := _server("fantasy")
+	var p := _add_player(s, "Ana")
+	s._cmd_char_create(p, {"class_id": "guerrier", "species_id": "nain", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Ana"}})
+	s.mj_load_adventure("cloches_valombre")
+	s.mj_start_game("exploration")
+	s.mj_play_scene(1)
+	_expect(s.quests.any(func(q): return String(q.title) == "Les cloches de minuit" and String(q.status) == "active"), "scène « Minuit » : la quête principale est donnée")
+	_expect(s.messages.any(func(m): return String(m.get("kind", "")) == Protocol.KIND_NARRATION and String(m.text).contains("treizième")), "la narration de la scène est envoyée aux joueurs")
+	var map: Dictionary = s.maps[s.active_map]
+	var chest: Dictionary = (map.tokens as Array).filter(func(t): return String(t.get("loot", "")) != "" and not t.hidden)[0]
+	var pawn := MapData.token(map, "pawn_" + p.id)
+	_expect(s._cmd_open(p, {"token": chest.id}) != "", "trop loin : il faut s'approcher du coffre")
+	var cell := MapData.free_cell_near(map, int(chest.x) + 1, int(chest.y))
+	pawn.x = cell.x
+	pawn.y = cell.y
+	var c: Dictionary = s.characters[p.id]
+	var before_items: int = (c.inventory as Array).size()
+	var before_gold := int(c.gold)
+	_expect(s._cmd_open(p, {"token": chest.id}) == "" and ((c.inventory as Array).size() > before_items or int(c.gold) > before_gold), "le coffre ouvert remplit le sac de celui qui l'ouvre")
+	_expect(s._cmd_open(p, {"token": chest.id}) != "", "un coffre ne s'ouvre qu'une fois")
+	s.mj_play_scene(3)
+	_expect(s.phase.type == "combat" and not (map.tokens as Array).any(func(t): return String(t.kind) == "monster" and t.hidden), "scène « La crypte » : monstres révélés, combat lancé")
+
+
+func _test_map_tools() -> void:
+	print("\n— Création de cartes")
+	var s := _server()
+	var all_ok := true
+	for kind in MapGen.KINDS:
+		var m := s.mj_generate_map(kind, "moyenne", "")
+		var valid := String(m.cells).length() == int(m.w) * int(m.h)
+		for ch in String(m.cells):
+			if not MapData.TERRAINS.has(ch):
+				valid = false
+				break
+		if not valid or not MapData.passable(m, int(m.spawn.x), int(m.spawn.y)):
+			all_ok = false
+			print("    carte « %s » invalide" % kind)
+	_expect(all_ok, "6 types de cartes générés, terrains valides, départ praticable")
+	var m := s.mj_create_map("Test", 10, 8)
+	s.mj_fill(m.id, 0, 0, "s")
+	_expect(String(m.cells) == "s".repeat(80), "Remplir : toute la zone d'un même terrain")
+	s.mj_paint_rect(m.id, Vector2i(2, 2), Vector2i(6, 5), "d", true)
+	_expect(MapData.cell(m, 2, 2) == "#" and MapData.cell(m, 4, 3) == "d", "Pièce : murs autour, sol à l'intérieur")
+	s.mj_undo(m.id)
+	_expect(MapData.cell(m, 2, 2) == "s" and String(m.cells) == "s".repeat(80), "Annuler : la pièce disparaît")

@@ -94,6 +94,37 @@ static func passive_card(p: Dictionary, content: Dictionary) -> PanelContainer:
 	return panel
 
 
+## Peuple : trait, bonus, et synergie avec la classe s'il y en a une.
+static func species_card(sp: Dictionary, syn: Dictionary, content: Dictionary) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = "InsetPanel"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	panel.add_child(row)
+	var badge := icon_badge(String(sp.get("icon", "person")), Palette.GOLD, 44)
+	badge.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(badge)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(box)
+	var title := HBoxContainer.new()
+	box.add_child(title)
+	var tr: Dictionary = sp.get("trait", {})
+	title.add_child(UIKit.label(String(tr.get("name", sp.get("name", ""))) if String(tr.get("name", "")) != "" else String(sp.get("name", "")), "StrongLabel", true))
+	title.add_child(tag(String(sp.get("name", "PEUPLE")).to_upper(), Palette.GOLD))
+	if String(tr.get("description", "")) != "":
+		box.add_child(UIKit.label(String(tr.description), "", true))
+	var bonus := CreationWizard.species_bonus_text(sp, content)
+	if bonus != "":
+		box.add_child(UIKit.label(bonus, "MutedLabel", true))
+	if not syn.is_empty():
+		var l := UIKit.label("◆  %s : %s" % [syn.get("name", ""), syn.get("description", "")], "StrongLabel", true)
+		l.add_theme_color_override("font_color", Palette.ULT)
+		box.add_child(l)
+	return panel
+
+
 ## Petite étiquette colorée en capitales.
 static func tag(text: String, col: Color) -> Label:
 	var l := UIKit.label(text)

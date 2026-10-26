@@ -405,6 +405,7 @@ func _build_map_page() -> VBoxContainer:
 	_map_view.custom_minimum_size.y = 160
 	_map_view.move_requested.connect(func(id, x, y): _client.move_pawn(id, x, y))
 	_map_view.target_picked.connect(_on_target_picked)
+	_map_view.token_selected.connect(_on_token_selected)
 	_map_row.add_child(_map_view)
 	_turn_panel = PanelContainer.new()
 	_turn_panel.theme_type_variation = "InsetPanel"
@@ -482,6 +483,7 @@ func _build_hud() -> PanelContainer:
 	bottom.add_child(_hud_sep)
 	_hud_buttons = HBoxContainer.new()
 	_hud_buttons.add_theme_constant_override("separation", 4)
+	_hud_buttons.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bottom.add_child(_hud_buttons)
 	for spec in [["bag", "Sac", _open_inventory.bind("bag")], ["person", "Fiche", _open_sheet], ["journal", "Journal", _open_journal.bind("quests")], ["chat", "Discuter", _open_chat]]:
 		var b := _icon_button(spec[0], spec[1], spec[2])
@@ -705,7 +707,7 @@ func _open_wizard() -> void:
 		base = CharacterData.create(_client.universe, String(_client.me.get("id", "")), String(_client.me.get("id", "")), String(_client.me.get("name", "")), _client.content)
 	var wizard := CreationWizard.new(_client.universe, _client.content, base)
 	wizard.finished.connect(func(payload):
-		_client.create_character(String(payload.class_id), payload.alloc, payload.choices, payload.identity)
+		_client.create_character(String(payload.class_id), payload.alloc, payload.choices, payload.identity, String(payload.get("species_id", "")))
 		_wizard_open = false
 		UIKit.clear(_creation)
 		_creation.add_child(_center_card("Création…", "Votre personnage est envoyé au MJ."))
@@ -923,16 +925,22 @@ func _notify_changes(old: Dictionary, new: Dictionary) -> void:
 	elif dhp < 0 and int(new.get("hp", 0)) <= 0:
 		_notifier.push("Vous êtes hors de combat !", "danger")
 	var dgold := int(new.get("gold", 0)) - int(old.get("gold", 0))
-	if dgold > 0:
-		_notifier.push("+%d pièces d'or" % dgold, "gold")
 	var before := {}
 	for it in old.get("inventory", []):
 		before[String(it.get("uid", ""))] = int(it.get("qty", 1))
+	var got: Array = []
 	for it in new.get("inventory", []):
 		var uid := String(it.get("uid", ""))
 		var gained := int(it.get("qty", 1)) - int(before.get(uid, 0))
 		if gained > 0:
-			_notifier.push("Objet obtenu : %s%s" % [it.get("name", "?"), (" ×%d" % gained) if gained > 1 else ""], "loot", String(it.get("icon", "chest")))
+			var shown: Dictionary = it.duplicate()
+			shown.qty = gained
+			shown.equipped = false
+			got.append(shown)
+	if not got.is_empty():
+		_show_loot(got, maxi(0, dgold))
+	elif dgold > 0:
+		_notifier.push("+%d pièces d'or" % dgold, "gold")
 	var known_before: Array = old.get("known", old.get("abilities", []))
 	for a in new.get("known", new.get("abilities", [])):
 		var aid := String(a.get("id", a)) if a is Dictionary else String(a)
@@ -947,6 +955,85 @@ func _notify_changes(old: Dictionary, new: Dictionary) -> void:
 	for e in new.get("effects", []):
 		if not effects_before.has(String(e.get("id", ""))):
 			_notifier.push("Effet : %s" % e.get("name", "?"), "magic", String(e.get("icon", "sparkle")))
+
+
+## « Butin ! » : ce qu'on vient de recevoir (monstre vaincu, quête, cadeau du MJ),
+## avec les cases d'objets. Ne bloque rien ; se ferme seule ou d'un toucher.
+func _show_loot(items: Array, gold: int) -> void:
+	var holder := Control.new()
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.z_index = 45
+	add_child(holder)
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = "HighlightPanel"
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	holder.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	panel.add_child(col)
+	var title := UIKit.label("Butin !", "TitleLabel")
+	title.add_theme_font_size_override("font_size", 28)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+	col.add_child(GameUI.ornament(16))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 8)
+	flow.alignment = FlowContainer.ALIGNMENT_CENTER
+	col.add_child(flow)
+	for it in items.slice(0, 8):
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 2)
+		box.custom_minimum_size.x = 84
+		box.add_child(GameUI.item_slot(it, 56))
+		box.get_child(0).size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var n := UIKit.label(String(it.get("name", "?")), "StrongLabel", true)
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		n.add_theme_font_size_override("font_size", 13)
+		n.add_theme_color_override("font_color", Content.rarity_color(String(it.get("rarity", "commun"))).lightened(0.15))
+		box.add_child(n)
+		flow.add_child(box)
+	if gold > 0:
+		var g := HBoxContainer.new()
+		g.alignment = BoxContainer.ALIGNMENT_CENTER
+		g.add_child(Icons.new("coin", Palette.GOLD, 22))
+		var gl := UIKit.label("+%d pièces d'or" % gold, "StrongLabel")
+		gl.add_theme_color_override("font_color", Palette.GOLD)
+		g.add_child(gl)
+		col.add_child(g)
+	col.add_child(UIKit.label("Rangé dans votre sac.", "MutedLabel"))
+	col.get_child(col.get_child_count() - 1).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	col.add_child(row)
+	var close := func():
+		if is_instance_valid(holder) and not holder.is_queued_for_deletion():
+			var tw2 := holder.create_tween()
+			tw2.tween_property(panel, "modulate:a", 0.0, 0.2)
+			tw2.tween_callback(holder.queue_free)
+	var ok := UIKit.button("OK", "", close)
+	ok.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(ok)
+	var bag := UIKit.button("Voir le sac", "PrimaryButton", func():
+		close.call()
+		_open_inventory("bag"))
+	bag.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(bag)
+	Input.vibrate_handheld(60)
+	await get_tree().process_frame
+	var w := minf(size.x - 24, 420.0)
+	panel.size = Vector2(w, 0)
+	panel.custom_minimum_size.x = w
+	panel.position = Vector2((size.x - w) * 0.5, size.y * 0.22)
+	panel.pivot_offset = Vector2(w * 0.5, 60)
+	panel.scale = Vector2(0.85, 0.85)
+	panel.modulate.a = 0.0
+	var tw := panel.create_tween().set_parallel(true)
+	tw.tween_property(panel, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(panel, "modulate:a", 1.0, 0.15)
+	tw.chain().tween_interval(6.0)
+	tw.chain().tween_callback(close)
 
 
 func _on_quests() -> void:
@@ -1227,7 +1314,8 @@ func _refresh_hud() -> void:
 	_portrait.active = _client.is_my_turn()
 	UIKit.clear(_abilities_row)
 	var shown := abilities.slice(0, 6)
-	_abilities_row.columns = 3 if _landscape else maxi(1, shown.size())
+	# Portrait : une rangée jusqu'à 4 capacités, deux rangées au-delà (boutons assez grands).
+	_abilities_row.columns = 3 if _landscape else (maxi(1, shown.size()) if shown.size() <= 4 else ceili(shown.size() / 2.0))
 	if abilities.is_empty():
 		_abilities_row.columns = 1
 		_abilities_row.add_child(UIKit.label("Aucune capacité équipée (voir la fiche).", "MutedLabel", true))
@@ -1393,6 +1481,24 @@ func _open_ability(a: Dictionary) -> void:
 	use.disabled = reason != ""
 	panel.body.add_child(use)
 	panel.body.add_child(GameUI.hint("Cibles : %s. Portée en cases (déplacements en diagonale comptés comme 1)." % Content.TARGET_NAMES.get(target, target)))
+
+
+## Toucher un coffre : l'ouvrir s'il est à côté (le butin va dans le sac).
+func _on_token_selected(token_id: String) -> void:
+	var t := MapData.token(_client.map, token_id)
+	if t.is_empty() or String(t.get("kind", "")) != "object" or String(t.get("loot", "")) == "":
+		return
+	var me := _client.my_token()
+	var near := not me.is_empty() and Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))) <= 1
+	var panel := _open_overlay("chest", String(t.get("name", "Coffre")), "chest")
+	panel.body.add_child(UIKit.label("Un coffre fermé. Qui sait ce qu'il contient ?", "", true))
+	if near:
+		panel.body.add_child(UIKit.button("Ouvrir le coffre", "PrimaryButton", func():
+			_close_overlay()
+			_client.open_chest(token_id)))
+	else:
+		panel.body.add_child(GameUI.hint("Approchez-vous (case voisine) pour l'ouvrir."))
+	_map_view.selected = String(me.get("id", ""))
 
 
 func _start_target(action: Dictionary) -> void:

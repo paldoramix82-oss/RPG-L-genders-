@@ -50,7 +50,25 @@ C'est l'hôte qui filtre : un téléphone ne reçoit **que** les pions et les é
 
 Réglages du MJ : brouillard par carte (*Monde*), *Oublier l'exploration*, *Voir le brouillard des joueurs* (aperçu), et dans *Créer › Règles* : vision de base, « +1 case tous les N points de Dextérité », **vision partagée** (chaque joueur voit ce que voit tout le groupe).
 
-## Créer son personnage (assistant en 5 étapes)
+## Peuples
+
+Le peuple s'ajoute à la classe. Il donne des **bonus de caractéristiques** (comptés dans la valeur de base), des **bonus de jeu** (affichés comme bonus sur la fiche), un **trait**, parfois une **capacité de peuple** (toujours équipée, sans prendre d'emplacement), et des **synergies** avec certaines classes.
+
+| Fantasy | Caractéristiques | Bonus | Capacité | Synergies |
+|---|---|---|---|---|
+| Humain | CHA +1 | +1 toucher | — | Guerrier (+4 PV), Soigneur (+10 % soins), Barde (+2 Inspiration) |
+| Elfe | DEX +1, INT +1, CON −1 | +4 ressource, +2 vision | — | Mage (+4 mana, +1 dégât), Rôdeur (+1 toucher, +1 vision), Druide (+10 % soins) |
+| Nain | CON +2, DEX −1 | +4 PV, +1 rés. physique | — | Gardien (+1 Défense, +1 rés.), Guerrier (+6 PV) |
+| Demi-orc | FOR +2, INT −1 | +2 PV, +1 dégât | Rage du sang | Druide (*Appel de la horde*, +2 PV), Guerrier (+1 dégât), Rôdeur (+1 dégât, +1 vitesse) |
+| Halfelin | DEX +2, FOR −1 | +1 Défense, critique +1 | — | Assassin (critique +1), Barde (CHA +1, +2 Inspiration), Rôdeur (+1 toucher) |
+| Gnome | INT +2, FOR −1 | +2 ressource, +1 rés. magique | — | Mage (+1 dégât), Soigneur (+10 % soins) |
+| Tieffelin | CHA +1, INT +1 | +1 rés. magique | Flammes infernales | Mage (+1 dégât), Assassin (critique +1), Barde (+2 Inspiration) |
+
+Légenders : Humain, Humain sans-magie (corps endurci, −6 AEC, +2 rés. magique), Mutant, Ombré (*Pas du vent*), Homme-lézard, Sirène (*Chant des profondeurs*), Centaure (+2 vitesse), Minotaure (*Charge cornue*), Esprit (+4 AEC), Démon (*Flammes infernales*), chacun avec ses synergies. Le MJ modifie ou crée des peuples dans *Créer › Peuples* (bonus, trait, capacités, synergie par classe).
+
+**Équipement de départ** (tout le monde, en plus du kit de classe) : potion de soin, 2 rations, torche (accessoire : +2 vision), corde, trousse de soins (1d4 + 3 PV).
+
+## Créer son personnage (assistant en 6 étapes)
 
 1. **Identité** — nom, portrait (visage, teint, coiffure, couleur, yeux, barbe, marque), couleur du pion ; histoire, personnalité, description facultatives.
 2. **Classe** — Fantasy : Guerrier, Gardien, Soigneur, Assassin, Rôdeur, Mage, Barde. Légenders : Briseur, Ombre, Invocateur, Créateur élémentaire, Métamorphe, Psychique, Soigneur, Tacticien de Karoh, Mutant. Chaque classe a des bonus de caractéristiques, des PV de base, une ressource, une vitesse, un **passif**, **trois capacités**, un **ultime**, des capacités à apprendre, un kit et des choix d'équipement.
@@ -92,6 +110,14 @@ Le MJ choisit la phase (*Combat* dans la colonne d'outils) :
 - **Hors de combat** à 0 PV (pion grisé, tour sauté). Un soin peut relever un allié.
 - **Victoire** quand tous les adversaires visibles sont à terre : XP partagée, or partagé, butin des monstres dans le **coffre du groupe**. **Défaite** si tout le groupe est à terre (le MJ raconte la suite).
 - À la fin du combat, les effets temporaires, les recharges et les invocations disparaissent.
+
+### Dés et résultats visibles
+
+Chaque jet de combat est montré à tous dans un bandeau en haut de la carte : le d20 qui roule puis s'arrête, le bonus, le total, la Défense visée et le résultat (*Touché*, *Raté*, *Critique !*, *Échec critique*), puis les dés de dégâts (ou de soin), les bonus, le ×1,5 de l'attaque puissante, la résistance et les dégâts finalement subis. Le récit garde la même chose en texte : « Shin touche Loup : d20 = 14 +5 = 19 contre Défense 13 » puis « Loup subit 12 dégâts (dés [4, 6] +3 −1 résistance) ».
+
+### Adversaires vaincus et butin
+
+Un adversaire mis à terre est **retiré de la carte** (règle *Les monstres vaincus disparaissent*, active par défaut) et son **butin est tiré tout de suite** : il va **dans le sac de celui qui l'a vaincu** (règle *Le butin va au vainqueur*, sinon au coffre du groupe), l'or aussi. Le téléphone du vainqueur affiche une fenêtre **« Butin ! »**. L'XP de tous les adversaires est partagée à la victoire. Les **coffres** posés sur la carte s'ouvrent depuis une case voisine (le contenu va dans le sac de celui qui ouvre, une seule fois).
 
 ### Effets de statut
 
@@ -156,6 +182,12 @@ L'écran est organisé en quatre zones, séparées par des **barres déplaçable
   - **Codex** (avec les secrets MJ) et **Réseau** (état, adresses, journal des connexions).
 - **Fiche et outils d'un personnage** : ± PV, soigner, mettre hors de combat, ± ressource, charger l'ultime, donner XP ou or, ± caractéristiques, donner un objet (du catalogue ou créé sur le moment), apprendre / oublier une capacité, équiper / retirer, appliquer / retirer un effet, inventaire, modifier l'histoire et les valeurs (fiche libre), placer sur la carte.
 - **Journal du MJ** : chaque modification manuelle (PV, objets, effets, XP, règles…) est notée dans le récit, visible du MJ seul.
+
+## Aventures prêtes à jouer et cartes
+
+**Aventures** (`data/adventures`, générées par `tools/make_adventures.py`) : *Les cloches de Valombre*, *La meute des Cendres*, *Les ruines du temple oublié*, *Une nuit au Corbeau Rieur* (Fantasy), *Le test de la magie*, *Premier jour à la Division de l'Encre* (Légenders). Chacune installe une carte, des PNJ placés (avec notes pour le MJ), des monstres cachés, des coffres, des étiquettes secrètes, des **quêtes en brouillon** et des **scènes** : texte à raconter, conseils pour le MJ et action en un clic (donner une quête, épreuve de groupe, révéler les monstres et lancer le combat). On la choisit à la création de la campagne ou dans l'onglet **Aventure** du MJ.
+
+**Cartes** (onglet *Monde*) : **Générer…** crée une carte jouable en un clic — forêt, village, donjon, grotte, plaine avec rivière, île — en trois tailles, avec des lieux nommés et quelques étiquettes secrètes. Outils de retouche : **Peindre** (pinceau réglable), **Remplir** (toute une zone d'un même terrain), **Rectangle**, **Pièce** (sol + murs autour, en deux touches), et **Annuler la dernière retouche** (Ctrl + Z, 20 étapes).
 
 ## Musique
 

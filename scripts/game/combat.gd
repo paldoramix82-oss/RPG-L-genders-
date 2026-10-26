@@ -457,13 +457,19 @@ func _resolve(actor: Dictionary, spec: Dictionary, targets: Array) -> void:
 			crit = hit and d20 >= int(spec.crit)
 			var detail := "d20 = %d %+d = %d contre Défense %d" % [d20, bonus, total, defense]
 			spec["last_roll"] = {"expr": "d20%+d" % bonus, "detail": detail, "total": total, "difficulty": defense, "success": hit}
+			# Le jet est montré à tous : dé, bonus, total, Défense visée, résultat.
+			var outcome := "crit" if crit else ("hit" if hit else ("fumble" if d20 == 1 else "miss"))
+			_fx.append({"token": String(actor.get("id", "")), "type": "roll", "target": String(target.get("id", "")), "target_name": String(target.get("name", "")),
+				"label": String(spec.get("name", "")), "actor_name": String(actor.get("name", "")), "d20": d20, "bonus": bonus, "total": total, "vs": defense, "outcome": outcome})
 			if not hit:
-				_line("miss", "%s rate %s (%s)." % [actor.name, target.name, detail if d20 != 1 else "échec critique"])
+				_line("miss", "%s rate %s : %s." % [actor.name, target.name, detail if d20 != 1 else "d20 = 1, échec critique"])
 				_fxp(target, "miss")
 				continue
 			if crit:
-				_line("crit", "Coup critique sur %s !" % target.name)
+				_line("crit", "Coup critique sur %s ! (%s)" % [target.name, detail])
 				_fxp(target, "crit")
+			else:
+				_line("hit", "%s touche %s : %s." % [actor.name, target.name, detail])
 		var was_ko := is_ko(target)
 		_apply_effects(actor, target, spec.effects, spec, crit, 0)
 		if not was_ko and is_ko(target):
@@ -493,21 +499,30 @@ func _apply_effect(actor: Dictionary, target: Dictionary, e: Dictionary, spec: D
 	match String(e.get("type", "")):
 		"damage":
 			var dice := String(e.get("dice", "1d6"))
-			var amount := int(Dice.roll(dice, _rng).get("total", 1))
+			var r := Dice.roll(dice, _rng)
+			var faces := _faces(r)
+			var amount := int(r.get("total", 1))
 			if crit:
-				amount += int(Dice.roll(dice, _rng).get("total", 0))
+				var r2 := Dice.roll(dice, _rng)
+				faces.append_array(_faces(r2))
+				amount += int(r2.get("total", 0))
+			var mod := 0
 			if e.get("flat_stat", false):
-				amount += int(e.get("bonus", 0))
+				mod += int(e.get("bonus", 0))
 			else:
 				var stat_name := String(e.get("stat", spec.get("stat", "Force")))
-				amount += Rules.stat(sheet, stat_name, content(), d.mods) / 2 + int(d.damage) + int(e.get("bonus", 0)) + rank_bonus
+				mod += Rules.stat(sheet, stat_name, content(), d.mods) / 2 + int(d.damage) + int(e.get("bonus", 0)) + rank_bonus
 			var p := _passive_mods(actor, target, String(e.get("element", spec.get("element", "physique"))))
-			amount += int(p.damage)
+			mod += int(p.damage)
 			if String(p.get("damage_dice", "")) != "":
-				amount += int(Dice.roll(String(p.damage_dice), _rng).get("total", 0))
+				var rp := Dice.roll(String(p.damage_dice), _rng)
+				faces.append_array(_faces(rp))
+				amount += int(rp.get("total", 0))
+			amount += mod
 			if spec.get("power", false):
 				amount = int(round(amount * 1.5))
-			var dealt := _apply_damage(target, amount, {"actor": actor, "element": String(e.get("element", spec.get("element", "physique")))}, "")
+			var roll_info := {"faces": faces, "mod": mod, "power": bool(spec.get("power", false)), "crit": crit}
+			var dealt := _apply_damage(target, amount, {"actor": actor, "element": String(e.get("element", spec.get("element", "physique"))), "roll": roll_info}, "")
 			_last_damage = dealt
 			if dealt > 0 and actor != target:
 				_gain_ult(actor, int(Content.rule(content(), "ult_gain_deal")))
@@ -518,7 +533,12 @@ func _apply_effect(actor: Dictionary, target: Dictionary, e: Dictionary, spec: D
 				var heal_stat := String(e.get("stat", spec.get("stat", "Esprit")))
 				if heal_stat not in Content.stat_names(content()):
 					heal_stat = "Esprit"
-				amount += int(Dice.roll(String(e.dice), _rng).get("total", 0)) + Rules.stat(sheet, heal_stat, content(), d.mods) / 2
+				var hr := Dice.roll(String(e.dice), _rng)
+				var hfaces := _faces(hr)
+				var hmod := Rules.stat(sheet, heal_stat, content(), d.mods) / 2 + int(e.get("bonus", 0)) + rank_bonus
+				_fx.append({"token": String(actor.get("id", "")), "type": "heal_roll", "target": String(target.get("id", "")), "target_name": String(target.get("name", "")),
+					"actor_name": String(actor.get("name", "")), "label": String(spec.get("name", "")), "faces": hfaces, "mod": hmod + int(e.get("amount", 0))})
+				amount += int(hr.get("total", 0)) + Rules.stat(sheet, heal_stat, content(), d.mods) / 2
 			amount += int(e.get("bonus", 0)) + rank_bonus
 			amount = int(round(amount * (1.0 + float(int(d.heal_pct) + int(_passive_mods(actor, target, "soin").get("heal_pct", 0))) / 100.0)))
 			_apply_heal(target, maxi(1, amount), "")
@@ -602,6 +622,25 @@ func _apply_damage(target: Dictionary, amount: int, ctx: Dictionary, source: Str
 	var dealt := before - int(target.get("hp", 0))
 	var src := (" (%s)" % source) if source != "" else ""
 	var abs_txt := (", %d absorbés par le bouclier" % absorbed) if absorbed > 0 else ""
+	var roll: Dictionary = ctx.get("roll", {})
+	if not roll.is_empty():
+		# Détail du calcul : dés, bonus, ×1,5, résistance, bouclier.
+		var parts: PackedStringArray = []
+		var vals: PackedStringArray = []
+		for f in roll.faces:
+			vals.append(str(int(f.value)))
+		parts.append("dés [%s]" % ", ".join(vals))
+		if int(roll.mod) != 0:
+			parts.append("%+d" % int(roll.mod))
+		if roll.power:
+			parts.append("×1,5")
+		if resist > 0:
+			parts.append("−%d résistance" % resist)
+		src = " (%s)" % " ".join(parts)
+		var actor: Dictionary = ctx.get("actor", {})
+		_fx.append({"token": String(actor.get("id", "")), "type": "dmg_roll", "target": String(target.get("id", "")), "target_name": String(target.get("name", "")),
+			"actor_name": String(actor.get("name", "")), "faces": roll.faces, "mod": int(roll.mod), "power": roll.power, "crit": roll.crit,
+			"resist": resist, "absorbed": absorbed, "dealt": dealt})
 	_line("dmg", "%s subit %d dégâts%s%s." % [target.name, dealt, src, abs_txt])
 	_fxp(target, "dmg", dealt)
 	if dealt > 0:
@@ -610,8 +649,74 @@ func _apply_damage(target: Dictionary, amount: int, ctx: Dictionary, source: Str
 	if is_ko(target):
 		_line("ko", "%s est hors de combat !" % target.name)
 		_fxp(target, "ko")
+		_on_defeated(target, ctx.get("actor", {}))
 	touch(target)
 	return dealt
+
+
+## Un adversaire vient d'être vaincu : son XP est mise de côté pour la victoire,
+## son butin est tiré tout de suite et donné à celui qui l'a vaincu (ou au coffre
+## du groupe, selon les règles). Une seule fois par adversaire.
+func _on_defeated(victim: Dictionary, killer: Dictionary) -> void:
+	if victim.get("defeated", false):
+		return
+	if String(victim.get("summoned_by", "")) != "":
+		victim["defeated"] = true
+		return
+	if side(victim) == "players":
+		return
+	victim["defeated"] = true
+	var sh := sheet_of(victim) if has_sheet(victim) else {}
+	s.phase["xp_pool"] = int(s.phase.get("xp_pool", 0)) + int(sh.get("xp_reward", 10 if sh.is_empty() else 0))
+	s.phase["defeated"] = int(s.phase.get("defeated", 0)) + 1
+	var table := String(sh.get("loot", ""))
+	if table == "":
+		return
+	var drop := Inventory.roll_loot(content(), table, _rng)
+	_lines.append_array(s.give_drop(_owner_player(killer), drop, String(victim.get("name", ""))))
+
+
+## Joueur qui profite d'un coup : le propriétaire du pion, ou celui de l'invocation.
+func _owner_player(t: Dictionary) -> String:
+	if t.is_empty():
+		return ""
+	if String(t.get("summoned_by", "")) != "":
+		return _owner_player(token(String(t.summoned_by)))
+	return String(t.get("owner", "")) if String(t.get("kind", "")) == "pc" else ""
+
+
+## Retire de la carte et de l'ordre des tours les adversaires vaincus et les
+## invocations tombées (règle « remove_dead », active par défaut).
+func remove_defeated() -> void:
+	if not bool(Content.rule(content(), "remove_dead")):
+		return
+	var m := map()
+	if m.is_empty():
+		return
+	var gone: Array = []
+	for t in m.get("tokens", []):
+		if t.get("defeated", false) and is_ko(t) and side(t) != "players" or (String(t.get("summoned_by", "")) != "" and is_ko(t)):
+			gone.append(String(t.id))
+	if gone.is_empty():
+		return
+	var current := s._current_token()
+	m.tokens = (m.tokens as Array).filter(func(t): return not gone.has(String(t.id)))
+	for id in gone:
+		s.phase.order.erase(id)
+	if s.phase.order.has(current):
+		s.phase.turn = s.phase.order.find(current)
+	else:
+		s.phase.turn = clampi(int(s.phase.get("turn", 0)), 0, maxi(0, s.phase.order.size() - 1))
+	s.map_changed(s.active_map, true)
+
+
+## Faces tirées d'un lancer : [{sides, value}] (pour les montrer aux joueurs).
+static func _faces(r: Dictionary) -> Array:
+	var out: Array = []
+	for g in r.get("rolls", []):
+		for v in g.get("values", []):
+			out.append({"sides": int(g.sides), "value": int(v)})
+	return out
 
 
 func _apply_heal(target: Dictionary, amount: int, source: String) -> void:
@@ -917,7 +1022,8 @@ func check_end() -> void:
 		else:
 			foes += 1
 			foes_down += 1 if is_ko(t) else 0
-	if foes > 0 and foes_down == foes:
+	# Les adversaires vaincus ont pu être retirés de la carte : ils comptent quand même.
+	if (foes > 0 or int(s.phase.get("defeated", 0)) > 0) and foes_down == foes:
 		s.phase.result = "victory"
 		_victory()
 	elif heroes > 0 and heroes_down == heroes:
@@ -928,20 +1034,14 @@ func check_end() -> void:
 
 
 func _victory() -> void:
-	var xp := 0
-	var gold := 0
-	var items: Array = []
+	# Adversaires mis à terre autrement (PV réglés par le MJ…) : comptés maintenant.
 	for id in s.phase.order:
 		var t := token(String(id))
-		if t.is_empty() or side(t) == "players" or t.get("hidden", false):
-			continue
-		var sh := sheet_of(t) if has_sheet(t) else {}
-		xp += int(sh.get("xp_reward", 10 if sh.is_empty() else 0))
-		var table := String(sh.get("loot", ""))
-		if table != "":
-			var drop := Inventory.roll_loot(content(), table, _rng)
-			gold += int(drop.gold)
-			items.append_array(drop.items)
+		if not t.is_empty() and side(t) != "players" and not t.get("hidden", false) and is_ko(t):
+			_on_defeated(t, {})
+	var xp := int(s.phase.get("xp_pool", 0))
+	var gold := 0
+	var items: Array = []
 	var heroes: Array = []
 	for p in s.players.values():
 		if s.characters.has(p.id) and p.status == Protocol.STATUS_ACCEPTED:
@@ -962,7 +1062,14 @@ func _victory() -> void:
 	for it in items:
 		s.add_loot(it, "Butin du combat")
 		lines.append({"t": "loot", "text": "%s%s" % [it.name, (" ×%d" % int(it.qty)) if int(it.qty) > 1 else ""], "rarity": String(it.get("rarity", "commun"))})
-	if not items.is_empty():
+	if not _lines.is_empty():
+		# Butin des adversaires comptés à l'instant.
+		lines.append_array(_lines)
+		_lines = []
+	var log: Array = s.phase.get("loot_log", [])
+	if not log.is_empty():
+		lines.append({"t": "info", "text": "Butin récupéré pendant le combat : " + ", ".join(PackedStringArray(log.slice(0, 12)))})
+	if s.loot.size() > 0 and not items.is_empty():
 		lines.append({"t": "info", "text": "Le butin attend dans le coffre du groupe : chacun peut se servir."})
 	s._add_message({"kind": Protocol.KIND_COMBAT, "from": Protocol.MJ_ID, "from_name": "Combat", "to": Protocol.TO_ALL,
 		"text": text, "lines": lines, "banner": "victory"})
@@ -1005,5 +1112,6 @@ func _post(actor: Dictionary, title: String) -> void:
 		s.broadcast_fx(_fx.duplicate())
 	_lines = []
 	_fx = []
+	remove_defeated()
 	check_end()
 	s._phase_changed()

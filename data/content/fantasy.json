@@ -653,6 +653,92 @@
     "Charisme": 5
    },
    "magic": {}
+  },
+  "druide": {
+   "id": "druide",
+   "name": "Druide",
+   "tagline": "Gardien des bêtes et des forêts.",
+   "role": "Invocateur et soutien",
+   "color": "#6f8f4a",
+   "emblem": "leaf",
+   "description": "Appelle des animaux à ses côtés, entrave ses ennemis avec des ronces et soigne avec la sève. Les bêtes se battent pour lui.",
+   "difficulty": 2,
+   "bonus": {
+    "Esprit": 1,
+    "Constitution": 1
+   },
+   "hp_base": 16,
+   "hp_per_level": 5,
+   "resource": {
+    "name": "Sève",
+    "stat": "Esprit",
+    "base": 8
+   },
+   "speed": 5,
+   "crit_bonus": 0,
+   "defense_bonus": 0,
+   "attack_bonus": 0,
+   "passive": {
+    "name": "Lien sauvage",
+    "description": "Au début de votre tour, vous et vos alliés à 2 cases regagnez 1 PV.",
+    "trigger": "turn_start",
+    "icon": "paw",
+    "effects": [
+     {
+      "type": "heal",
+      "amount": 1,
+      "on": "allies",
+      "radius": 2
+     }
+    ]
+   },
+   "abilities": [
+    "appel_loup",
+    "ronces",
+    "seve_vitale"
+   ],
+   "ultimate": "fureur_sauvage",
+   "learnable": [
+    {
+     "ability": "peau_ecorce",
+     "level": 2
+    },
+    {
+     "ability": "nuee",
+     "level": 3
+    }
+   ],
+   "kit": [
+    {
+     "item": "armure_cuir",
+     "qty": 1,
+     "equip": true
+    },
+    {
+     "item": "herbes_medicinales",
+     "qty": 2,
+     "equip": false
+    }
+   ],
+   "choices": [
+    {
+     "title": "Votre arme",
+     "options": [
+      "baton_chene",
+      "lance",
+      "arc_court"
+     ]
+    }
+   ],
+   "recommended": {
+    "Force": 2,
+    "Dextérité": 3,
+    "Constitution": 3,
+    "Intelligence": 0,
+    "Esprit": 5,
+    "Charisme": 2
+   },
+   "magic": {}
   }
  },
  "abilities": {
@@ -1866,6 +1952,180 @@
    ],
    "ultimate": false
   },
+  "appel_loup": {
+   "id": "appel_loup",
+   "name": "Appel du loup",
+   "short": "Loup",
+   "icon": "paw",
+   "description": "Un loup (14 PV, 1d6) surgit à vos côtés et se bat pour vous.",
+   "cost": 4,
+   "ap": 2,
+   "range": 1,
+   "cooldown": 3,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "summon",
+     "name": "Loup",
+     "hp": 14,
+     "attack": "1d6",
+     "defense": 12,
+     "color": "#9a9a9a"
+    }
+   ],
+   "ultimate": false
+  },
+  "ronces": {
+   "id": "ronces",
+   "name": "Ronces",
+   "short": "Ronces",
+   "icon": "leaf",
+   "description": "Des ronces jaillissent à 5 cases : 1d6 + Esprit et Immobilisé 1 tour.",
+   "cost": 3,
+   "ap": 1,
+   "range": 5,
+   "cooldown": 1,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Esprit",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "1d6",
+     "element": "magique"
+    },
+    {
+     "type": "status",
+     "status": "immobilise",
+     "turns": 1
+    }
+   ],
+   "ultimate": false
+  },
+  "seve_vitale": {
+   "id": "seve_vitale",
+   "name": "Sève vitale",
+   "short": "Sève",
+   "icon": "herb",
+   "description": "Soigne un allié à 4 cases : 1d8 + Esprit, et Régénération 2 tours.",
+   "cost": 3,
+   "ap": 1,
+   "range": 4,
+   "cooldown": 1,
+   "target": "ally",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "soin",
+   "effects": [
+    {
+     "type": "heal",
+     "dice": "1d8",
+     "on": "target"
+    },
+    {
+     "type": "status",
+     "status": "regeneration",
+     "turns": 2
+    }
+   ],
+   "ultimate": false
+  },
+  "fureur_sauvage": {
+   "id": "fureur_sauvage",
+   "name": "Fureur sauvage",
+   "short": "Fureur",
+   "icon": "dragon",
+   "description": "ULTIME : un ours-esprit (30 PV, 2d6) rejoint le combat ; vos alliés à 3 cases sont Renforcés.",
+   "cost": 0,
+   "ap": 2,
+   "range": 0,
+   "cooldown": 0,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "summon",
+     "name": "Ours-esprit",
+     "hp": 30,
+     "attack": "2d6",
+     "defense": 13,
+     "color": "#6b4a2a"
+    },
+    {
+     "type": "status",
+     "status": "renforce",
+     "turns": 2,
+     "on": "allies",
+     "radius": 3
+    }
+   ],
+   "ultimate": true
+  },
+  "peau_ecorce": {
+   "id": "peau_ecorce",
+   "name": "Peau d'écorce",
+   "short": "Peau d'écorce",
+   "icon": "leaf",
+   "description": "Bouclier de 8 sur vous pendant 2 tours.",
+   "cost": 2,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 3,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Constitution",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "status",
+     "status": "bouclier",
+     "turns": 2,
+     "value": 8,
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "nuee": {
+   "id": "nuee",
+   "name": "Nuée d'insectes",
+   "short": "Nuée d'insectes",
+   "icon": "wind",
+   "description": "Zone de rayon 1 à 5 cases : 2d6 et 40 % d'empoisonner.",
+   "cost": 4,
+   "ap": 2,
+   "range": 5,
+   "cooldown": 2,
+   "target": "area_enemy",
+   "radius": 1,
+   "roll": "attack",
+   "stat": "Esprit",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6"
+    },
+    {
+     "type": "status",
+     "status": "poison",
+     "turns": 3,
+     "chance": 40
+    }
+   ],
+   "ultimate": false
+  },
   "morsure": {
    "id": "morsure",
    "name": "Morsure",
@@ -2158,6 +2418,95 @@
     {
      "type": "drain",
      "pct": 50
+    }
+   ],
+   "ultimate": false
+  },
+  "rage_sang": {
+   "id": "rage_sang",
+   "name": "Rage du sang",
+   "short": "Rage",
+   "icon": "fist",
+   "description": "Une fois par combat : +2 Force et Renforcé pendant 2 tours.",
+   "cost": 0,
+   "ap": 1,
+   "range": 0,
+   "cooldown": 99,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Force",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "stat",
+     "stat": "Force",
+     "amount": 2,
+     "turns": 2,
+     "on": "self"
+    },
+    {
+     "type": "status",
+     "status": "renforce",
+     "turns": 2,
+     "on": "self"
+    }
+   ],
+   "ultimate": false
+  },
+  "appel_horde": {
+   "id": "appel_horde",
+   "name": "Appel de la horde",
+   "short": "Horde",
+   "icon": "paw",
+   "description": "Un loup de guerre (18 PV, 1d8) rejoint le combat.",
+   "cost": 4,
+   "ap": 2,
+   "range": 1,
+   "cooldown": 4,
+   "target": "self",
+   "radius": 0,
+   "roll": "none",
+   "stat": "Esprit",
+   "element": "physique",
+   "effects": [
+    {
+     "type": "summon",
+     "name": "Loup de guerre",
+     "hp": 18,
+     "attack": "1d8",
+     "defense": 13,
+     "color": "#7a6a5a"
+    }
+   ],
+   "ultimate": false
+  },
+  "flammes_infernales": {
+   "id": "flammes_infernales",
+   "name": "Flammes infernales",
+   "short": "Flammes",
+   "icon": "fire",
+   "description": "2d6 dégâts magiques à 4 cases, 30 % de brûlure.",
+   "cost": 3,
+   "ap": 1,
+   "range": 4,
+   "cooldown": 3,
+   "target": "enemy",
+   "radius": 0,
+   "roll": "attack",
+   "stat": "Charisme",
+   "element": "magique",
+   "effects": [
+    {
+     "type": "damage",
+     "dice": "2d6",
+     "element": "magique"
+    },
+    {
+     "type": "status",
+     "status": "brulure",
+     "turns": 2,
+     "chance": 30
     }
    ],
    "ultimate": false
@@ -3172,6 +3521,92 @@
    },
    "grants": [
     "renaissance"
+   ]
+  },
+  "torche": {
+   "id": "torche",
+   "name": "Torche",
+   "icon": "fire",
+   "category": "accessoire",
+   "rarity": "commun",
+   "description": "Éclaire autour de vous : +2 cases de vision (accessoire).",
+   "value": 2,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "vision": 2
+   }
+  },
+  "lanterne": {
+   "id": "lanterne",
+   "name": "Lanterne sourde",
+   "icon": "sun",
+   "category": "accessoire",
+   "rarity": "peu_commun",
+   "description": "Lumière stable : +3 cases de vision (accessoire).",
+   "value": 25,
+   "slot": "accessoire",
+   "stackable": false,
+   "unique": false,
+   "mods": {
+    "vision": 3
+   }
+  },
+  "corde": {
+   "id": "corde",
+   "name": "Corde (15 m)",
+   "icon": "chain",
+   "category": "outil",
+   "rarity": "commun",
+   "description": "Pour grimper, attacher, descendre dans un puits… Le MJ décide de ce qu'elle permet.",
+   "value": 2,
+   "slot": "",
+   "stackable": false,
+   "unique": false
+  },
+  "crochets": {
+   "id": "crochets",
+   "name": "Outils de crochetage",
+   "icon": "key",
+   "category": "outil",
+   "rarity": "commun",
+   "description": "Ouvrir serrures et coffres (épreuve de Dextérité, au choix du MJ).",
+   "value": 10,
+   "slot": "",
+   "stackable": false,
+   "unique": false
+  },
+  "sac_couchage": {
+   "id": "sac_couchage",
+   "name": "Sac de couchage",
+   "icon": "bag",
+   "category": "outil",
+   "rarity": "commun",
+   "description": "Repos plus confortable en pleine nature.",
+   "value": 2,
+   "slot": "",
+   "stackable": false,
+   "unique": false
+  },
+  "trousse_soins": {
+   "id": "trousse_soins",
+   "name": "Trousse de soins",
+   "icon": "cross",
+   "category": "consommable",
+   "rarity": "commun",
+   "description": "Bandages et onguents : rend 1d4 + 3 PV.",
+   "value": 5,
+   "slot": "",
+   "stackable": true,
+   "unique": false,
+   "use": [
+    {
+     "type": "heal",
+     "dice": "1d4",
+     "on": "self",
+     "bonus": 3
+    }
    ]
   },
   "potion_soin": {
@@ -4191,5 +4626,337 @@
    "res": 10,
    "icon": "dragon"
   }
- }
+ },
+ "species": {
+  "humain": {
+   "id": "humain",
+   "name": "Humain",
+   "description": "Ambitieux et adaptables : bons partout, excellents nulle part… au début.",
+   "icon": "person",
+   "stats": {
+    "Charisme": 1
+   },
+   "mods": {
+    "to_hit": 1
+   },
+   "trait": {
+    "name": "Détermination",
+    "description": "+1 au toucher, +1 Charisme."
+   },
+   "abilities": [],
+   "synergies": {
+    "guerrier": {
+     "name": "Vétéran",
+     "description": "Des années de guerre : +4 PV max.",
+     "mods": {
+      "hp_max": 4
+     },
+     "abilities": []
+    },
+    "soigneur": {
+     "name": "Vocation",
+     "description": "+10 % aux soins prodigués.",
+     "mods": {
+      "heal_pct": 10
+     },
+     "abilities": []
+    },
+    "barde": {
+     "name": "Orateur né",
+     "description": "+2 Inspiration max.",
+     "mods": {
+      "res_max": 2
+     },
+     "abilities": []
+    }
+   }
+  },
+  "elfe": {
+   "id": "elfe",
+   "name": "Elfe",
+   "description": "Gracieux, anciens, liés à la magie. Fragiles mais perçants.",
+   "icon": "leaf",
+   "stats": {
+    "Dextérité": 1,
+    "Intelligence": 1,
+    "Constitution": -1
+   },
+   "mods": {
+    "res_max": 4,
+    "vision": 2
+   },
+   "trait": {
+    "name": "Sang ancien",
+    "description": "+4 de mana (ou ressource) et vision elfique (+2 cases)."
+   },
+   "abilities": [],
+   "synergies": {
+    "mage": {
+     "name": "Héritage arcanique",
+     "description": "Un elfe mage puise plus loin : +4 mana et +1 dégât.",
+     "mods": {
+      "res_max": 4,
+      "damage": 1
+     },
+     "abilities": []
+    },
+    "rodeur": {
+     "name": "Œil de l'elfe",
+     "description": "+1 au toucher, +1 case de vision.",
+     "mods": {
+      "to_hit": 1,
+      "vision": 1
+     },
+     "abilities": []
+    },
+    "druide": {
+     "name": "Ami des forêts",
+     "description": "+10 % aux soins prodigués.",
+     "mods": {
+      "heal_pct": 10
+     },
+     "abilities": []
+    }
+   }
+  },
+  "nain": {
+   "id": "nain",
+   "name": "Nain",
+   "description": "Trapus, têtus, increvables. Ils ont vu le fond des montagnes.",
+   "icon": "hammer",
+   "stats": {
+    "Constitution": 2,
+    "Dextérité": -1
+   },
+   "mods": {
+    "hp_max": 4,
+    "resist_phys": 1
+   },
+   "trait": {
+    "name": "Robuste",
+    "description": "+4 PV max et +1 résistance physique."
+   },
+   "abilities": [],
+   "synergies": {
+    "gardien": {
+     "name": "Mur de pierre",
+     "description": "+1 Défense et +1 résistance physique.",
+     "mods": {
+      "defense": 1,
+      "resist_phys": 1
+     },
+     "abilities": []
+    },
+    "guerrier": {
+     "name": "Forgé dans la roche",
+     "description": "+6 PV max.",
+     "mods": {
+      "hp_max": 6
+     },
+     "abilities": []
+    }
+   }
+  },
+  "demi_orc": {
+   "id": "demi_orc",
+   "name": "Demi-orc",
+   "description": "Le sang des steppes : force brute, colère froide, loyauté farouche.",
+   "icon": "fist",
+   "stats": {
+    "Force": 2,
+    "Intelligence": -1
+   },
+   "mods": {
+    "hp_max": 2,
+    "damage": 1
+   },
+   "trait": {
+    "name": "Sang sauvage",
+    "description": "+1 dégât, +2 PV max, et la Rage du sang."
+   },
+   "abilities": [
+    "rage_sang"
+   ],
+   "synergies": {
+    "druide": {
+     "name": "Appel de la horde",
+     "description": "Un demi-orc druide parle aux loups de guerre : capacité « Appel de la horde », +2 PV max.",
+     "mods": {
+      "hp_max": 2
+     },
+     "abilities": [
+      "appel_horde"
+     ]
+    },
+    "guerrier": {
+     "name": "Brute",
+     "description": "+1 dégât.",
+     "mods": {
+      "damage": 1
+     },
+     "abilities": []
+    },
+    "rodeur": {
+     "name": "Chasseur des steppes",
+     "description": "+1 dégât, +1 vitesse.",
+     "mods": {
+      "damage": 1,
+      "speed": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "halfelin": {
+   "id": "halfelin",
+   "name": "Halfelin",
+   "description": "Petits, discrets, chanceux. On ne les voit jamais venir.",
+   "icon": "boots",
+   "stats": {
+    "Dextérité": 2,
+    "Force": -1
+   },
+   "mods": {
+    "defense": 1,
+    "crit": 1
+   },
+   "trait": {
+    "name": "Chanceux",
+    "description": "+1 Défense, critique un cran plus tôt."
+   },
+   "abilities": [],
+   "synergies": {
+    "assassin": {
+     "name": "Ombre minuscule",
+     "description": "Critique encore un cran plus tôt.",
+     "mods": {
+      "crit": 1
+     },
+     "abilities": []
+    },
+    "barde": {
+     "name": "Conteur de tavernes",
+     "description": "+1 Charisme, +2 Inspiration.",
+     "mods": {
+      "Charisme": 1,
+      "res_max": 2
+     },
+     "abilities": []
+    },
+    "rodeur": {
+     "name": "Pas léger",
+     "description": "+1 au toucher.",
+     "mods": {
+      "to_hit": 1
+     },
+     "abilities": []
+    }
+   }
+  },
+  "gnome": {
+   "id": "gnome",
+   "name": "Gnome",
+   "description": "Curieux, inventifs, bavards. La magie est un jouet sérieux.",
+   "icon": "gear",
+   "stats": {
+    "Intelligence": 2,
+    "Force": -1
+   },
+   "mods": {
+    "res_max": 2,
+    "resist_mag": 1
+   },
+   "trait": {
+    "name": "Esprit vif",
+    "description": "+2 mana, +1 résistance magique."
+   },
+   "abilities": [],
+   "synergies": {
+    "mage": {
+     "name": "Bricoleur d'arcanes",
+     "description": "+1 dégât des sorts.",
+     "mods": {
+      "damage": 1
+     },
+     "abilities": []
+    },
+    "soigneur": {
+     "name": "Herboriste",
+     "description": "+10 % aux soins.",
+     "mods": {
+      "heal_pct": 10
+     },
+     "abilities": []
+    }
+   }
+  },
+  "tieffelin": {
+   "id": "tieffelin",
+   "name": "Tieffelin",
+   "description": "Une ascendance infernale : cornes, regard ardent, flammes au bout des doigts.",
+   "icon": "fire",
+   "stats": {
+    "Charisme": 1,
+    "Intelligence": 1
+   },
+   "mods": {
+    "resist_mag": 1
+   },
+   "trait": {
+    "name": "Héritage infernal",
+    "description": "+1 résistance magique et Flammes infernales."
+   },
+   "abilities": [
+    "flammes_infernales"
+   ],
+   "synergies": {
+    "mage": {
+     "name": "Pacte ardent",
+     "description": "+1 dégât.",
+     "mods": {
+      "damage": 1
+     },
+     "abilities": []
+    },
+    "assassin": {
+     "name": "Regard infernal",
+     "description": "Critique un cran plus tôt.",
+     "mods": {
+      "crit": 1
+     },
+     "abilities": []
+    },
+    "barde": {
+     "name": "Voix envoûtante",
+     "description": "+2 Inspiration.",
+     "mods": {
+      "res_max": 2
+     },
+     "abilities": []
+    }
+   }
+  }
+ },
+ "starter_kit": [
+  {
+   "item": "potion_soin",
+   "qty": 1
+  },
+  {
+   "item": "ration",
+   "qty": 2
+  },
+  {
+   "item": "torche",
+   "qty": 1
+  },
+  {
+   "item": "corde",
+   "qty": 1
+  },
+  {
+   "item": "trousse_soins",
+   "qty": 1
+  }
+ ]
 }

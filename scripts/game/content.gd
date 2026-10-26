@@ -9,16 +9,16 @@ extends RefCounted
 ## référencé porte un identifiant stable.
 
 const DIR := "res://data/content"
-const KINDS := ["classes", "abilities", "statuses", "items", "loot", "monsters"]
+const KINDS := ["classes", "abilities", "statuses", "items", "loot", "monsters", "species"]
 ## Ce que les joueurs reçoivent (le reste — objets, monstres, butin — reste chez le MJ).
-const PLAYER_KINDS := ["classes", "abilities", "statuses"]
+const PLAYER_KINDS := ["classes", "abilities", "statuses", "species"]
 
 const RARITIES := ["commun", "peu_commun", "rare", "epique", "legendaire"]
 const RARITY_NAMES := {"commun": "Commun", "peu_commun": "Peu commun", "rare": "Rare", "epique": "Épique", "legendaire": "Légendaire"}
 const RARITY_COLORS := {"commun": "#b8b4ab", "peu_commun": "#7fbf6a", "rare": "#6fa3d9", "epique": "#b07fd9", "legendaire": "#e3b55a"}
-const CATEGORIES := ["arme", "armure", "accessoire", "consommable", "potion", "materiau", "quete", "livre", "unique"]
+const CATEGORIES := ["arme", "armure", "accessoire", "consommable", "potion", "outil", "materiau", "quete", "livre", "unique"]
 const CATEGORY_NAMES := {"arme": "Arme", "armure": "Armure", "accessoire": "Accessoire", "consommable": "Consommable", "potion": "Potion",
-	"materiau": "Matériau", "quete": "Objet de quête", "livre": "Livre", "unique": "Objet unique"}
+	"materiau": "Matériau", "quete": "Objet de quête", "livre": "Livre", "unique": "Objet unique", "outil": "Outil"}
 const SLOTS := {"arme": 1, "armure": 1, "accessoire": 2}
 const TARGETS := ["self", "ally", "enemy", "any", "area_enemy", "area_ally"]
 const TARGET_NAMES := {"self": "Soi-même", "ally": "Un allié", "enemy": "Un ennemi", "any": "N'importe qui",
@@ -42,6 +42,7 @@ const DEFAULT_RULES := {
 	"slots_basic": 3, "slots_ultimate": 1, "swap_in_combat": false,
 	"rest_hp_pct": 50, "start_gold": 20, "max_ability_rank": 3,
 	"vision_base": 3, "vision_dex_div": 2, "shared_vision": false,
+	"loot_to_killer": true, "remove_dead": true,
 }
 ## Réglages des règles exposés au MJ : [clé, libellé, min, max].
 const RULE_FIELDS := [
@@ -95,6 +96,8 @@ static func normalize(data: Dictionary) -> Dictionary:
 		if not rules.has(key):
 			rules[key] = DEFAULT_RULES[key]
 	data["rules"] = rules
+	if not data.get("starter_kit") is Array:
+		data["starter_kit"] = []
 	if not data.get("stats") is Array or (data.stats as Array).is_empty():
 		data["stats"] = [
 			{"name": "Force", "short": "FOR", "description": "Puissance physique."},
@@ -123,7 +126,12 @@ static func for_player(content: Dictionary) -> Dictionary:
 			for id in ch.get("options", []):
 				if content.get("items", {}).has(String(id)):
 					items[String(id)] = content.items[String(id)]
+	for k in content.get("starter_kit", []):
+		var sid := String(k.get("item", ""))
+		if content.get("items", {}).has(sid):
+			items[sid] = content.items[sid]
 	view["items"] = items
+	view["starter_kit"] = content.get("starter_kit", [])
 	return view
 
 
@@ -217,7 +225,46 @@ static func sanitize(kind: String, input: Dictionary, content: Dictionary) -> Di
 			return sanitize_monster(input, content)
 		"loot":
 			return sanitize_loot(input)
+		"species":
+			return sanitize_species(input, content)
 	return {}
+
+
+## Peuple : bonus de caractéristiques, bonus de jeu, trait, capacités innées,
+## synergies par classe ({class_id: {name, description, mods, abilities}}).
+static func sanitize_species(input: Dictionary, content: Dictionary) -> Dictionary:
+	var stats := {}
+	if input.get("stats") is Dictionary:
+		for s in stat_names(content):
+			var v := _int(input.stats.get(s, 0), -5, 5)
+			if v != 0:
+				stats[s] = v
+	var trait_d: Dictionary = input.get("trait", {}) if input.get("trait") is Dictionary else {}
+	var abilities: Array = []
+	for a in input.get("abilities", []):
+		if content.get("abilities", {}).has(String(a)):
+			abilities.append(String(a))
+	var synergies := {}
+	if input.get("synergies") is Dictionary:
+		for cid in input.synergies:
+			var sy: Variant = input.synergies[cid]
+			if not sy is Dictionary or not content.get("classes", {}).has(String(cid)):
+				continue
+			var sab: Array = []
+			for a in sy.get("abilities", []):
+				if content.get("abilities", {}).has(String(a)):
+					sab.append(String(a))
+			var smods := sanitize_mods(sy.get("mods", {}))
+			if _text(sy.get("name", ""), 40) == "" and smods.is_empty() and sab.is_empty():
+				continue
+			synergies[String(cid)] = {"name": _text(sy.get("name", ""), 40), "description": _text(sy.get("description", ""), 300),
+				"mods": smods, "abilities": sab}
+	return {
+		"id": _text(input.get("id", ""), 60), "name": _text(input.get("name", "Peuple"), 40), "description": _text(input.get("description", ""), 500),
+		"icon": _text(input.get("icon", "person"), 20), "stats": stats, "mods": sanitize_mods(input.get("mods", {})),
+		"trait": {"name": _text(trait_d.get("name", ""), 40), "description": _text(trait_d.get("description", ""), 300)},
+		"abilities": abilities, "synergies": synergies,
+	}
 
 
 static func _text(v: Variant, n: int = 80) -> String:

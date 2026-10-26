@@ -59,13 +59,23 @@ static func valid_alloc(alloc: Dictionary, content: Dictionary) -> bool:
 	return points_spent(alloc, content) <= int(Content.rule(content, "stat_pool"))
 
 
-static func stat_values(alloc: Dictionary, cls: Dictionary, content: Dictionary, trained: Dictionary = {}) -> Dictionary:
+static func get_species(content: Dictionary, species_id: String) -> Dictionary:
+	return Content.get_entry(content, "species", species_id)
+
+
+## Synergie entre le peuple et la classe d'une fiche ({} s'il n'y en a pas).
+static func synergy(content: Dictionary, species_id: String, class_id: String) -> Dictionary:
+	return get_species(content, species_id).get("synergies", {}).get(class_id, {})
+
+
+static func stat_values(alloc: Dictionary, cls: Dictionary, content: Dictionary, trained: Dictionary = {}, species: Dictionary = {}) -> Dictionary:
 	var out := {}
 	var bonus: Dictionary = cls.get("bonus", {})
+	var sp: Dictionary = species.get("stats", {})
 	var base := int(Content.rule(content, "stat_base"))
 	var cap := int(Content.rule(content, "stat_cap"))
 	for s in Content.stat_names(content):
-		out[s] = clampi(base + int(alloc.get(s, 0)) + int(bonus.get(s, 0)) + int(trained.get(s, 0)), 1, maxi(cap, 30))
+		out[s] = clampi(base + int(alloc.get(s, 0)) + int(bonus.get(s, 0)) + int(sp.get(s, 0)) + int(trained.get(s, 0)), 1, maxi(cap, 30))
 	return out
 
 
@@ -80,9 +90,13 @@ static func base_stat(sheet: Dictionary, stat_name: String) -> int:
 	return 5
 
 
-## Somme des bonus : objets équipés + effets en cours (statuts) + passif « toujours actif » sans condition.
+## Somme des bonus : peuple (et synergie avec la classe) + objets équipés + effets en cours (statuts).
 static func mods(sheet: Dictionary, content: Dictionary) -> Dictionary:
 	var total := {}
+	var sid := String(sheet.get("species_id", ""))
+	if sid != "":
+		_add_mods(total, get_species(content, sid).get("mods", {}))
+		_add_mods(total, synergy(content, sid, String(sheet.get("class_id", ""))).get("mods", {}))
 	for item in sheet.get("inventory", []):
 		if item.get("equipped", false):
 			_add_mods(total, item.get("mods", {}))
@@ -233,18 +247,22 @@ static func find_ability(sheet: Dictionary, content: Dictionary, ability_id: Str
 # ---------------------------------------------------------------------------
 
 ## Fiche complète à partir d'une classe, d'une répartition et des choix d'équipement.
-static func build_sheet(base: Dictionary, content: Dictionary, class_id: String, alloc: Dictionary, choices: Array) -> Dictionary:
+static func build_sheet(base: Dictionary, content: Dictionary, class_id: String, alloc: Dictionary, choices: Array, species_id: String = "") -> Dictionary:
 	var sheet := base.duplicate(true)
 	var cls := get_class_def(content, class_id)
 	if cls.is_empty():
 		return sheet
 	sheet.class_id = class_id
+	var sp := get_species(content, species_id)
+	sheet.species_id = species_id if not sp.is_empty() else ""
+	if not sp.is_empty():
+		sheet.species = String(sp.name)
 	sheet.auto = true
 	sheet.alloc = {}
 	for s in Content.stat_names(content):
 		sheet.alloc[s] = int(alloc.get(s, 0))
 	sheet.trained = {}
-	var values := stat_values(sheet.alloc, cls, content)
+	var values := stat_values(sheet.alloc, cls, content, {}, sp)
 	sheet.stats = Content.stat_names(content).map(func(s): return {"name": s, "value": values[s]})
 	var abilities: Array = []
 	for id in cls.get("abilities", []):
@@ -255,6 +273,15 @@ static func build_sheet(base: Dictionary, content: Dictionary, class_id: String,
 	if not ult.is_empty():
 		ult.ultimate = true
 		abilities.append(ult)
+	# Capacités innées du peuple (et de la synergie peuple + classe) : toujours
+	# équipées, elles ne prennent pas d'emplacement.
+	var innate: Array = sp.get("abilities", []).duplicate()
+	innate.append_array(synergy(content, species_id, class_id).get("abilities", []))
+	for id in innate:
+		var a := Content.ability_copy(content, String(id), true)
+		if not a.is_empty():
+			a.innate = true
+			abilities.append(a)
 	sheet.abilities = abilities
 	sheet.passive = (cls.get("passive", {}) as Dictionary).duplicate(true)
 	var inventory: Array = []
@@ -282,6 +309,12 @@ static func build_sheet(base: Dictionary, content: Dictionary, class_id: String,
 						break
 			inst.equipped = true
 		inventory.push_front(inst)
+	# Équipement de départ commun (potion, rations, torche, corde…).
+	for k in content.get("starter_kit", []):
+		var inst := Content.item_instance(content, String(k.get("item", "")), int(k.get("qty", 1)))
+		if not inst.is_empty():
+			inst.equipped = false
+			Inventory.add({"inventory": inventory}, inst)
 	sheet.inventory = inventory
 	sheet.gold = int(Content.rule(content, "start_gold"))
 	sheet.res_name = String(cls.get("resource", {}).get("name", "Énergie"))
@@ -305,7 +338,7 @@ static func refresh(sheet: Dictionary, content: Dictionary, full_heal: bool = fa
 	if sheet.get("auto", false):
 		var cls := get_class_def(content, String(sheet.get("class_id", "")))
 		if not cls.is_empty() and sheet.get("alloc") is Dictionary:
-			var values := stat_values(sheet.alloc, cls, content, sheet.get("trained", {}))
+			var values := stat_values(sheet.alloc, cls, content, sheet.get("trained", {}), get_species(content, String(sheet.get("species_id", ""))))
 			var stats: Array = []
 			for s in Content.stat_names(content):
 				stats.append({"name": s, "value": values[s]})

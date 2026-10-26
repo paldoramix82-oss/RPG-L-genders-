@@ -30,7 +30,7 @@ La règle d'or : **vous pouvez tenter n'importe quoi**. Si aucun bouton ne corre
 
 ### Le MJ, sur le PC
 1. Ouvrez le jeu → **Héberger une partie**.
-2. Dans **Nouvelle campagne**, donnez un nom, choisissez un **univers** (« Fantasy classique » pour commencer : il contient une petite aventure prête, *Les Cendres de Valombre*), puis **Créer la campagne et ouvrir la partie**.
+2. Dans **Nouvelle campagne**, donnez un nom, choisissez un **univers** (« Fantasy classique » pour commencer) et une **aventure prête à jouer** (conseillé : *Les cloches de Valombre*), puis **Créer la campagne et ouvrir la partie**. La carte, les habitants, les monstres cachés, les coffres et les quêtes sont installés tout seuls ; l'onglet **Aventure** vous guide scène par scène.
 3. Si Windows demande l'autorisation du pare-feu : acceptez pour les **réseaux privés**.
 4. En haut à gauche, la carte **Pour rejoindre** affiche une **adresse IP** en grand (par exemple `192.168.1.20`). Donnez-la aux joueurs.
 
@@ -45,13 +45,25 @@ Quand la barre du haut indique que tout le monde est prêt, le MJ appuie sur **�
 
 ---
 
-## 4. Créer son personnage (5 étapes)
+## 4. Créer son personnage (6 étapes)
 
 Le jeu vous guide. Si vous hésitez, prenez les choix proposés par défaut : ils sont équilibrés.
 
 **Étape 1 — Qui es-tu ?** Un nom et un visage : touchez les flèches pour changer la coiffure, les yeux, le teint… (ou *Au hasard*). Une couleur de pion. L'histoire et la personnalité sont facultatives.
 
-**Étape 2 — La classe.** C'est le « métier » de votre personnage. Touchez une classe pour voir ce qu'elle sait faire.
+**Étape 2 — Le peuple.** Humain, Elfe, Nain, Demi-orc, Halfelin, Gnome ou Tieffelin (en Légenders : Humain, Mutant, Ombré, Sirène, Minotaure…). Chaque peuple change vos caractéristiques et vos bonus, et certains apportent une capacité à eux :
+
+| Peuple | En clair |
+|---|---|
+| **Humain** | polyvalent, un peu plus précis |
+| **Elfe** | plus de mana, voit plus loin, un peu plus fragile |
+| **Nain** | très résistant, beaucoup de PV |
+| **Demi-orc** | fort, frappe plus fort, *Rage du sang* une fois par combat |
+| **Halfelin** | agile, chanceux (critiques plus fréquents) |
+| **Gnome** | malin, plus de mana, résiste à la magie |
+| **Tieffelin** | charismatique, lance des *Flammes infernales* |
+
+**Étape 3 — La classe.** C'est le « métier » de votre personnage. Touchez une classe pour voir ce qu'elle sait faire. Si votre peuple s'accorde avec une classe, une ligne dorée l'indique : un **elfe mage** a encore plus de mana, un **demi-orc druide** peut *appeler la horde* (un loup de guerre), un **nain gardien** est un vrai mur…
 
 | Si vous aimez… | Prenez | Difficulté |
 |---|---|---|
@@ -62,6 +74,7 @@ Le jeu vous guide. Si vous hésitez, prenez les choix proposés par défaut : il
 | tirer à l'arc de loin | **Rôdeur** | moyenne |
 | lancer des sorts puissants | **Mage** | moyenne |
 | parler, charmer, encourager le groupe | **Barde** | moyenne |
+| appeler des animaux, soigner, entraver | **Druide** | moyenne |
 
 (L'univers Légenders propose ses propres classes : Briseur, Ombre, Invocateur, etc.)
 
@@ -70,7 +83,7 @@ Chaque classe a :
 - **trois capacités** : ses coups spéciaux, sorts ou techniques ;
 - un **ultime** : une capacité très puissante, utilisable quand sa jauge est pleine.
 
-**Étape 3 — Les points.** Votre personnage a 6 caractéristiques, chacune à 5 au départ. Plus le chiffre est haut, meilleur il est :
+**Étape 4 — Les points.** Votre personnage a 6 caractéristiques, chacune à 5 au départ. Plus le chiffre est haut, meilleur il est :
 
 | Caractéristique | En clair |
 |---|---|
@@ -83,9 +96,9 @@ Chaque classe a :
 
 Vous avez **15 points** à répartir avec les boutons **−** et **+** (jamais moins de 1 ni plus de 10). Pas d'idée ? Touchez **Répartition conseillée**. Les points de vie, la Défense, etc. s'affichent en direct en bas.
 
-**Étape 4 — L'équipement.** Choisissez votre arme parmi celles de votre classe (par exemple l'Assassin choisit parmi trois dagues). Chaque objet indique ses **dégâts**, sa **portée** (en cases) et son **critique** (le résultat de dé qui double les dégâts).
+**Étape 5 — L'équipement.** Choisissez votre arme parmi celles de votre classe (par exemple l'Assassin choisit parmi trois dagues). Chaque objet indique ses **dégâts**, sa **portée** (en cases) et son **critique** (le résultat de dé qui double les dégâts). Tout le monde reçoit aussi un **équipement de départ** : une potion de soin, des rations, une **torche** (à équiper : +2 cases de vision), une corde et une trousse de soins.
 
-**Étape 5 — Le récapitulatif.** Vérifiez tout. Vous pouvez revenir en arrière. Touchez **Créer mon personnage**.
+**Étape 6 — Le récapitulatif.** Vérifiez tout. Vous pouvez revenir en arrière. Touchez **Créer mon personnage**.
 
 ---
 
@@ -163,11 +176,13 @@ Vous avez **2 points d'action (PA)** par tour :
 | Capacité | indiqué sur la capacité |
 | Parler, discuter | gratuit |
 
-Pour attaquer : touchez **Attaque rapide**, puis la cible **entourée de rouge**. Le jeu lance le dé et calcule tout : les dégâts apparaissent en **rouge** au-dessus du pion, les soins en **vert**.
+Pour attaquer : touchez **Attaque rapide**, puis la cible **entourée de rouge**. Le jeu lance le dé et **vous le montre** : en haut de la carte, le d20 roule puis s'arrête (« 14 +5 = 19 contre Défense 13 : TOUCHÉ »), puis les dés de dégâts et le total (« [4] [6] +3 = 13 dégâts »). Les dégâts apparaissent aussi en **rouge** au-dessus du pion, les soins en **vert**, et tout le détail reste dans le récit.
+
+Un monstre vaincu **disparaît** de la carte, et **son butin va dans votre sac** si c'est vous qui l'avez vaincu : une fenêtre « Butin ! » montre ce que vous avez reçu. Les **coffres** posés sur la carte s'ouvrent en les touchant quand vous êtes juste à côté.
 
 Pour une capacité : touchez-la dans la barre du bas. Le panneau explique ce qu'elle fait, ce qu'elle coûte, et **pourquoi elle est indisponible** si c'est le cas (pas assez de mana, en recharge, ultime pas encore chargé…). Puis **Utiliser** et choisissez la cible.
 
-Quand vous avez fini : **Terminer mon tour**.
+Quand vous avez fini : **Fin du tour**.
 
 ### Les dés, en 30 secondes
 - `d20` = un dé à 20 faces (résultat de 1 à 20). `2d6` = deux dés à 6 faces additionnés. `+3` = on ajoute 3.
@@ -213,11 +228,11 @@ Les séparations entre les zones se **déplacent à la souris** : agrandissez la
 **Brouillard de guerre** : chaque carte l'active par défaut. Dans *Monde*, vous pouvez le couper (une ville que tout le monde connaît), faire **oublier l'exploration**, ou cocher **Voir le brouillard des joueurs** pour savoir ce qu'ils voient. Dans *Créer › Règles* : vision de base, cases par point de Dextérité, et **vision partagée** (chacun voit ce que voit le groupe).
 
 ### Avant de commencer (10 minutes)
-- Univers **Fantasy classique** : la carte de Valombre, ses habitants et ses secrets sont prêts.
-- Dans **Quêtes**, préparez une **quête principale** en brouillon (titre, objectifs, récompense : XP, or, objet).
+- Le plus simple : une **aventure prête à jouer** (choisie à la création de la campagne, ou dans l'onglet **Aventure** : *Les cloches de Valombre*, *La meute des Cendres*, *Les ruines du temple oublié*, *Une nuit au Corbeau Rieur* ; en Légenders : *Le test de la magie*, *Premier jour à la Division de l'Encre*). Lisez ses scènes et ses conseils : c'est votre scénario.
+- Sinon, dans **Quêtes**, préparez une **quête principale** en brouillon (titre, objectifs, récompense : XP, or, objet), et dans **Monde › Générer…** créez une carte en un clic (forêt, village, donjon, grotte, plaine, île).
 
 ### Pendant la partie
-1. **Ouvrez la scène** avec une narration : « Vous arrivez à Valombre à la tombée de la nuit. Les cloches sonnent alors qu'aucune messe n'est prévue… »
+1. **Ouvrez la scène** avec une narration : « Vous arrivez à Valombre à la tombée de la nuit. Les cloches sonnent alors qu'aucune messe n'est prévue… » Avec une aventure prête, touchez **Raconter** sur la scène : le texte part chez les joueurs, et l'action prévue suit (donner la quête, épreuve de groupe, révéler les monstres et lancer le combat).
 2. **Donnez la quête** (bouton *Donner aux joueurs*) : elle s'affiche chez tout le monde.
 3. **Répondez aux actions** : elles apparaissent en haut du Récit. Résolvez-les, refusez-les, ou cliquez **« Le joueur lance »** pour lui demander un dé.
 4. **Pour un combat** : *Événement rapide › Embuscade* (choisissez des monstres, le combat démarre tout seul), ou *Créer › Monstres › Placer*, puis la phase **Combat**. Quand c'est le tour d'un monstre, la carte **Phase de jeu** propose ses attaques et capacités, ou **Jouer automatiquement**.

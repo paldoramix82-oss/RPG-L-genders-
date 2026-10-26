@@ -21,3 +21,14 @@ static func packs(universe_id: String = "") -> Array:
 	if universe_id == "":
 		return _packs
 	return _packs.filter(func(p): return p.get("universe", "*") in ["*", universe_id])
+
+
+## Fiche d'un PNJ d'un pack, par son nom ({} si absent).
+static func find(pack_id: String, npc_name: String) -> Dictionary:
+	for p in packs():
+		if String(p.get("id", "")) != pack_id:
+			continue
+		for n in p.get("npcs", []):
+			if String(n.get("name", "")) == npc_name:
+				return n
+	return {}

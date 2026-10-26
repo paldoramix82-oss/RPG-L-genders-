@@ -1,25 +1,28 @@
 class_name CreationWizard
 extends VBoxContainer
-## Création de personnage guidée en 5 étapes :
+## Création de personnage guidée en 6 étapes :
 ##   1. Identité : nom, portrait, description (histoire et personnalité facultatives),
-##   2. Classe : rôle, passif, trois capacités et un ultime prêts à jouer,
-##   3. Caractéristiques : 5 partout + 15 points à répartir (bornes réglées par le MJ),
-##   4. Équipement : kit de classe et choix propres à la classe,
-##   5. Récapitulatif : tout vérifier, revenir en arrière, puis créer.
+##   2. Peuple : bonus, trait, capacité innée (un elfe n'est pas un demi-orc),
+##   3. Classe : rôle, passif, trois capacités et un ultime prêts à jouer, et la
+##      synergie éventuelle avec le peuple choisi (« demi-orc druide »…),
+##   4. Caractéristiques : 5 partout + 15 points à répartir (bornes réglées par le MJ),
+##   5. Équipement : kit de classe, choix propres à la classe, équipement de départ,
+##   6. Récapitulatif : tout vérifier, revenir en arrière, puis créer.
 ## L'hôte reconstruit la fiche lui-même à partir de ces choix (rien n'est imposé par le téléphone).
 
-## payload : {class_id, alloc, choices, identity}
+## payload : {class_id, species_id, alloc, choices, identity}
 signal finished(payload: Dictionary)
 signal cancelled
 
-const STEPS := ["Identité", "Classe", "Caractéristiques", "Équipement", "Récapitulatif"]
-const TITLES := ["Qui es-tu ?", "Choisis ta classe", "Répartis tes points", "Choisis ton équipement", "Vérifie et confirme"]
+const STEPS := ["Identité", "Peuple", "Classe", "Caractéristiques", "Équipement", "Récapitulatif"]
+const TITLES := ["Qui es-tu ?", "Choisis ton peuple", "Choisis ta classe", "Répartis tes points", "Choisis ton équipement", "Vérifie et confirme"]
 
 var universe := {}
 var content := {}
 var base := {}
 var step := 0
 var class_id := ""
+var species_id := ""
 var alloc := {}
 var choices: Array = []
 var identity := {}
@@ -45,6 +48,7 @@ func _init(universe_data: Dictionary, content_data: Dictionary, base_sheet: Dict
 		"color": String(base.get("pawn", {}).get("color", CharacterData.PAWN_COLORS[0])),
 		"portrait": (base.get("portrait", {}) as Dictionary).duplicate(),
 	}
+	species_id = String(base.get("species_id", ""))
 	_reset_alloc()
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -113,12 +117,14 @@ func _show_step() -> void:
 		0:
 			_step_identity()
 		1:
-			_step_class()
+			_step_species()
 		2:
-			_step_points()
+			_step_class()
 		3:
-			_step_gear()
+			_step_points()
 		4:
+			_step_gear()
+		5:
 			_step_recap()
 	_update_next()
 
@@ -128,8 +134,10 @@ func _update_next() -> void:
 		0:
 			_next.disabled = String(identity.name).strip_edges() == ""
 		1:
-			_next.disabled = class_id == ""
+			_next.disabled = species_id == "" and not Content.list(content, "species").is_empty()
 		2:
+			_next.disabled = class_id == ""
+		3:
 			_next.disabled = not Rules.valid_alloc(alloc, content)
 		_:
 			_next.disabled = false
@@ -143,7 +151,7 @@ func _preview_sheet() -> Dictionary:
 	var b := base.duplicate(true)
 	b.name = identity.name
 	b.portrait = identity.portrait
-	return Rules.build_sheet(b, content, class_id, alloc, choices)
+	return Rules.build_sheet(b, content, class_id, alloc, choices, species_id)
 
 
 # --- 1. Identité -------------------------------------------------------------
@@ -201,9 +209,6 @@ func _step_identity() -> void:
 			identity.color = col
 			_show_step())
 		colors.add_child(b)
-	var species := UIKit.line_edit(String(identity.species), "Humain, elfe, mutant…")
-	species.text_changed.connect(func(t): identity.species = t)
-	UIKit.field(card, "Espèce (facultatif)", species)
 	var more := UIKit.card(_content, "Pour aller plus loin (facultatif)")
 	for spec in [["appearance", "Description", "À quoi ressemble ton personnage ?"], ["background", "Histoire", "D'où vient-il ? Que cherche-t-il ?"],
 			["personality", "Personnalité", "Calme, tête brûlée, curieux…"]]:
@@ -269,6 +274,13 @@ func _step_class() -> void:
 		col.add_child(UIKit.label(String(cls.get("description", cls.get("tagline", ""))), "", true))
 		var res: Dictionary = cls.get("resource", {})
 		col.add_child(UIKit.label("PV de base %d · %s · Vitesse %d cases · Bonus : %s" % [int(cls.hp_base), res.get("name", "Énergie"), int(cls.speed), _bonus_text(cls)], "MutedLabel", true))
+		# Synergie avec le peuple choisi.
+		var syn := Rules.synergy(content, species_id, String(cls.id))
+		if not syn.is_empty():
+			var sp := Rules.get_species(content, species_id)
+			var sl := UIKit.label("◆  %s %s — %s : %s" % [sp.get("name", ""), String(cls.name).to_lower(), syn.get("name", ""), syn.get("description", "")], "StrongLabel", true)
+			sl.add_theme_color_override("font_color", Palette.ULT)
+			col.add_child(sl)
 		if selected:
 			card.add_child(GameUI.passive_card(cls.get("passive", {}), content))
 			for id in cls.get("abilities", []) + [cls.get("ultimate", "")]:
@@ -287,6 +299,71 @@ func _step_class() -> void:
 			_show_step())
 		pick.custom_minimum_size.y = 52
 		card.add_child(pick)
+
+
+# --- 2. Peuple ----------------------------------------------------------------
+
+func _step_species() -> void:
+	var list := Content.list(content, "species")
+	if list.is_empty():
+		_content.add_child(GameUI.hint("Cet univers n'a pas de peuples : passe à l'étape suivante."))
+		return
+	_content.add_child(GameUI.hint("Ton peuple change tes caractéristiques et ta façon de jouer. Certains s'accordent particulièrement bien avec certaines classes : tu le verras à l'étape suivante."))
+	for sp in list:
+		var selected := String(sp.id) == species_id
+		var card := UIKit.card(_content, "", "HighlightPanel" if selected else "CardPanel")
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 14)
+		card.add_child(row)
+		var badge := GameUI.icon_badge(String(sp.get("icon", "person")), Palette.GOLD if selected else Palette.VIOLET.lightened(0.4), 54)
+		badge.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		row.add_child(badge)
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 2)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(col)
+		var n := UIKit.label(String(sp.name), "HeadingLabel", true)
+		n.add_theme_font_size_override("font_size", 22)
+		col.add_child(n)
+		col.add_child(UIKit.label(String(sp.get("description", "")), "", true))
+		var bonus := species_bonus_text(sp, content)
+		if bonus != "":
+			var bl := UIKit.label(bonus, "StrongLabel", true)
+			bl.add_theme_color_override("font_color", Palette.GOLD)
+			col.add_child(bl)
+		var tr: Dictionary = sp.get("trait", {})
+		if String(tr.get("name", "")) != "":
+			col.add_child(UIKit.label("%s : %s" % [tr.name, tr.get("description", "")], "MutedLabel", true))
+		if selected:
+			for aid in sp.get("abilities", []):
+				var a := Content.get_entry(content, "abilities", String(aid))
+				if not a.is_empty():
+					card.add_child(GameUI.ability_card(a, content, "Mana", "Capacité de peuple : toujours disponible, sans emplacement."))
+			var syn: Dictionary = sp.get("synergies", {})
+			if not syn.is_empty():
+				var names: PackedStringArray = []
+				for cid in syn:
+					names.append(String(Rules.get_class_def(content, String(cid)).get("name", cid)))
+				card.add_child(GameUI.hint("S'accorde particulièrement avec : " + ", ".join(names) + "."))
+		var pick := UIKit.button("Peuple choisi" if selected else "Choisir : %s" % sp.name, "PrimaryButton" if selected else "", func():
+			species_id = String(sp.id)
+			identity.species = String(sp.name)
+			_show_step())
+		pick.custom_minimum_size.y = 50
+		card.add_child(pick)
+
+
+## « FOR +2, INT −1 · +4 PV max, +1 dégât »
+static func species_bonus_text(sp: Dictionary, content_data: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	var st: Dictionary = sp.get("stats", {})
+	for s in st:
+		parts.append("%s %s%d" % [Content.stat_info(content_data, s).get("short", s), "+" if int(st[s]) > 0 else "−", absi(int(st[s]))])
+	var m := Inventory.describe({"mods": sp.get("mods", {})}, content_data) if not (sp.get("mods", {}) as Dictionary).is_empty() else ""
+	var out := ", ".join(parts)
+	if m != "":
+		out += ("  ·  " if out != "" else "") + m
+	return out
 
 
 func _bonus_text(cls: Dictionary) -> String:
@@ -453,7 +530,12 @@ func _step_recap() -> void:
 	var n := UIKit.label(String(identity.name), "TitleLabel", true)
 	n.add_theme_font_size_override("font_size", 30)
 	titles.add_child(n)
-	titles.add_child(UIKit.label("%s%s · niveau 1" % [cls.get("name", ""), (" · " + String(identity.species)) if String(identity.species) != "" else ""], "StrongLabel", true))
+	titles.add_child(UIKit.label("%s%s · niveau 1" % [(String(identity.species) + " ") if String(identity.species) != "" else "", String(cls.get("name", "")).to_lower() if String(identity.species) != "" else cls.get("name", "")], "StrongLabel", true))
+	var syn := Rules.synergy(content, species_id, class_id)
+	if not syn.is_empty():
+		var sl := UIKit.label("◆  %s : %s" % [syn.get("name", ""), syn.get("description", "")], "StrongLabel", true)
+		sl.add_theme_color_override("font_color", Palette.ULT)
+		titles.add_child(sl)
 	var bars := VBoxContainer.new()
 	titles.add_child(bars)
 	var hp := ResourceBar.new("PV", Palette.HP, 24)
@@ -481,7 +563,7 @@ func _step_recap() -> void:
 	var kit := UIKit.card(_content, "Passif et capacités")
 	kit.add_child(GameUI.passive_card(sheet.get("passive", {}), content))
 	for a in Rules.equipped_abilities(sheet):
-		kit.add_child(GameUI.ability_card(a, content, String(d.res_name)))
+		kit.add_child(GameUI.ability_card(a, content, String(d.res_name), "Capacité de peuple." if a.get("innate", false) else ""))
 	var gear := UIKit.card(_content, "Équipement")
 	for item in sheet.get("inventory", []):
 		gear.add_child(GameUI.item_card(item, content))
@@ -491,7 +573,7 @@ func _step_recap() -> void:
 func _finish() -> void:
 	var portrait: Dictionary = identity.portrait
 	var payload := {
-		"class_id": class_id, "alloc": alloc.duplicate(), "choices": choices.duplicate(),
+		"class_id": class_id, "species_id": species_id, "alloc": alloc.duplicate(), "choices": choices.duplicate(),
 		"identity": {
 			"name": String(identity.name).strip_edges(), "species": identity.species, "appearance": identity.appearance,
 			"background": identity.background, "personality": identity.personality,

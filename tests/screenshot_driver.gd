@@ -88,6 +88,24 @@ func _host() -> void:
 			server.grant_xp(String(id), 120)
 	await get_tree().create_timer(1.0).timeout
 	var screen := get_tree().current_scene
+	if tab == "dice" and not player_ids.is_empty():
+		# Quelques attaques pendant que le téléphone se photographie.
+		var me := "pawn_" + String(player_ids[0])
+		var foe := ""
+		for t in server.maps[server.active_map].tokens:
+			if String(t.get("kind", "")) == "monster" and foe == "" and not t.get("hidden", false):
+				foe = String(t.id)
+				var cell := MapData.free_cell_near(server.maps[server.active_map], px + 1, py)
+				t.x = cell.x
+				t.y = cell.y
+		for i in 6:
+			await get_tree().create_timer(1.1).timeout
+			if not server.phase.order.has(me):
+				server.phase.order.push_front(me)
+			server.phase.turn = server.phase.order.find(me)
+			server.phase.ap = 2
+			if foe != "":
+				server.turn_action(me, {"action": "power" if i % 2 == 0 else "quick", "target": foe})
 	match tab:
 		"story":
 			screen._show("story")
@@ -105,6 +123,16 @@ func _host() -> void:
 			screen._open_quest_editor(server.quests[0])
 		"ambush":
 			screen._event_ambush()
+		"adventure":
+			server.mj_load_adventure("test_magie")
+			screen._show_tools("adventure")
+		_:
+			if tab.begins_with("gen_"):
+				var m := server.mj_generate_map(tab.substr(4), "moyenne", "")
+				screen._edit_map = m.id
+				screen._refresh_map_select()
+				screen._load_edit_map()
+				screen._show("table")
 	# Laisse le téléphone se photographier avant que l'hôte ne ferme.
 	await get_tree().create_timer(4.0).timeout
 
@@ -134,6 +162,8 @@ func _player() -> void:
 		screen._open_wizard()
 		var wizard: CreationWizard = screen._creation.get_child(0)
 		wizard.class_id = "briseur"
+		wizard.species_id = "minotaure"
+		wizard.identity.species = "Minotaure"
 		wizard.alloc = Rules.get_class_def(c.content, "briseur").recommended.duplicate()
 		wizard.choices = [0]
 		wizard.identity.name = "Shin"
@@ -147,7 +177,7 @@ func _player() -> void:
 	c.create_character("briseur", Rules.get_class_def(c.content, "briseur").recommended, [0], {
 		"name": "Shin", "species": "Humain", "appearance": "Cheveux en bataille, cicatrice de brûlure.",
 		"portrait": {"face": 1, "skin": 2, "hair": 5, "hair_color": 4, "eyes": 1, "beard": 0, "mark": 1},
-		"pawn": {"color": "#b0605a"}, "magic": {"name": "Renforcement des flammes", "category": "Renforcement", "public": true}})
+		"pawn": {"color": "#b0605a"}, "magic": {"name": "Renforcement des flammes", "category": "Renforcement", "public": true}}, "minotaure")
 	await get_tree().create_timer(1.0).timeout
 	c.declare_action(Protocol.TO_ALL, "J'escalade le pic central pour repérer le point de rendez-vous.")
 	c.roll("d20+2", Protocol.TO_ALL, "Escalade")
@@ -156,7 +186,7 @@ func _player() -> void:
 	match tab:
 		"story":
 			screen._show_view("story")
-		"map", "":
+		"map", "", "dice":
 			screen._show_view("map")
 		"sheet", "levelup":
 			screen._open_sheet()

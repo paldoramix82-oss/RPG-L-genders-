@@ -24,6 +24,8 @@ scripts/
     effects.gd           Description en français des effets et capacités
     inventory.gd         Inventaire : instances d'objets, équipement, aperçu, tables de butin
     vision.gd            Brouillard de guerre : rayon de vision, ligne de vue, exploration
+    map_gen.gd           Générateur de cartes (forêt, village, donjon, grotte, plaine, île)
+    adventures.gd        Aventures prêtes à jouer (data/adventures/*.json)
     migrate.gd           Conversion des anciennes fiches / sauvegardes
     phases.gd            Phases de jeu et leurs règles
     character_data.gd    Fiche de personnage : valeurs par défaut, validation (récit / complète), vue publique
@@ -40,7 +42,7 @@ scripts/
     lan_discovery.gd     Annonce / écoute des parties sur le Wi-Fi (facultatif)
     net_utils.gd         Adresses IP locales
   ui/                    Écrans + composants : MapView (carte, pions, brouillard, chiffres
-                         flottants), FeedView (récit), Composer, CreationWizard,
+                         flottants), DiceHud (jets de combat), FeedView (récit), Composer, CreationWizard,
                          CharacterSheet, InventoryView, OverlayPanel, ConfirmBox, Notifier,
                          OrnateStyle (habillage), ResourceBar, Portrait, Icons, GameUI,
                          CodexView, TabbedPages, UIKit, Palette, Backdrop
@@ -50,6 +52,7 @@ data/
   universes/*.json       Univers (lore, codex, suggestions de création)
   maps/*.json            Cartes prêtes à l'emploi (générées par tools/generate_maps.py)
   content/*.json         Catalogue par défaut de chaque univers (tools/make_content.py)
+  adventures/*.json      Aventures prêtes à jouer (tools/make_adventures.py)
 tests/                   rules_test (règles et combat), net_test (réseau multi-processus,
                          3 scénarios), check_scripts (compilation), captures d'écran
 docs/
@@ -129,6 +132,14 @@ L'état de l'hôte est fait de dictionnaires simples, sérialisés en JSON dans 
 - Android : le petit côté de l'écran fait ~400 unités quelle que soit la résolution ; orientation automatique (`window/handheld/orientation = sensor`, réglable par le joueur). Portrait : barre du bas, actions de tour sous la carte. Paysage : les nœuds sont déplacés (pas reconstruits) vers une colonne de droite, le panneau de tour passe à côté de la carte. Marges des zones système (`get_display_safe_area`), espace réservé au clavier virtuel, boutons ≥ 40–48 unités.
 - Les textes des joueurs sont affichés dans des `Label` (aucun balisage interprété).
 - Carte : le terrain est dessiné une seule fois dans une texture (`TerrainPainter` dans un `SubViewport`, 2048 px maximum pour rester compatible avec tous les téléphones) ; seuls les pions, étiquettes et sélections sont redessinés. Le brouillard est une image d'un pixel par case, étirée et lissée sur le plateau.
+
+## Peuples, jets visibles, butin, aventures
+
+- **Peuples** : `content.species[id] = {stats, mods, trait, abilities, synergies: {class_id: {mods, abilities}}}`. `Rules.stat_values` ajoute les bonus de caractéristiques du peuple à la valeur de base ; `Rules.mods` ajoute les bonus du peuple et de la synergie peuple + classe ; `Rules.build_sheet` copie les capacités innées (`innate: true`, hors emplacements) et l'équipement de départ (`content.starter_kit`). La fiche garde `species_id`.
+- **Jets visibles** : `Combat` publie, en plus des lignes du récit, des retours `roll` (d20, bonus, total, Défense, issue), `dmg_roll` (faces des dés, bonus, ×1,5, résistance, dégâts subis) et `heal_roll`, regroupés par `DiceHud` (bandeau non bloquant au-dessus de la carte).
+- **Vaincus et butin** : `Combat._on_defeated` (une fois par adversaire) met l'XP de côté (`phase.xp_pool`), tire la table de butin et appelle `SessionServer.give_drop` (sac du vainqueur ou coffre du groupe) ; `Combat.remove_defeated` retire le pion et l'ordre des tours ; la victoire tient compte des adversaires déjà retirés (`phase.defeated`). Coffres : jetons `object` avec `loot`, ouverts par `CMD_OPEN` depuis une case voisine.
+- **Aventures** : `SessionServer.mj_load_adventure` crée la carte, importe les PNJ (`NpcLibrary.find`), place monstres, coffres et étiquettes, enregistre les quêtes en brouillon ; `adventure` (scènes, quêtes, scènes jouées) est sauvegardé avec la campagne ; `mj_play_scene` raconte et exécute l'action de la scène.
+- **Cartes** : `MapGen.generate(kind, w, h, seed)` ; `mj_fill`, `mj_paint_rect` (rectangle / pièce), `mj_snapshot` / `mj_undo` (20 étapes par carte, non sauvegardées).
 
 ## Brouillard de guerre
 

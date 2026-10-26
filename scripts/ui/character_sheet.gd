@@ -210,6 +210,10 @@ func _stats(c: Dictionary, d: Dictionary) -> void:
 
 
 func _skills(c: Dictionary, d: Dictionary) -> void:
+	var sp := Rules.get_species(content, String(c.get("species_id", "")))
+	if not sp.is_empty():
+		var spc := GameUI.section(self, "Peuple", String(sp.get("icon", "person")))
+		spc.add_child(GameUI.species_card(sp, Rules.synergy(content, String(sp.id), String(c.get("class_id", ""))), content))
 	var passive: Dictionary = c.get("passive", {})
 	if not passive.is_empty() and String(passive.get("name", "")) != "":
 		var pc := GameUI.section(self, "Passif de classe", "spiral")
@@ -217,11 +221,11 @@ func _skills(c: Dictionary, d: Dictionary) -> void:
 	var res_name := String(d.res_name)
 	var equipped := Rules.equipped_abilities(c)
 	var ac := GameUI.section(self, "Équipées", "bolt")
-	ac.add_child(UIKit.label("Barre rapide : %d / %d capacités de base + ultime." % [equipped.filter(func(a): return not a.get("ultimate", false)).size(), int(Content.rule(content, "slots_basic"))], "MutedLabel", true))
+	ac.add_child(UIKit.label("Barre rapide : %d / %d capacités de base + ultime (+ capacités de peuple, sans emplacement)." % [equipped.filter(func(a): return not a.get("ultimate", false) and not a.get("innate", false)).size(), int(Content.rule(content, "slots_basic"))], "MutedLabel", true))
 	var known: Array = (c.get("abilities", []) as Array).filter(func(a): return not a.get("equipped", false))
 	for a in c.get("abilities", []):
 		if a.get("equipped", false):
-			_ability_row(ac, a, res_name, "")
+			_ability_row(ac, a, res_name, "Capacité de peuple." if a.get("innate", false) else "")
 	for item in Rules.equipped(c):
 		for g in item.get("grants", []):
 			var a := Content.ability_copy(content, String(g), true)

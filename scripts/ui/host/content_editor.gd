@@ -43,6 +43,8 @@ func _init(entry_kind: String, entry: Dictionary, content_data: Dictionary) -> v
 			_build_class()
 		"loot":
 			_build_loot()
+		"species":
+			_build_species()
 	var actions := HBoxContainer.new()
 	add_child(actions)
 	actions.add_child(UIKit.button("Annuler", "", func(): cancelled.emit()))
@@ -80,6 +82,13 @@ func show_preview() -> void:
 				var a := Content.get_entry(content, "abilities", String(id))
 				if not a.is_empty():
 					_preview.add_child(GameUI.ability_card(a, content, String(entry.get("resource", {}).get("name", "Mana"))))
+		"species":
+			var sy := {}
+			for cid in entry.get("synergies", {}):
+				if String(entry.synergies[cid].get("name", "")) != "":
+					sy = entry.synergies[cid]
+					break
+			_preview.add_child(GameUI.species_card(entry, sy, content))
 		"monsters":
 			_preview.add_child(UIKit.label("%s%s — %d PV, arme %s, %d XP" % [entry.get("name", "?"), " (boss)" if entry.get("boss", false) else "", int(entry.get("hp", 0)), entry.get("weapon", {}).get("damage", "?"), int(entry.get("xp", 0))], "StrongLabel", true))
 			for id in entry.get("abilities", []):
@@ -394,6 +403,35 @@ func _build_monster() -> void:
 	var rw := UIKit.card(self, "Récompenses")
 	_int(rw, "xp", "XP rapportée", 0, 999999, 20)
 	_ref(rw, "loot", "Table de butin", "loot")
+
+
+## Peuple : bonus, trait, capacités innées ; les synergies avec chaque classe se
+## règlent ci-dessous (une ligne par classe).
+func _build_species() -> void:
+	var main := UIKit.card(self, "Peuple")
+	_text(main, "name", "Nom", "Ex. : Elfe des neiges")
+	_icon(main, "icon")
+	_long(main, "description", "Description")
+	var stats := UIKit.card(self, "Bonus de caractéristiques (−5 à +5)")
+	var grid := GridContainer.new()
+	grid.columns = 3
+	stats.add_child(grid)
+	for s in STAT_FIELDS:
+		_int(grid, "stats/" + s, s, -5, 5, 0)
+	_mods(self, "mods", "Bonus de jeu (PV, mana, vision, résistances…)")
+	var tr := UIKit.card(self, "Trait")
+	_text(tr, "trait/name", "Nom du trait", "Ex. : Sang ancien")
+	_long(tr, "trait/description", "Ce qu'il fait, en une phrase")
+	_ref_list(self, "abilities", "Capacités de peuple (toujours disponibles)", "abilities")
+	var syn := UIKit.card(self, "Synergies avec les classes (facultatif)")
+	syn.add_child(GameUI.hint("Ex. : un demi-orc druide gagne « Appel de la horde ». Laissez vide pour aucune synergie."))
+	for cls in Content.list(content, "classes"):
+		var cid := String(cls.id)
+		var box := UIKit.card(syn, String(cls.get("name", cid)), "InsetPanel")
+		_text(box, "synergies/%s/name" % cid, "Nom de la synergie", "")
+		_text(box, "synergies/%s/description" % cid, "Effet (texte)", "")
+		_mods(box, "synergies/%s/mods" % cid, "Bonus")
+		_ref_list(box, "synergies/%s/abilities" % cid, "Capacités accordées", "abilities")
 
 
 func _build_class() -> void:

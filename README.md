@@ -22,6 +22,9 @@ Moteur : **Godot 4.4** (GDScript), rendu *Compatibility* (OpenGL) pour fonctionn
 - **Actions libres** déclarées par les joueurs et résolues par le MJ, **dés** (d4 à d100, formules libres, jets publics ou secrets, calculés par l'hôte), messages publics et privés.
 - **Secrets protégés** : pions cachés, étiquettes secrètes, codex MJ, jets secrets, secrets des fiches ne sont jamais envoyés aux joueurs non autorisés.
 - **Sauvegarde automatique** et reprise de campagne ; reconnexion automatique des joueurs.
+- **Peuples** (Elfe, Nain, Demi-orc… ou Mutant, Sirène, Minotaure…) avec bonus, capacités et synergies selon la classe (un elfe mage a plus de mana, un demi-orc druide appelle la horde) ; classe **Druide** ; équipement de départ (torche, corde, potion…).
+- **Dés visibles en combat** : le d20 et les dés de dégâts s'affichent avec le calcul complet ; les monstres vaincus disparaissent et leur butin va dans le sac du vainqueur (fenêtre « Butin ! »), coffres à ouvrir sur la carte.
+- **6 aventures prêtes à jouer** (carte, PNJ, monstres cachés, coffres, quêtes, scènes à raconter avec conseils) et **générateur de cartes** en un clic (forêt, village, donjon, grotte, plaine, île) avec outils Remplir, Rectangle, Pièce et Annuler.
 - **Brouillard de guerre** : chacun ne voit la carte qu'autour de son personnage, selon sa vision (Dextérité) ; murs et forêts cachent ce qu'il y a derrière ; l'exploration est mémorisée.
 - **Téléphone en portrait ou en paysage**, musique dans les menus avant la partie.
 - **Interface fantasy sombre** pensée pour le téléphone : PV, mana et capacités toujours visibles, panneaux superposés, frise des tours, chiffres flottants, portraits et icônes ; tableau du MJ en quatre zones sur PC. Aide intégrée pour les débutants.
@@ -33,7 +36,7 @@ Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUI
 | Élément | État |
 |---|---|
 | Réseau local (hôte autoritaire, validation, reconnexion, confidentialité) | ✅ testé automatiquement |
-| Règles, combat, progression, butin, quêtes, brouillard de guerre, conversion des sauvegardes | ✅ testé automatiquement (`tests/rules_test.tscn`, 92 vérifications) |
+| Règles, combat, progression, butin, quêtes, brouillard de guerre, peuples, aventures, cartes générées, conversion des sauvegardes | ✅ testé automatiquement (`tests/rules_test.tscn`, 126 vérifications) |
 | Parties en réseau (3 scénarios multi-processus) | ✅ 81 vérifications (`tests/run_net_test.sh`) |
 | Interfaces joueur (téléphone portrait et paysage) et MJ (PC) | ✅ vérifiées par captures d'écran ; à essayer sur de vrais appareils ([plan de la refonte visuelle](docs/PLAN_REFONTE_UI.md)) |
 | **Essai sur vrais appareils (Windows + Android)** | ⏳ à faire : [docs/TEST_PHASE1.md](docs/TEST_PHASE1.md) |
@@ -53,7 +56,8 @@ Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUI
 Tests : `GODOT=chemin/vers/godot tests/check.sh` (compilation de tous les scripts), `godot --headless --path . res://tests/rules_test.tscn` (règles), `GODOT=… tests/run_net_test.sh` (réseau).
 
 Contenu généré par des scripts (les fichiers produits sont versionnés, les scripts ne servent qu'à les recréer) :
-- catalogue de jeu (classes, capacités, objets, statuts, monstres, butin, règles) : `tools/make_content.py` → `data/content/*.json` ;
+- catalogue de jeu (classes, peuples, capacités, objets, statuts, monstres, butin, règles, équipement de départ) : `tools/make_content.py` → `data/content/*.json` ;
+- aventures prêtes à jouer : `tools/make_adventures.py` → `data/adventures/*.json` ;
 - cartes : `tools/generate_maps.py` → `data/maps/*.json` (numpy + scipy) ;
 - PNJ : `tools/make_npc_packs.py` → `data/npcs/*.json` ;
 - musique : `tools/compose_music.py` → `assets/music/*.ogg` + `data/music.json` (numpy + scipy + ffmpeg ; tout est synthétisé, aucun échantillon externe).
