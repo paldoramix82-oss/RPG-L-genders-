@@ -68,6 +68,13 @@ static func list() -> Array:
 	return out
 
 
+## Copie de sécurité d'une sauvegarde avant sa conversion (ex. « <id>.json.v1 »).
+static func backup(id: String, suffix: String) -> void:
+	var path := "%s/%s.json" % [dir_path, id]
+	if FileAccess.file_exists(path) and not FileAccess.file_exists(path + "." + suffix):
+		DirAccess.copy_absolute(path, path + "." + suffix)
+
+
 static func delete(id: String) -> void:
-	for suffix in [".json", ".json.bak", ".json.tmp"]:
+	for suffix in [".json", ".json.bak", ".json.tmp", ".json.v1"]:
 		DirAccess.remove_absolute("%s/%s%s" % [dir_path, id, suffix])

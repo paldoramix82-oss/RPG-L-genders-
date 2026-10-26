@@ -2396,7 +2396,8 @@ func _load(data: Dictionary, settings: Dictionary) -> void:
 		_log("Cette sauvegarde vient d'une version plus récente du jeu : certaines données peuvent manquer.", "warn")
 	content = Content.normalize(data.content) if data.get("content") is Dictionary else Content.default_for(String(session.universe))
 	if format < 2:
-		_log("Ancienne sauvegarde convertie au nouveau système de règles.", "warn")
+		CampaignStore.backup(String(session.get("id", "")), "v1")
+		_log("Ancienne sauvegarde convertie au nouveau système de règles (copie de l'original : %s.json.v1)." % session.get("id", ""), "warn")
 	for p in (data.get("players", {}) as Dictionary).values():
 		var player := {
 			"id": String(p.id), "name": String(p.name), "token": String(p.token), "status": String(p.status),

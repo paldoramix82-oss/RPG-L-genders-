@@ -10,16 +10,19 @@ Moteur : **Godot 4.4** (GDScript), rendu *Compatibility* (OpenGL) pour fonctionn
 ## Ce qu'on peut faire
 
 - **Univers au choix** : *Légenders* (codex complet tiré des documents de l'univers : Légenders, AEC, 10 catégories de magie, Gardiens, rangs, Kurtzuma, nations, créatures), *Fantasy classique* (Les Cendres de Valombre) ou *Univers libre*.
-- **Personnages entièrement libres** : identité, pion (couleur, initiales), magie et pouvoirs, capacités, caractéristiques et compétences à volonté, PV / énergie / niveau / rang, inventaire, histoire, secret réservé au MJ.
+- **Création guidée en 5 étapes** : nom et portrait, classe prête à jouer (passif, 3 capacités, un ultime), 6 caractéristiques (5 + 15 points), équipement au choix, récapitulatif. 7 classes Fantasy, 9 classes Légenders, modifiables par le MJ.
+- **Combat tactique automatisé** : 2 points d'action par tour, attaques rapide / puissante, défense, capacités à effets combinés, effets de statut (poison, étourdi, bouclier…), passifs, ultime à jauge, victoire avec XP, or et butin.
+- **Progression** : niveaux, points de caractéristique, capacités à apprendre ou améliorer, livres de compétence, objets à raretés (commun → légendaire) qui donnent des bonus ou des capacités, coffre commun du groupe.
+- **Quêtes** principales et secondaires données par le MJ, avec récompenses (XP, or, objets).
+- **Le MJ crée tout en pleine partie** : objets, capacités, effets, monstres et boss, classes, tables de butin, règles ; événements rapides (épreuve de groupe, embuscade, récompense…) ; outils sur chaque personnage, journalisés.
 - **Cartes interactives façon plateau** : 13 cartes prêtes dont **4 grandes cartes pour les longues campagnes** (Kurtzuma — carte du monde 120×80, Région de Valombre, Shima la capitale, Forêt-Monde), rendu illustré (transitions entre terrains, rivages, arbres, montagnes, toits, murs, cristaux, lave…), éditeur pour le MJ (29 terrains au pinceau, pions, étiquettes visibles ou secrètes, cartes jusqu'à 128×128), **pions 3D façon jeu de plateau** qui se déplacent en direct sur tous les écrans.
 - **Packs de PNJ** : 47 fiches prêtes (mages de Shima d'après les documents de l'univers, gens et créatures de Kurtzuma, habitants de Valombre, bestiaire générique) à importer d'un clic.
 - **Les joueurs lancent eux-mêmes leurs dés** : plateau de dés animé, dés rapides sous la carte, et le MJ peut demander un jet (avec difficulté → réussite / échec).
 - **Bande originale** : 14 morceaux composés pour le jeu (rock de combat, épique, taverne, exploration, mystère, ville, repos…), choisis par le MJ, synchronisés sur les téléphones, musique de combat automatique.
-- **Combat au tour par tour** sur la carte : initiative automatique, ordre des tours, PV sur les pions, tour en surbrillance.
 - **Actions libres** déclarées par les joueurs et résolues par le MJ, **dés** (d4 à d100, formules libres, jets publics ou secrets, calculés par l'hôte), messages publics et privés.
 - **Secrets protégés** : pions cachés, étiquettes secrètes, codex MJ, jets secrets, secrets des fiches ne sont jamais envoyés aux joueurs non autorisés.
 - **Sauvegarde automatique** et reprise de campagne ; reconnexion automatique des joueurs.
-- Interface soignée et adaptée : colonnes sur PC, onglets sur téléphone.
+- **Interface fantasy sombre** pensée pour le téléphone : PV, mana et capacités toujours visibles, panneaux superposés, frise des tours, chiffres flottants, portraits et icônes ; tableau du MJ en quatre zones sur PC. Aide intégrée pour les débutants.
 
 Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUIDE_DEBUTANT.md). Mode d'emploi complet : [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md).
 
@@ -27,9 +30,10 @@ Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUI
 
 | Élément | État |
 |---|---|
-| Réseau local (hôte autoritaire, code, validation, reconnexion, confidentialité) | ✅ testé automatiquement |
-| Fiches, cartes et pions, combat, dés, actions, codex, sauvegarde | ✅ testé automatiquement |
-| Test automatisé multi-processus | ✅ 72 vérifications |
+| Réseau local (hôte autoritaire, validation, reconnexion, confidentialité) | ✅ testé automatiquement |
+| Règles, combat, progression, butin, quêtes, conversion des sauvegardes | ✅ testé automatiquement (`tests/rules_test.tscn`, 80 vérifications) |
+| Parties en réseau (3 scénarios multi-processus) | ✅ 80 vérifications (`tests/run_net_test.sh`) |
+| Interfaces joueur (téléphone) et MJ (PC) | ✅ vérifiées par captures d'écran ; à essayer en vrai |
 | **Essai sur vrais appareils (Windows + Android)** | ⏳ à faire : [docs/TEST_PHASE1.md](docs/TEST_PHASE1.md) |
 
 ## Démarrage rapide (développement)
@@ -44,7 +48,10 @@ Jamais joué à un jeu de rôle ? Commencez par le [guide du débutant](docs/GUI
    ```
    Les joueurs se connectent simplement à l'adresse `127.0.0.1` (aucun code).
 
+Tests : `GODOT=chemin/vers/godot tests/check.sh` (compilation de tous les scripts), `godot --headless --path . res://tests/rules_test.tscn` (règles), `GODOT=… tests/run_net_test.sh` (réseau).
+
 Contenu généré par des scripts (les fichiers produits sont versionnés, les scripts ne servent qu'à les recréer) :
+- catalogue de jeu (classes, capacités, objets, statuts, monstres, butin, règles) : `tools/make_content.py` → `data/content/*.json` ;
 - cartes : `tools/generate_maps.py` → `data/maps/*.json` (numpy + scipy) ;
 - PNJ : `tools/make_npc_packs.py` → `data/npcs/*.json` ;
 - musique : `tools/compose_music.py` → `assets/music/*.ogg` + `data/music.json` (numpy + scipy + ffmpeg ; tout est synthétisé, aucun échantillon externe).

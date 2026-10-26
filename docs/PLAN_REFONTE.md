@@ -18,7 +18,7 @@ Règle de conduite : **on améliore le projet existant, on ne repart pas de zér
 | Messages et actions libres | Chat groupe / privé, actions libres « en attente du MJ », résolution, jet demandé au joueur avec difficulté. | `feed_view.gd`, `composer.gd` |
 | Dés | Formules (`2d6+3`…), tirés par l'hôte, plateau animé. | `dice.gd`, `dice_tray.gd` |
 | Cartes | 13 cartes, éditeur, pions, étiquettes cachées, rendu précalculé, zoom tactile. | `map_data.gd`, `map_view.gd`, `terrain_painter.gd` |
-| Création assistée | 4 étapes, classes (9 Légenders, 6 Fantasy), répartition de points, choix d'équipement. | `creation_wizard.gd`, `rules.gd`, `data/classes/` |
+| Création assistée | 4 étapes, classes (9 Légenders, 6 Fantasy), répartition de points, choix d'équipement. | `creation_wizard.gd`, `rules.gd`, `data/classes/` (remplacé par `data/content/`) |
 | Phases et tours | Récit libre, exploration, dialogue, combat, repos ; initiative ; attaque automatique ; MJ joue les PNJ. | `phases.gd`, `session_server.gd` |
 | Sauvegarde | JSON avec écriture sûre (+ `.bak`), auto toutes les 60 s, reprise complète. | `campaign_store.gd` |
 | Contenu | Univers Légenders (codex), 47 PNJ, 14 musiques synchronisées. | `data/` |
@@ -178,6 +178,8 @@ Chaque phase se termine par : tests automatiques, captures PC + téléphone, mis
 
 ### Phase 1 — Audit ✅ (ce document)
 
+> **État au 26/10/2026 : phases 2 à 6 réalisées et testées automatiquement ; phase 7 en partie (reste l'essai sur vrais appareils).** Détail dans le journal ci-dessous.
+
 ### Phase 2 — Données et création de personnage
 1. Catalogue de contenu (`content.gd`) : classes, capacités, objets, statuts, règles ; copie dans la campagne.
 2. Nouvelles caractéristiques et formules (`rules.gd`), conversion des anciennes fiches (`migrate.gd`, format de sauvegarde 2).
@@ -228,3 +230,16 @@ L'environnement de développement est sous Linux, sans téléphone. Je teste ave
 | Phase | Date | Résumé | Tests |
 |---|---|---|---|
 | 1 — Audit | 2026-10-26 | Audit, choix techniques, règles proposées, plan, guide débutant. | Aucun code modifié ; 76 vérifications réseau toujours au vert. |
+| 2 — Données et création | 2026-10-26 | Catalogue de campagne (`content.gd`, `data/content/`), 6 caractéristiques (5 + 15), formules (`rules.gd`), 7 + 9 classes (passif, 3 capacités, ultime, capacités à apprendre, kits), assistant en 5 étapes avec portraits, création construite par l'hôte, conversion des anciennes fiches et sauvegardes (`migrate.gd`, format 2, copie `.json.v1`). | `rules_test` : catalogue, répartition (valide / trop de points / bornes), PV et Défense, équipement choisi, triche refusée, conversion d'anciennes fiches. Captures des 5 étapes. |
+| 3 — Combat | 2026-10-26 | `combat.gd` : 2 PA, attaques rapide / puissante, défense, capacités à effets composables, 23 statuts, passifs (toujours / déclenchés / protection d'allié), jauge d'ultime, recharges, invocations, victoire / défaite, jeu automatique des monstres. | `rules_test` : PA, refus faute de PA, ressource payée, recharge, ultime bloqué, statuts, étourdi qui perd son tour, monstres automatiques, victoire unique. `net_test` : attaques joueur et PNJ en réseau. |
+| 4 — Progression et butin | 2026-10-26 | Niveaux et choix, capacités connues / équipées, inventaire (équiper avec aperçu, utiliser, lire, donner, jeter), raretés, tables de butin, coffre commun, or, **quêtes** (principales / secondaires, récompenses uniques), objets créés à tout moment, événements rapides. | `rules_test` : niveau 2, point placé, capacité apprise et échangée, objet créé et donné, livre, butin de boss, coffre (pas de double prise), quêtes (brouillon, assignation, récompense unique), sauvegarde et reprise. `net_test` : quête reçue, coffre en réseau. |
+| 5 — Interface joueur | 2026-10-26 | Écran en 3 zones, barre du bas permanente, panneaux superposés (fiche, sac, journal, capacité, aide), frise des tours, chiffres flottants, couleurs fonctionnelles, icônes et portraits dessinés, actions contextuelles, aide intégrée, défilement tactile dans les panneaux. | Captures téléphone (420 × 880) et PC ; corrections de débordement horizontal et de hauteur. |
+| 6 — Outils du MJ | 2026-10-26 | Tableau en 4 zones, outils par personnage (journalisés), créateurs (objets, capacités avec composeur d'effets, statuts, monstres, classes, butin, règles), quêtes, coffre, commandes des monstres, événements rapides. | Captures PC des panneaux ; logique testée par `rules_test` / `net_test`. |
+| 7 — Stabilisation | en cours | Compilation de tous les scripts (`tests/check.sh`), tests de règles et réseau au vert. | **Reste : essai sur un vrai PC Windows et de vrais téléphones Android** (`TEST_PHASE1.md`, sections G, H, I). |
+
+### Limites connues
+
+- Les portraits et icônes sont dessinés en code (pas d'illustrations) ; l'icône d'un objet se choisit par son nom technique dans l'éditeur.
+- Les éditeurs de classe ne modifient pas encore les « choix d'équipement » (trois dagues…) : ils sont conservés tels quels.
+- Les effets « repousser / attirer » suivent la ligne entre les deux pions et s'arrêtent au premier obstacle.
+- Pas encore de marchands : l'or sert aux échanges racontés par le MJ.

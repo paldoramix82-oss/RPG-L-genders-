@@ -18,6 +18,7 @@
 - Packs de PNJ (47 fiches) importables.
 - Dés lancés par les joueurs eux-mêmes (plateau animé, jets demandés par le MJ avec difficulté, réussite/échec).
 - **Prise en main simplifiée** : assistant de création (classes prêtes à jouer, 12 points à répartir, équipement au choix), PV / défense / initiative calculés, salon d'attente et bouton « La partie commence ! », phases de jeu (récit libre, exploration, dialogue, combat, repos) au tour par tour avec attaques automatiques (critiques par arme et par classe), défilement tactile facile sur téléphone, saisie de l'IP au pavé numérique.
+- **Refonte RPG (voir PLAN_REFONTE.md)** : six caractéristiques (5 + 15 points), classes avec passif, 3 capacités et ultime ; combat à 2 points d'action, effets de statut, passifs, jauge d'ultime, victoire et butin ; niveaux, capacités connues / équipées, inventaire à raretés, coffre du groupe, or ; quêtes principales et secondaires ; créations du MJ en pleine partie (objets, capacités, effets, monstres, classes, butin, règles) ; nouvelles interfaces joueur (barre permanente, panneaux superposés) et MJ (quatre zones) ; conversion des anciennes sauvegardes.
 - Bande originale de 14 morceaux composés pour le jeu, synchronisée sur les téléphones, musique de combat automatique.
 
 ## À valider par vous
@@ -26,8 +27,9 @@ L'application n'a été exécutée que sous Linux (tests réseau entre processus
 
 ## Pistes suivantes (non commencées)
 
-- Inventaire avancé côté MJ : bibliothèque d'objets, transfert d'objets entre personnages, économie.
+- Marchands et économie (acheter / vendre avec l'or).
 - Factions et réputations ; variables persistantes du monde (porte ouverte, pont détruit…).
+- Illustrations : portraits et icônes dessinés par un illustrateur (les actuels sont générés en code).
 - Événements programmés (déclenchement différé), notes du MJ dans le journal, marquage « important ».
 - Brouillard de guerre / zones révélées progressivement sur la carte.
 - Images de fond pour les cartes (photos ou dessins importés).

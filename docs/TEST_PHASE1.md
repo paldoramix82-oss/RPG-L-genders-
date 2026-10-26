@@ -52,14 +52,31 @@ Cocher chaque ligne et noter les remarques.
 - [ ] F3. Le tableau de bord du MJ est lisible en plein écran sur le PC.
 
 ### G. Fonctions de jeu
-- [ ] G1. Un joueur crée son personnage avec l'assistant (classe, 12 points, arme, nom) : il arrive dans le salon « Vous êtes prêt ! », son pion apparaît sur la carte. Le MJ voit « Préparation : 1/1 » et appuie sur « La partie commence ! ».
+- [ ] G1. Un joueur crée son personnage avec l'assistant en 5 étapes (nom et portrait, classe, 15 points, arme, récapitulatif) : il arrive dans le salon « Vous êtes prêt ! », son pion apparaît sur la carte. Le MJ voit « Préparation : 1/1 » et appuie sur « La partie commence ! ».
 - [ ] G2. Le joueur déplace son pion en touchant une case : le mouvement apparaît chez le MJ et les autres joueurs.
 - [ ] G3. Le MJ pose un monstre caché : les joueurs ne le voient pas ; il le révèle : il apparaît.
-- [ ] G4. Exploration : chacun son tour, déplacement limité à la vitesse, « Fin du tour ». Combat : « C'est votre tour ! », Attaquer → choisir l'arme → toucher la cible → jet automatique ; le MJ fait jouer ses monstres ; Repos rend des PV.
+- [ ] G4. Exploration : chacun son tour, déplacement limité à la vitesse, « Terminer mon tour ». Combat : « C'est votre tour ! », 2 PA, Attaque rapide → toucher la cible entourée de rouge → jet automatique, chiffres de dégâts au-dessus du pion ; le MJ fait jouer ses monstres (ou « Jouer automatiquement ») ; Repos rend des PV.
 - [ ] G5. Action déclarée par un joueur → le MJ la résout avec un jet → résultat reçu.
 - [ ] G6. Jet de dés secret d'un joueur : visible du MJ seulement.
 - [ ] G7. Terminer la session, puis *Reprendre* la campagne : fiches, cartes et pions sont restaurés ; les joueurs se reconnectent avec la même adresse IP.
 - [ ] G8. Héberger depuis un téléphone Android (optionnel) et rejoindre depuis les autres.
+
+### H. Règles, progression, butin (nouvelle version)
+- [ ] H1. Barre du bas : PV, mana et capacités visibles en permanence ; la jauge de PV s'anime quand on est touché.
+- [ ] H2. Toucher une capacité : le panneau explique coût, portée, effets, et pourquoi elle est indisponible (mana, recharge, ultime pas chargé, pas son tour).
+- [ ] H3. Un effet (poison, étourdi…) s'affiche au-dessus du pion, dans la frise et sur la fiche ; un étourdi perd son tour.
+- [ ] H4. Victoire : bandeau « Victoire ! », XP et or distribués, butin dans le coffre du groupe ; deux joueurs qui touchent « Prendre » en même temps : un seul obtient l'objet.
+- [ ] H5. Niveau 2 (le MJ donne 100 XP) : « + » doré sur le portrait, point de caractéristique placé, capacité apprise ou améliorée.
+- [ ] H6. Sac : équiper une armure montre « Défense x → y » avant de confirmer ; utiliser une potion ; lire un livre de compétence.
+- [ ] H7. Quête : le MJ la prépare, la donne → elle apparaît dans le journal et en haut de l'écran ; « Réussie : distribuer » donne XP / or / objet une seule fois.
+- [ ] H8. Le MJ crée un objet en pleine partie et le donne à un joueur : il apparaît dans son sac avec la bonne rareté.
+- [ ] H9. Reprendre une campagne sauvegardée avec l'ancienne version : les fiches sont converties, rien n'est perdu (copie `.json.v1` à côté).
+
+### I. Outils du MJ
+- [ ] I1. Fiche et outils d'un joueur : ± PV, donner de l'XP, appliquer un effet, apprendre une capacité ; chaque intervention apparaît dans le journal du MJ (invisible des joueurs).
+- [ ] I2. Créer › Monstres › Placer, puis Combat : le monstre joue avec ses capacités.
+- [ ] I3. Événement rapide › Embuscade : monstres placés et combat lancé.
+- [ ] I4. Créer › Règles : passer à 3 PA par tour → effectif au tour suivant.
 
 ## Rapport
 

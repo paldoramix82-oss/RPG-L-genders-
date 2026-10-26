@@ -15,7 +15,16 @@ scripts/
     net.gd               Net   : transport ENet, authentification, reconnexion, 2 RPC
     music.gd             Music : lecture avec fondu enchaîné, volume local
   game/
-    character_data.gd    Fiche de personnage : valeurs par défaut, validation, vue publique
+    content.gd           Catalogue de campagne : règles, classes, capacités, statuts, objets,
+                         butin, monstres ; validation des créations du MJ ; vue joueur
+    rules.gd             Formules : répartition, valeurs dérivées, attaques, paliers d'XP
+    combat.gd            Moteur de combat (hôte) : PA, effets composables, statuts, passifs,
+                         ultime, victoire et butin, jeu automatique des monstres
+    effects.gd           Description en français des effets et capacités
+    inventory.gd         Inventaire : instances d'objets, équipement, aperçu, tables de butin
+    migrate.gd           Conversion des anciennes fiches / sauvegardes
+    phases.gd            Phases de jeu et leurs règles
+    character_data.gd    Fiche de personnage : valeurs par défaut, validation (récit / complète), vue publique
     map_data.gd          Cartes en cases : terrains, pions, étiquettes, modèles, vue joueur filtrée
     dice.gd              Lancers de dés (formules), toujours exécutés par l'hôte
     universe.gd          Univers (codex, suggestions) ; filtrage des entrées « MJ »
@@ -28,13 +37,18 @@ scripts/
     session_client.gd    Vue locale d'un joueur + file d'envoi avec accusés de réception
     lan_discovery.gd     Annonce / écoute des parties sur le Wi-Fi (facultatif)
     net_utils.gd         Adresses IP locales
-  ui/                    Écrans + composants : MapView (carte et pions), FeedView (fil),
-                         Composer (message/action/dés), CharacterEditor/CharacterSheet,
+  ui/                    Écrans + composants : MapView (carte, pions, chiffres flottants),
+                         FeedView (récit), Composer, CreationWizard, CharacterSheet,
+                         InventoryView, OverlayPanel, ResourceBar, Portrait, Icons, GameUI,
                          CodexView, TabbedPages, UIKit, Palette
+    host/                Outils du MJ : CharacterTools, ContentPanel / ContentEditor /
+                         EffectList (créateurs), QuestPanel / QuestEditor
 data/
   universes/*.json       Univers (lore, codex, suggestions de création)
   maps/*.json            Cartes prêtes à l'emploi (générées par tools/generate_maps.py)
-tests/                   Test réseau multi-processus (3 scénarios), captures d'écran
+  content/*.json         Catalogue par défaut de chaque univers (tools/make_content.py)
+tests/                   rules_test (règles et combat), net_test (réseau multi-processus,
+                         3 scénarios), check_scripts (compilation), captures d'écran
 docs/
 ```
 
@@ -73,10 +87,14 @@ Ce bus de messages permet d'ajouter des fonctions (actions libres, dés, inventa
 | `chat_send` | destinataire « groupe » ou « MJ », texte nettoyé |
 | `action_declare` | enregistrée « en attente » ; seul le MJ la résout |
 | `dice_roll` | formule analysée, dés tirés par l'hôte |
-| `char_save` | uniquement sa propre fiche, champs validés, refusé si le MJ a verrouillé les fiches |
-| `pawn_move` | uniquement son propre pion, sur la carte affichée, case franchissable, autorisé par le MJ, selon la phase : à son tour et dans la limite de sa vitesse |
-| `char_save` (assistant) | répartition limitée à 12 points (−4 à +6), PV / énergie / défense recalculés par l'hôte (`Rules.refresh`) |
-| `turn` | seulement à son tour, pour son pion : `end`, `attack` (portée de l'arme, jet d20 + mod. contre la défense, critique), `ability` (coût en énergie), `item` |
+| `char_save` | uniquement la partie « récit » de sa propre fiche (nom, histoire, apparence, portrait, magie) ; jamais les valeurs de jeu ; refusé si le MJ a verrouillé les fiches |
+| `pawn_move` | uniquement son propre pion, sur la carte affichée, case franchissable et libre, autorisé par le MJ ; au tour par tour : à son tour, dans la limite de sa vitesse (en combat, 1 PA par déplacement) ; jamais s'il est immobilisé |
+| `char_create` | classe connue, répartition valide (règles de la campagne), choix d'équipement ; **la fiche est construite par l'hôte** |
+| `turn` | à son tour (ou capacités / objets hors tour par tour) : `end`, `quick`, `power`, `defend`, `ability` (id), `item` (uid) ; coûts en PA et ressource, portée, cible, recharge, ultime vérifiés par `Combat` |
+| `item` | ses propres objets : `equip`, `unequip`, `use`, `read` (livre), `drop` (sauf objet de quête), `give` (à un autre joueur) |
+| `loot_take` | un objet encore présent dans le coffre commun (premier arrivé) |
+| `level` | un point de caractéristique, une capacité apprenable à son niveau, ou l'amélioration d'une capacité connue, seulement s'il reste des choix à faire |
+| `ability_equip` | une capacité connue, dans la limite des emplacements ; en combat seulement si les règles l'autorisent |
 | `roll_answer` | uniquement un jet que le MJ a demandé à ce joueur, une seule fois ; le dé est tiré par l'hôte |
 
 | Événement (hôte → joueur) | Filtrage |
@@ -87,9 +105,13 @@ Ce bus de messages permet d'ajouter des fonctions (actions libres, dés, inventa
 | `map` | sans pions, étiquettes ni notes cachés (envoyée quand le terrain ou les étiquettes changent) |
 | `tokens` | seulement les pions visibles (envoi léger à chaque déplacement) |
 | `music` | morceau, lecture, heure de départ (si le MJ diffuse la musique) |
-| `phase` | type de phase, tour, ordre limité aux pions visibles, déplacements restants, action utilisée |
+| `phase` | type de phase, tour, ordre et initiative limités aux pions visibles, PA et déplacements restants, résultat (victoire / défaite) |
+| `content` | catalogue pour les joueurs : règles, caractéristiques, classes, capacités, statuts, objets des kits (ni monstres, ni butin, ni objets secrets) |
+| `quests` | quêtes données (pas les brouillons) au groupe ou à ce joueur |
+| `loot` | coffre commun du groupe |
+| `fx` | retours visuels d'une action (dégâts, soins, critiques, effets), seulement pour les pions visibles |
 
-Les changements de carte, de fiches et de phase sont regroupés et envoyés au plus une fois par image (`SessionServer.flush()`).
+Les changements de carte, de fiches, de phase, de catalogue, de quêtes et de coffre sont regroupés et envoyés au plus une fois par image (`SessionServer.flush()`).
 
 ## Données et sauvegarde
 
@@ -103,3 +125,14 @@ L'état de l'hôte est fait de dictionnaires simples, sérialisés en JSON dans 
 - Les textes des joueurs sont affichés dans des `Label` (aucun balisage interprété).
 - Carte : le terrain est dessiné une seule fois dans une texture (`TerrainPainter` dans un `SubViewport`, 2048 px maximum pour rester compatible avec tous les téléphones) ; seuls les pions, étiquettes et sélections sont redessinés.
 - Dés : `DiceTray` anime le lancer pendant que l'hôte tire le résultat, puis affiche les vraies valeurs.
+
+## Règles et combat
+
+- **Données plutôt que code** : classes, capacités, objets, effets de statut, monstres et tables de butin sont des dictionnaires JSON (catalogue par défaut dans `data/content/`, copie modifiable dans chaque campagne). Les `Resource` Godot ont été écartées : ces données sont modifiées en pleine partie par le MJ, envoyées sur le réseau et sauvegardées avec la campagne.
+- **Un seul moteur d'effets** : capacités, ultimes, passifs, objets utilisables, effets à l'impact et statuts partagent la même liste d'effets composables (`damage`, `heal`, `restore`, `status`, `cleanse`, `push`, `pull`, `ap`, `stat`, `drain`, `summon`, `if`, `narrate`), interprétée par `Combat` sur l'hôte et décrite en français par `Effects`.
+- **Copies sur les fiches** : une fiche porte des copies des capacités (avec rang et état équipé) et des instances d'objets (identifiant `uid` unique) ; le MJ peut répercuter la modification d'une capacité du catalogue sur tous les personnages.
+- **Idempotence** : récompenses de quête et de victoire distribuées une seule fois (état de la quête, `phase.result`) ; objets du coffre identifiés par `uid` (un seul preneur) ; commandes dédoublonnées par `req_id`.
+
+## Sauvegarde
+
+Format 2 (`CampaignStore.FORMAT`) : session, joueurs, fiches, cartes, messages, musique, **catalogue**, **quêtes**, **coffre**, **phase**. Un fichier au format 1 est converti au chargement (`Migrate`), après copie de l'original en `<id>.json.v1`.
