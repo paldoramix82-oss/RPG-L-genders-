@@ -6,10 +6,11 @@ Tout est dessiné ici (grilles ASCII et petits générateurs), sans image extern
   assets/sprites/glyphs/<nom>.png  symboles en niveaux de gris, teintés en jeu
   assets/sprites/nature/<nom>.png  arbres (32 × 32), buissons, rochers, fleurs
   assets/sprites/props/<nom>.png   mobilier et décors (16 × 16 ou 32 × 32)
-  assets/sprites/units/<nom>.png   personnages et monstres (16 × 16)
+  assets/sprites/units/<nom>.png   personnages et monstres (24 × 24)
 
 Usage : python3 tools/make_sprites.py [--preview fichier.png]
 """
+import colorsys
 import math
 import os
 import random
@@ -44,7 +45,9 @@ def rgba(hexa, a=255):
     return (int(hexa[0:2], 16), int(hexa[2:4], 16), int(hexa[4:6], 16), a)
 
 
-def from_ascii(rows, pal=None, outline=True, outline_color="K"):
+def from_ascii(rows, pal=None, outline=True, outline_color="K", shading=True):
+    """Grille ASCII → image. Par défaut : ombrage des bords (lumière en haut à
+    gauche) et contour coloré (plus sombre que le pixel voisin, teinte froide)."""
     pal = dict(PAL, **(pal or {}))
     h = len(rows)
     w = max(len(r) for r in rows)
@@ -54,9 +57,76 @@ def from_ascii(rows, pal=None, outline=True, outline_color="K"):
         for x, ch in enumerate(row):
             if ch not in (".", " "):
                 px[x, y] = rgba(pal[ch])
-    if outline:
+    if outline_color != "K" and outline:
+        if shading:
+            auto_shade(img, 0.0, -0.3)
         add_outline(img, rgba(pal[outline_color]))
+        return img
+    if shading:
+        auto_shade(img)
+    if outline:
+        sel_outline(img)
     return img
+
+
+def _towards(h, target, amt):
+    d = (target - h + 0.5) % 1.0 - 0.5
+    return (h + max(-amt, min(amt, d))) % 1.0
+
+
+def hshift(rgb, k):
+    """Éclaircit (k > 0, vers le jaune chaud) ou assombrit (k < 0, vers le bleu froid)."""
+    h, s, v = colorsys.rgb_to_hsv(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255)
+    if k > 0:
+        v = v + (1 - v) * k
+        s = s * (1 - k * 0.3)
+        h = _towards(h, 1 / 6, k * 0.06)
+    else:
+        v = v * (1 + k)
+        s = min(1.0, s + (-k) * 0.15)
+        h = _towards(h, 0.68, -k * 0.07)
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    return (int(r * 255), int(g * 255), int(b * 255), 255)
+
+
+def _opaque(px, w, h, x, y):
+    return 0 <= x < w and 0 <= y < h and px[x, y][3] != 0
+
+
+def auto_shade(img, light=0.13, dark=-0.17):
+    """Bord haut / gauche éclairé, bord bas / droit dans l'ombre."""
+    w, h = img.size
+    src = img.copy().load()
+    px = img.load()
+    for y in range(h):
+        for x in range(w):
+            c = src[x, y]
+            if c[3] == 0:
+                continue
+            if not _opaque(src, w, h, x, y + 1) or not _opaque(src, w, h, x + 1, y):
+                px[x, y] = hshift(c, dark)
+            elif not _opaque(src, w, h, x, y - 1) or not _opaque(src, w, h, x - 1, y):
+                px[x, y] = hshift(c, light)
+
+
+def sel_outline(img, k=-0.68):
+    """Contour sélectif : chaque pixel de contour prend la teinte de son voisin,
+    très assombrie (plus encore sous l'objet)."""
+    w, h = img.size
+    src = img.copy().load()
+    px = img.load()
+    for y in range(h):
+        for x in range(w):
+            if src[x, y][3] != 0:
+                continue
+            best = None
+            for dx, dy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
+                if _opaque(src, w, h, x + dx, y + dy):
+                    best = (src[x + dx, y + dy], dy)
+                    break
+            if best:
+                col, dy = best
+                px[x, y] = hshift(col, k - (0.12 if dy == -1 else 0.0))
 
 
 def add_outline(img, color):
@@ -519,17 +589,17 @@ ITEMS = {
         "................",
         "................",
         "................",
-        "......ffff......",
-        "....fffeeff.....",
-        "...ffeeeeeeF....",
-        "..ffeeeeeeeeF...",
-        "..fFeEeEeEeFF...",
-        "..FFFFFFFFFFF...",
-        "...EEEEEEEEE....",
-        "................",
-        "................",
-        "................",
-        "................",
+        "....eeeeeee.....",
+        "...eyfeyfeeE....",
+        "..efeeeeeeeEE...",
+        "..eEfEfEfEeEE...",
+        "..EEEEEEEEEEd...",
+        "...ddddddddd....",
+        "..........xx....",
+        ".......RRRxwx...",
+        "......RrRRRxx...",
+        "......RRRRqq....",
+        ".......qqq......",
         "................",
         "................",
     ],
@@ -573,16 +643,16 @@ ITEMS = {
         "................",
         "................",
         "................",
-        "......zzz.......",
-        "....zzMzzzz.....",
-        "...zMmzzYzzZ....",
-        "..zzzzzYyzzZ....",
-        "..zMzzzzzzMZZ...",
-        "..zzzYzzMmzzZ...",
-        "...zzyYzzzzZZ...",
-        "....ZzzzzZZZ....",
-        "......ZZZ.......",
-        "................",
+        ".......nnn......",
+        ".....nnMMmnn....",
+        "....nMMmMMMnn...",
+        "...nMmMYyMMMn...",
+        "...nMMMyYMMMnn..",
+        "..nMMbMMMMmMMn..",
+        "..nMbBMMMMMYMn..",
+        "..nMMMMMyMMMnn..",
+        "...nnMMMMMMnn...",
+        ".....nnnnnn.....",
         "................",
         "................",
         "................",
@@ -608,15 +678,15 @@ ITEMS = {
     "fang": [
         "................",
         "................",
-        "....xxxxxxx.....",
-        "....xwwwxXX.....",
+        "...xxxxxxxxx....",
+        "...xwwxxxxXX....",
+        "....xwxxxXX.....",
+        "....xwxxxX......",
         ".....xwxxX......",
-        ".....xwxxX......",
-        "......xwxX......",
-        "......xwxX......",
-        ".......xX.......",
-        ".......xX.......",
-        "........X.......",
+        ".....xwxX.......",
+        "......xxX.......",
+        "......xX........",
+        ".......X........",
         "................",
         "................",
         "................",
@@ -788,35 +858,35 @@ ITEMS = {
     "horn": [
         "................",
         "................",
-        "..xx............",
-        "..xXx...........",
-        "...xXx..........",
-        "...xxXx.........",
-        "....xxXxx.......",
-        "....xxxXXxx.....",
-        ".....YxxXXxxx...",
-        ".....YYxxXXxXx..",
-        "......YYxxxxXx..",
-        ".......YYxxxXx..",
-        ".........XXXx...",
+        "...........xx...",
+        "..........xXx...",
+        ".........xxX....",
+        "........xxXX....",
+        ".......YxxXX....",
+        "......YYxXX.....",
+        "....xxYxxXX.....",
+        "...xxxYxXX......",
+        "..xwxxxXXX......",
+        "..xxxxXXX.......",
+        "...XXXXX........",
         "................",
         "................",
         "................",
     ],
     "castle": [
         "................",
-        "................",
-        "..m.m....m.m....",
-        "..mmm....mmm....",
-        "..mMm.mm.mMm....",
-        "..mMmmmmmmMm....",
-        "..mMmMMMMmMm....",
-        "..mMmmmmmmMm....",
-        "..mMmmZZmmMm....",
-        "..mMmZZZZmMm....",
-        "..MMMZZZZMMM....",
-        "................",
-        "................",
+        "..m.m.m..m.m.m..",
+        "..mmmmm..mmmmm..",
+        "..mwmmM..mwmmM..",
+        "..mmZmM..mmZmM..",
+        "..mmmmMmmmmmmM..",
+        "..mwmmmmmmmmmM..",
+        "..mmmmmRRmmmmM..",
+        "..mmmmRrrRmmmM..",
+        "..mmmmZZZZmmmM..",
+        "..mmmmZZZZmmmM..",
+        "..MMMMZZZZMMMM..",
+        "..GGGGGGGGGGGG..",
         "................",
         "................",
         "................",
@@ -824,18 +894,18 @@ ITEMS = {
     "gear": [
         "................",
         "................",
-        "......MM........",
-        "...M.MmmM.M.....",
-        "...MMmmmmMM.....",
-        "....mmMMmmM.....",
-        "..MmmM..MmmM....",
-        "..MmM....MmM....",
-        "...mmM..MmM.....",
-        "....MmMMmM......",
-        "...MMmmmmMM.....",
-        "...M.MmmM.M.....",
-        "......MM........",
-        "................",
+        "......mMmM......",
+        "...mm.mmmM.mM...",
+        "...mmmmmmmmmM...",
+        "....mmMMMMmM....",
+        "..mmmMM..MMmMM..",
+        "..mmmM....MmMM..",
+        "..mmmM....MmMM..",
+        "..mmmMM..MMmMM..",
+        "....mmMMMMmM....",
+        "...mmmmmmmmMM...",
+        "...mM.mmmM.MM...",
+        "......mMMM......",
         "................",
         "................",
     ],
@@ -1101,18 +1171,18 @@ GLYPHS = {
     "wind": [
         "................",
         "................",
-        "..........222...",
-        "..2222222211.2..",
-        ".211111111112.2.",
-        "..2222222222..2.",
         "...........222..",
-        ".2222222222222..",
-        "21111111111112..",
-        ".22222222222222.",
-        "..........2...2.",
-        "..2222222222.22.",
-        ".211111111122...",
-        "..222222222.....",
+        "..22222222211.2.",
+        ".2111111111112.2",
+        "..2222222222...2",
+        "............222.",
+        ".22222222222....",
+        "2111111111112...",
+        ".2222222222112..",
+        "............12..",
+        "...222222..12...",
+        "..21111112222...",
+        "...222222.......",
         "................",
         "................",
     ],
@@ -1523,76 +1593,97 @@ ALIASES = {"sword": "sword", "dagger": "dagger", "axe": "axe", "hammer": "hammer
 # ---------------------------------------------------------------------------
 
 def shade(base, k):
-    r, g, b = int(base[0:2], 16), int(base[2:4], 16), int(base[4:6], 16)
-    if k >= 0:
-        r, g, b = r + (255 - r) * k, g + (255 - g) * k, b + (255 - b) * k
-    else:
-        r, g, b = r * (1 + k), g * (1 + k), b * (1 + k)
-    return "%02x%02x%02x" % (int(r), int(g), int(b))
+    c = hshift(rgba(base), k)
+    return "%02x%02x%02x" % c[:3]
 
 
-def blob_tree(seed, leaf, trunk="94603a", size=32, kind="round", fruit=None):
+def _ramp(base, n=5):
+    """Rampe de couleurs avec décalage de teinte : ombre froide → lumière chaude."""
+    ks = {5: [-0.55, -0.3, 0.0, 0.22, 0.42], 4: [-0.45, -0.2, 0.0, 0.3]}[n]
+    return [hshift(rgba(base), k) for k in ks]
+
+
+def _trunk(px, size, trunk, rnd, top, cx):
+    tr = _ramp(trunk, 4)
+    for y in range(top, size - 3):
+        for x in range(cx - 2, cx + 2):
+            px[x, y] = tr[2] if x == cx - 2 else (tr[1] if x < cx + 1 else tr[0])
+        if rnd.random() < 0.25:
+            px[cx - 1, y] = tr[0]
+    # Racines
+    for x, y, k in ((cx - 3, size - 4, 1), (cx + 2, size - 4, 0), (cx - 4, size - 3, 1), (cx - 3, size - 3, 1),
+                    (cx + 2, size - 3, 0), (cx + 3, size - 3, 0), (cx - 2, size - 3, 2), (cx - 1, size - 3, 1), (cx, size - 3, 1), (cx + 1, size - 3, 0)):
+        px[x, y] = tr[k]
+
+
+def blob_tree(seed, leaf, trunk="8a5a36", size=32, kind="round", fruit=None):
     rnd = random.Random(seed)
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     px = img.load()
-    ramp = [shade(leaf, -0.55), shade(leaf, -0.3), leaf, shade(leaf, 0.25), shade(leaf, 0.5)]
-    cx = size / 2
-    # Tronc
-    for y in range(int(size * 0.6), size - 2):
-        for x in range(int(cx) - 2, int(cx) + 2):
-            px[x, y] = rgba(shade(trunk, 0.15) if x < cx - 1 else (trunk if x < cx else shade(trunk, -0.35)))
-    for x in range(int(cx) - 4, int(cx) + 4):
-        if rnd.random() < 0.6:
-            px[x, size - 3] = rgba(shade(trunk, -0.35))
+    ramp = _ramp(leaf)
+    cx = size // 2
     if kind == "pine":
-        layers = 4
-        top = 2
-        for li in range(layers):
-            y0 = top + li * 6
-            for y in range(y0, y0 + 9):
-                half = (y - y0 + 1) * (0.55 + li * 0.12)
+        _trunk(px, size, trunk, rnd, 22, cx)
+        for li in range(4):
+            y0 = 1 + li * 5
+            height = 9
+            for y in range(y0, y0 + height):
+                half = 1.5 + (y - y0) * (0.62 + li * 0.1)
                 for x in range(int(cx - half), int(cx + half) + 1):
-                    if 0 <= x < size and y < size - 6:
-                        side = (x - cx) / max(1.0, half)
-                        k = 3 if side < -0.35 else (2 if side < 0.3 else 1)
-                        if y == y0 + 8:
-                            k = 0
-                        if rnd.random() < 0.08:
-                            k = max(0, k - 1)
-                        px[x, y] = rgba(ramp[k])
+                    if not (0 <= x < size) or y >= size - 6:
+                        continue
+                    side = (x - cx + 0.5) / max(1.0, half)
+                    k = 4 if side < -0.55 else (3 if side < -0.1 else (2 if side < 0.45 else 1))
+                    if y == y0 + height - 1:
+                        k = 0 if (x + li) % 2 else 1
+                    elif y == y0 + height - 2 and (x % 3 == 0):
+                        k = max(0, k - 2)
+                    px[x, y] = ramp[k]
+            # dents irrégulières au bas de chaque étage
+            for x in range(int(cx - half), int(cx + half) + 1, 2):
+                if 0 <= x < size and y0 + height < size - 6 and rnd.random() < 0.6:
+                    px[x, y0 + height] = ramp[0]
         if fruit == "snow":
+            snow = [hshift(rgba("eef2f8"), 0), hshift(rgba("c8d4e4"), 0)]
             for y in range(size):
                 for x in range(size):
-                    if px[x, y][3] and px[x, y][:3] == rgba(ramp[3])[:3] and rnd.random() < 0.55:
-                        px[x, y] = rgba("eef2f6")
+                    c = px[x, y]
+                    if c[3] and c in (ramp[3], ramp[4]) and (y < 1 or px[x, y - 1][3] == 0 or rnd.random() < 0.35):
+                        px[x, y] = snow[0] if c == ramp[4] else snow[1]
     else:
-        blobs = [(cx + rnd.uniform(-7, 7), rnd.uniform(9, 15), rnd.uniform(6, 8.5)) for _ in range(6)]
-        blobs.append((cx, 11, 9.5))
-        lx, ly = -0.6, -0.8
-        for y in range(size):
-            for x in range(size):
-                best = None
-                for bx, by, br in blobs:
-                    d = math.hypot(x - bx, y - by)
-                    if d <= br:
-                        nx, ny = (x - bx) / br, (y - by) / br
-                        light = -(nx * lx + ny * ly)
-                        v = light + rnd.uniform(-0.25, 0.25)
-                        if best is None or v > best:
-                            best = v
-                if best is not None:
-                    k = 4 if best > 0.55 else (3 if best > 0.15 else (2 if best > -0.3 else 1))
-                    if y > 20:
-                        k = max(1, k - 1)
-                    px[x, y] = rgba(ramp[k])
+        _trunk(px, size, trunk, rnd, 17, cx)
+        # Feuillage : touffes rondes qui se recouvrent, chacune éclairée en haut à gauche.
+        clumps = []
+        for _ in range(16):
+            a = rnd.uniform(0, math.tau)
+            d = rnd.uniform(0, 1) ** 0.6
+            clumps.append((cx + math.cos(a) * d * 9.5, 11 + math.sin(a) * d * 7.5, rnd.uniform(3.2, 4.8)))
+        clumps.sort(key=lambda c: c[1])
+        for bx, by, br in clumps:
+            for y in range(int(by - br) - 1, int(by + br) + 2):
+                for x in range(int(bx - br) - 1, int(bx + br) + 2):
+                    if not (0 <= x < size and 0 <= y < size - 4):
+                        continue
+                    d = math.hypot(x + 0.5 - bx, y + 0.5 - by)
+                    if d > br:
+                        continue
+                    nx, ny = (x + 0.5 - bx) / br, (y + 0.5 - by) / br
+                    v = -(nx * -0.55 + ny * -0.85)
+                    global_v = (by - 11) / 9.0
+                    v -= global_v * 0.6
+                    if d > br - 1.0 and (nx > 0.2 or ny > 0.2):
+                        k = 0
+                    else:
+                        k = 4 if v > 0.75 else (3 if v > 0.2 else (2 if v > -0.35 else 1))
+                    px[x, y] = ramp[k]
         if fruit:
-            for _ in range(7):
-                x, y = rnd.randint(6, size - 7), rnd.randint(4, 19)
-                if px[x, y][3]:
+            for _ in range(8):
+                x, y = rnd.randint(7, size - 8), rnd.randint(5, 18)
+                if px[x, y][3] and px[x + 1, y][3] and px[x, y + 1][3]:
                     px[x, y] = rgba(fruit)
-                    if px[x + 1, y][3]:
-                        px[x + 1, y] = rgba(shade(fruit, -0.3))
-    add_outline(img, rgba(shade(leaf, -0.75)))
+                    px[x + 1, y] = hshift(rgba(fruit), -0.3)
+                    px[x, y + 1] = hshift(rgba(fruit), -0.45)
+    sel_outline(img, -0.6)
     return img
 
 
@@ -1637,21 +1728,23 @@ def bush(seed, leaf, berries=None, size=16):
             x, y = rnd.randint(4, 11), rnd.randint(5, 12)
             if px[x, y][3]:
                 px[x, y] = rgba(berries)
-    add_outline(img, rgba(shade(leaf, -0.75)))
+    sel_outline(img, -0.6)
     return img
 
 
 def rock(seed, base="8a8478", size=16, big=False):
+    """Rocher à facettes : dessus clair, face avant, flanc droit sombre, éclats."""
     rnd = random.Random(seed)
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     px = img.load()
-    ramp = [shade(base, -0.45), shade(base, -0.2), base, shade(base, 0.25), shade(base, 0.45)]
-    r = 6.5 if big else 4.5
+    ramp = _ramp(base)
+    r = 6.8 if big else 5.4
+    cx, cy = size / 2, size * 0.6
     pts = []
-    for i in range(9):
-        a = i / 9 * math.tau
-        rr = r * rnd.uniform(0.8, 1.15)
-        pts.append((size / 2 + math.cos(a) * rr * 1.15, size * 0.58 + math.sin(a) * rr * 0.85))
+    for i in range(10):
+        a = i / 10 * math.tau
+        rr = r * rnd.uniform(0.82, 1.1)
+        pts.append((cx + math.cos(a) * rr * 1.1, cy + math.sin(a) * rr * (0.78 if i < 5 else 0.95)))
 
     def inside(x, y):
         n = len(pts)
@@ -1665,19 +1758,31 @@ def rock(seed, base="8a8478", size=16, big=False):
             j = i
         return ok
 
+    ridge = cy - r * 0.15 + rnd.uniform(-1, 1)
+    split = cx + r * 0.35
     for y in range(size):
         for x in range(size):
             if inside(x + 0.5, y + 0.5):
-                nx = (x - size / 2) / r
-                ny = (y - size * 0.5) / r
-                v = -(nx * -0.6 + ny * -0.9) + rnd.uniform(-0.15, 0.15)
-                px[x, y] = rgba(ramp[4 if v > 0.8 else (3 if v > 0.25 else (2 if v > -0.3 else 1))])
-    # quelques fissures et mousse
-    for _ in range(2 if big else 1):
-        x, y = rnd.randint(5, 10), rnd.randint(8, 11)
+                if y + 0.5 < ridge - (x - cx) * 0.25:
+                    k = 4 if x < cx - 1 else 3
+                elif x + 0.5 > split + (y - ridge) * 0.3:
+                    k = 1
+                else:
+                    k = 2
+                px[x, y] = ramp[k]
+    # fissures et éclats lumineux
+    for _ in range(3 if big else 2):
+        x, y = int(cx + rnd.uniform(-3, 2)), int(cy + rnd.uniform(-1, 2))
         if px[x, y][3]:
-            px[x, y] = rgba(ramp[0])
-    add_outline(img, rgba(shade(base, -0.7)))
+            px[x, y] = ramp[0]
+            if px[x + 1, y + 1][3]:
+                px[x + 1, y + 1] = ramp[0]
+    for _ in range(2):
+        x, y = int(cx + rnd.uniform(-4, 0)), int(cy - r * 0.45 + rnd.uniform(-1, 1))
+        if px[x, y][3]:
+            px[x, y] = hshift(ramp[4], 0.3)
+    auto_shade(img, 0.0, -0.12)
+    sel_outline(img, -0.6)
     return img
 
 
@@ -2259,455 +2364,539 @@ def well():
 # Personnages (16 × 16) : corps + cheveux + tenue + accessoires
 # ---------------------------------------------------------------------------
 
-BODY = [
-    "................",
-    "................",
-    "................",
-    ".....ssssss.....",
-    "....ssssssss....",
-    "....ssssssss....",
-    "....sZssssZs....",
-    "....sZssssZs....",
-    ".....ssSSss.....",
-    "......SSSS......",
-    "....tttttttt....",
-    "...sttttttttS...",
-    "...sttTTTTttS...",
-    "....tTTTTTTT....",
-    "....LL....LL....",
-    "....dd....dd....",
-]
+class Pix:
+    """Toile de couleurs (hexadécimal) pour les personnages 24 × 24."""
 
-HAIR = {
-    "court": [
-        "................",
-        "................",
-        ".....aaaaaa.....",
-        "....aaaaaaaa....",
-        "...aAaaaaaaAa...",
-        "...aA......Aa...",
-        "................",
-    ],
-    "long": [
-        "................",
-        "................",
-        ".....aaaaaa.....",
-        "....aaaaaaaa....",
-        "...aAaaaaaaAa...",
-        "...aA......Aa...",
-        "...aA......Aa...",
-        "...aA......Aa...",
-        "...AA......AA...",
-        "...A........A...",
-    ],
-    "chauve": [],
-    "barbe": [
-        "................",
-        "................",
-        ".....aaaaaa.....",
-        "....aaaaaaaa....",
-        "...aAaaaaaaAa...",
-        "...aA......Aa...",
-        "................",
-        "................",
-        "....aa....aa....",
-        ".....aaaaaa.....",
-        "......AAAA......",
-    ],
-}
+    def __init__(self, w=24, h=24):
+        self.w, self.h = w, h
+        self.c = {}
 
-HATS = {
-    "chapeau_mage": [
-        "........h.......",
-        ".......tt.......",
-        "......tttT......",
-        ".....tttttT.....",
-        "...TTTTTTTTTT...",
-    ],
-    "casque": [
-        "................",
-        "................",
-        ".....mmmmmm.....",
-        "....mwwmmmmM....",
-        "...mmmmmmmmMM...",
-        "...mM......MM...",
-        "...mM..........."
-    ],
-    "capuche": [
-        "................",
-        "................",
-        ".....tttttt.....",
-        "....tttttttt....",
-        "...tTttttttTt...",
-        "...tT......Tt...",
-        "...tT......Tt...",
-        "...TT......TT...",
-        "....TT....TT....",
-    ],
-    "couronne": [
-        "................",
-        "....y.y..y.y....",
-        "....YYYYYYYY....",
-    ],
-    "foulard": [
-        "................",
-        "................",
-        ".....tttttt.....",
-        "....tttttttt....",
-        "...TttttttttT...",
-        "...........TT...",
-    ],
-    "cornes": [
-        "..x..........x..",
-        "..xx........xx..",
-        "...xX......Xx...",
-    ],
-    "tablier": [],
-}
+    def put(self, x, y, col):
+        if 0 <= x < self.w and 0 <= y < self.h and col:
+            self.c[(int(x), int(y))] = col
 
-APRON = [
-    "................", "................", "................", "................", "................",
-    "................", "................", "................", "................", "................",
-    "................", "......xxxx......", ".....xxxxxx.....", ".....xXxxXx.....",
-]
+    def has(self, x, y):
+        return (x, y) in self.c
 
-HELD = {
-    "epee": [((13, 7), "w"), ((13, 8), "m"), ((13, 9), "m"), ((13, 10), "M"), ((12, 11), "Y"), ((13, 11), "Y"), ((14, 11), "Y"), ((13, 12), "L")],
-    "bouclier": [((1, 10), "M"), ((2, 10), "M"), ((1, 11), "E"), ((2, 11), "Y"), ((1, 12), "E"), ((2, 12), "E"), ((1, 13), "M")],
-    "baton": [((13, 4), "b"), ((13, 5), "B"), ((13, 6), "E"), ((13, 7), "E"), ((13, 8), "E"), ((13, 9), "E"), ((13, 10), "E"), ((13, 11), "E"), ((13, 12), "E"), ((13, 13), "d")],
-    "arc": [((13, 6), "E"), ((14, 7), "E"), ((14, 8), "E"), ((14, 9), "E"), ((14, 10), "E"), ((13, 11), "E"), ((13, 7), "x"), ((13, 8), "x"), ((13, 9), "x"), ((13, 10), "x")],
-    "dagues": [((13, 10), "w"), ((13, 11), "M"), ((13, 12), "L"), ((2, 10), "w"), ((2, 11), "M"), ((2, 12), "L")],
-    "luth": [((12, 9), "e"), ((13, 9), "e"), ((12, 10), "e"), ((13, 10), "E"), ((14, 8), "E"), ((15, 7), "d")],
-    "marteau": [((12, 6), "M"), ((13, 6), "m"), ((14, 6), "M"), ((12, 7), "M"), ((13, 7), "m"), ((14, 7), "M"), ((13, 8), "E"), ((13, 9), "E"), ((13, 10), "E"), ((13, 11), "E"), ((13, 12), "d")],
-    "fourche": [((12, 5), "M"), ((14, 5), "M"), ((12, 6), "M"), ((13, 6), "M"), ((14, 6), "M"), ((13, 7), "E"), ((13, 8), "E"), ((13, 9), "E"), ((13, 10), "E"), ((13, 11), "E"), ((13, 12), "d")],
-    "chope": [((12, 10), "x"), ((13, 10), "x"), ((12, 11), "Y"), ((13, 11), "Y"), ((14, 11), "o"), ((12, 12), "Y"), ((13, 12), "Y")],
-    "bourse": [((12, 11), "L"), ((13, 11), "L"), ((12, 12), "L"), ((13, 12), "Y")],
-    "livre": [((12, 10), "R"), ((13, 10), "R"), ((12, 11), "R"), ((13, 11), "y"), ((12, 12), "q"), ((13, 12), "q")],
-    "lance": [((13, 2), "w"), ((13, 3), "m"), ((13, 4), "E"), ((13, 5), "E"), ((13, 6), "E"), ((13, 7), "E"), ((13, 8), "E"), ((13, 9), "E"), ((13, 10), "E"), ((13, 11), "E"), ((13, 12), "E"), ((13, 13), "d")],
-    "symbole": [((13, 8), "y"), ((12, 9), "y"), ((13, 9), "Y"), ((14, 9), "y"), ((13, 10), "Y"), ((13, 11), "o")],
-    "herbes": [((12, 10), "g"), ((13, 9), "G"), ((14, 10), "g"), ((13, 10), "G"), ((13, 11), "v")],
-    "orbe": [((12, 9), "p"), ((13, 9), "P"), ((12, 10), "P"), ((13, 10), "i")],
-}
+    def rect(self, x0, y0, x1, y1, col):
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                self.put(x, y, col)
 
+    def ellipse(self, cx, cy, rx, ry, col_fn):
+        for y in range(int(cy - ry) - 1, int(cy + ry) + 2):
+            for x in range(int(cx - rx) - 1, int(cx + rx) + 2):
+                dx, dy = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
+                if dx * dx + dy * dy <= 1.0:
+                    self.put(x, y, col_fn(x, y, dx, dy))
 
-def character(hair="court", hair_col="7a4a2a", skin=("f6cfa6", "cf9470"), outfit="3f86e8", hat=None, held=(), apron=False, hat_col=None):
-    layers = [list(r) for r in BODY]
-
-    def stamp(rows):
-        for y, row in enumerate(rows):
-            for x, ch in enumerate(row):
-                if ch != "." and y < 16 and x < 16:
-                    layers[y][x] = ch
-
-    stamp(HAIR.get(hair, []))
-    if apron:
-        stamp(APRON)
-    if hat:
-        stamp(HATS[hat])
-    for h in held:
-        for (x, y), ch in HELD[h]:
-            layers[y][x] = ch
-    pal = {"a": hair_col, "A": shade(hair_col, -0.35), "s": skin[0], "S": skin[1],
-           "t": outfit, "T": shade(outfit, -0.35)}
-    if hat_col and hat in ("chapeau_mage", "capuche", "foulard"):
-        # Chapeau d'une autre couleur que la tenue : on remplace les pixels du chapeau.
-        rows = ["".join(r) for r in layers]
-        img = from_ascii(rows, pal)
-        hat_img = from_ascii(HATS[hat] + ["." * 16] * (16 - len(HATS[hat])), {"t": hat_col, "T": shade(hat_col, -0.35)}, outline=False)
-        img.alpha_composite(hat_img)
+    def image(self, shading=True):
+        img = Image.new("RGBA", (self.w, self.h), (0, 0, 0, 0))
+        px = img.load()
+        for (x, y), col in self.c.items():
+            px[x, y] = rgba(col)
+        if shading:
+            auto_shade(img, 0.1, -0.14)
+        sel_outline(img, -0.7)
         return img
-    return from_ascii(["".join(r) for r in layers], pal)
+
+
+def R3(col):
+    """Rampe courte : clair, moyen, sombre."""
+    return shade(col, 0.22), col, shade(col, -0.3)
+
+
+HAT_ITEMS = ("casque", "chapeau_mage", "capuche", "couronne", "foulard", "cornes", "paille", "chapeau_noir", "oreilles")
+
+
+def character(hair="court", hair_col="7a4a2a", skin="f2c49c", outfit="3f86e8", pants=None, boots="5c3a24",
+              hat=None, hat_col=None, held=(), apron=False, cape=None, eyes="normal", mask=None, plume=None,
+              belt="5c3a24", bones=False):
+    c = Pix()
+    sl, sm, sd = R3(skin)
+    ol, om, od = R3(outfit)
+    pl, pm, pd = R3(pants or shade(outfit, -0.35))
+    hl, hm, hd = R3(hair_col)
+    bl, bm, bd = R3(boots)
+    # Cape (derrière le corps)
+    if cape:
+        cl, cm, cd = R3(cape)
+        for y in range(12, 22):
+            for x in range(6, 18):
+                c.put(x, y, cm if 7 < x < 16 else cd)
+        c.rect(6, 12, 17, 12, cl)
+    # Jambes et bottes
+    for x0 in (9, 13):
+        c.rect(x0, 19, x0 + 1, 20, pm if not bones else "d8d0c0")
+        c.put(x0, 19, pl if not bones else "ece4d2")
+        c.rect(x0 - (1 if x0 == 9 else 0), 21, x0 + 1 + (1 if x0 == 13 else 0), 22, bm if not bones else "d8d0c0")
+        c.put(x0, 21, bl if not bones else "ece4d2")
+    # Torse (tunique), épaules, ceinture
+    for y in range(13, 19):
+        for x in range(8, 16):
+            col = ol if x <= 9 else (od if x >= 14 else om)
+            if bones:
+                col = "1b1420" if (y in (14, 16) and 9 <= x <= 14) else ("ece4d2" if x == 11 or x == 12 else ("d8d0c0" if y % 2 else "1b1420"))
+            c.put(x, y, col)
+    c.rect(7, 13, 16, 13, ol if not bones else "ece4d2")
+    if not bones:
+        c.put(11, 13, sd)
+        c.put(12, 13, sd)
+        c.rect(8, 17, 15, 17, belt)
+        c.put(11, 17, "e8ac3a")
+        c.put(12, 17, "a5651f")
+        c.rect(8, 18, 15, 18, od)
+    if apron:
+        c.rect(9, 14, 14, 19, "ece4d2")
+        c.rect(14, 14, 14, 19, "b4a68e")
+        c.rect(9, 19, 14, 19, "b4a68e")
+    # Bras et mains
+    for x0, light in ((6, True), (16, False)):
+        for y in range(13, 18):
+            c.put(x0, y, (ol if light else om) if not bones else "ece4d2")
+            c.put(x0 + 1, y, (om if light else od) if not bones else "d8d0c0")
+        c.put(x0, 18, sl if light else sm)
+        c.put(x0 + 1, 18, sm if light else sd)
+    # Tête
+    def head(x, y, dx, dy):
+        if dy > 0.75:
+            return sd
+        return sl if dx < -0.55 else (sd if dx > 0.6 else sm)
+    c.ellipse(12, 8, 4.9, 4.7, head)
+    # Yeux, joues
+    if eyes == "socket":
+        c.rect(9, 8, 10, 9, "1b1420")
+        c.rect(13, 8, 14, 9, "1b1420")
+        c.put(11, 11, "1b1420")
+        c.put(12, 11, "1b1420")
+    else:
+        col = {"normal": "2b2734", "glow": "ff5a4a", "dark": "1b1420"}[eyes]
+        for x in (10, 13):
+            c.put(x, 8, col)
+            c.put(x, 9, col)
+        if eyes == "normal":
+            c.put(9, 10, shade("ff9a8a", 0.1))
+            c.put(14, 10, shade("ff9a8a", -0.1))
+    # Cheveux
+    if hair != "chauve":
+        for (x, y) in list(c.c.keys()):
+            dx, dy = (x + 0.5 - 12) / 4.9, (y + 0.5 - 8) / 4.7
+            if dx * dx + dy * dy <= 1.0 and y <= 5:
+                c.put(x, y, hl if y <= 3 and x < 12 else (hd if x >= 15 else hm))
+        for p in ((8, 6), (9, 6), (7, 6), (16, 6), (7, 7), (16, 7), (14, 6)):
+            c.put(*p, hm if p[0] < 15 else hd)
+        if hair == "long":
+            for y in range(5, 15):
+                c.put(6, y, hm)
+                c.put(7, y, hl if y < 9 else hm)
+                c.put(16, y, hd)
+                c.put(17, y, hd)
+        if hair == "barbe":
+            c.rect(9, 10, 14, 10, hm)
+            c.put(11, 10, sd)
+            c.put(12, 10, sd)
+            c.rect(8, 11, 15, 12, hm)
+            c.rect(9, 13, 14, 13, hd)
+            c.rect(10, 14, 13, 14, hd)
+    else:
+        c.put(9, 4, shade(skin, 0.4))
+    if mask:
+        c.rect(8, 10, 15, 12, mask)
+        c.rect(8, 10, 15, 10, shade(mask, 0.2))
+    # Coiffes
+    hc = hat_col or outfit
+    tl, tm, td = R3(hc)
+    if hat == "casque":
+        ml, mm, md = "e8ecf4", "b4bac8", "6f7588"
+        for (x, y) in list(c.c.keys()):
+            dx, dy = (x + 0.5 - 12) / 4.9, (y + 0.5 - 8) / 4.7
+            if dx * dx + dy * dy <= 1.05 and y <= 6:
+                c.put(x, y, ml if x < 10 and y < 5 else (md if x >= 15 else mm))
+        for y in range(6, 11):
+            c.put(7, y, mm)
+            c.put(16, y, md)
+        c.put(11, 7, mm)
+        c.put(12, 7, md)
+        c.rect(7, 6, 16, 6, md)
+        if plume:
+            for p in ((11, 1), (12, 0), (12, 1), (13, 0), (11, 2), (12, 2)):
+                c.put(*p, plume)
+    elif hat == "chapeau_mage":
+        c.rect(5, 4, 18, 4, td)
+        c.rect(6, 5, 17, 5, tm)
+        c.rect(8, 3, 15, 3, "e8ac3a")
+        c.rect(9, 2, 14, 2, tm)
+        c.rect(10, 1, 13, 1, tl)
+        c.put(13, 0, tl)
+        c.put(14, 0, tm)
+        c.put(15, 1, td)
+        c.put(10, 2, "ffe080")
+    elif hat == "capuche":
+        def hood(x, y, dx, dy):
+            fx, fy = (x + 0.5 - 12) / 3.6, (y + 0.5 - 9.5) / 3.4
+            if fx * fx + fy * fy <= 1.0 and y >= 7:
+                return None
+            return tl if dx < -0.5 else (td if dx > 0.5 else tm)
+        for y in range(2, 15):
+            for x in range(5, 19):
+                dx, dy = (x + 0.5 - 12) / 6.0, (y + 0.5 - 8.5) / 6.2
+                if dx * dx + dy * dy <= 1.0:
+                    col = hood(x, y, dx, dy)
+                    if col:
+                        c.put(x, y, col)
+        c.rect(9, 7, 14, 7, sd)
+    elif hat == "couronne":
+        c.rect(8, 3, 15, 4, "e8ac3a")
+        c.rect(8, 3, 15, 3, "ffe080")
+        for x in (8, 10, 13, 15):
+            c.put(x, 2, "ffe080")
+        c.put(8, 1, "ffe080")
+        c.put(15, 1, "ffe080")
+        c.put(11, 4, "d63d3d")
+        c.put(12, 4, "85202f")
+    elif hat == "foulard":
+        for (x, y) in list(c.c.keys()):
+            dx, dy = (x + 0.5 - 12) / 4.9, (y + 0.5 - 8) / 4.7
+            if dx * dx + dy * dy <= 1.05 and y <= 5:
+                c.put(x, y, tl if x < 10 else (td if x >= 15 else tm))
+        for p in ((17, 5), (18, 6), (18, 7), (17, 7)):
+            c.put(*p, td)
+    elif hat == "paille":
+        c.rect(4, 5, 19, 5, "c8a04a")
+        c.rect(5, 4, 18, 4, "f0d070")
+        c.rect(8, 2, 15, 3, "e8c060")
+        c.rect(8, 3, 15, 3, "d63d3d")
+    elif hat == "chapeau_noir":
+        c.rect(5, 5, 18, 5, "2b2734")
+        c.rect(8, 1, 15, 4, "3a3448")
+        c.rect(8, 4, 15, 4, "85202f")
+        c.put(16, 1, "ece4d2")
+        c.put(17, 0, "ece4d2")
+    elif hat == "cornes":
+        for p in ((6, 1), (6, 2), (7, 3), (7, 4), (17, 1), (17, 2), (16, 3), (16, 4)):
+            c.put(*p, "ece4d2" if p[1] < 3 else "b4a68e")
+    elif hat == "oreilles":
+        for p in ((4, 6), (5, 7), (6, 7), (6, 8), (19, 6), (18, 7), (17, 7), (17, 8)):
+            c.put(*p, sm)
+    for h in held:
+        HELD_FN[h](c)
+    return c.image()
+
+
+def _wood(c, x, y0, y1):
+    for y in range(y0, y1 + 1):
+        c.put(x, y, "94603a" if y % 3 else "a8703f")
+
+
+def _sword(c):
+    for y in range(5, 17):
+        c.put(18, y, "eef2f8")
+        c.put(19, y, "a8b0c0")
+    c.put(18, 4, "eef2f8")
+    c.rect(16, 17, 20, 17, "e8ac3a")
+    c.put(18, 18, "5c3a24")
+    c.put(18, 19, "5c3a24")
+    c.put(18, 20, "e8ac3a")
+
+
+def _staff(c):
+    _wood(c, 18, 4, 22)
+    c.rect(17, 1, 19, 3, "3f86e8")
+    c.put(17, 1, "c8ecff")
+    c.put(18, 0, "8fd3ff")
+    c.put(16, 2, "8fd3ff")
+    c.put(20, 2, "8fd3ff")
+
+
+def _bow(c):
+    for y in range(7, 20):
+        c.put(18, y, "ece4d2")
+    for p in ((19, 6), (20, 7), (21, 8), (21, 9), (22, 10), (22, 11), (22, 12), (22, 13), (22, 14), (21, 15), (21, 16), (20, 17), (19, 18), (19, 19)):
+        c.put(*p, "94603a")
+
+
+def _daggers(c):
+    for x in (18, 5):
+        for y in range(14, 18):
+            c.put(x, y, "eef2f8" if y < 16 else "a8b0c0")
+        c.put(x, 18, "e8ac3a")
+
+
+def _hammer(c):
+    _wood(c, 18, 8, 21)
+    c.rect(16, 5, 21, 8, "b4bac8")
+    c.rect(16, 5, 21, 5, "e8ecf4")
+    c.rect(16, 8, 21, 8, "6f7588")
+
+
+def _spear(c):
+    _wood(c, 18, 4, 22)
+    for p, col in (((18, 0), "eef2f8"), ((18, 1), "eef2f8"), ((17, 2), "c9ced9"), ((18, 2), "eef2f8"), ((19, 2), "8d93a6"), ((18, 3), "8d93a6")):
+        c.put(*p, col)
+    c.put(19, 4, "d63d3d")
+    c.put(20, 5, "d63d3d")
+
+
+def _fork(c):
+    _wood(c, 18, 6, 22)
+    c.rect(16, 5, 20, 5, "8d93a6")
+    for x in (16, 18, 20):
+        c.rect(x, 2, x, 4, "c9ced9")
+
+
+def _mug(c):
+    c.rect(17, 16, 19, 19, "a8703f")
+    c.rect(17, 15, 19, 15, "f6f4ee")
+    c.put(17, 17, "e8ac3a")
+    c.put(20, 17, "5c3a24")
+    c.put(20, 18, "5c3a24")
+
+
+def _purse(c):
+    c.rect(17, 18, 19, 20, "a86c43")
+    c.put(18, 17, "e8ac3a")
+    c.put(17, 18, "e3ad75")
+
+
+def _book(c):
+    c.rect(16, 15, 19, 19, "d63d3d")
+    c.rect(16, 19, 19, 19, "ece4d2")
+    c.put(18, 16, "e8ac3a")
+
+
+def _symbol(c):
+    c.put(17, 14, "e8ac3a")
+    c.rect(17, 15, 20, 18, "e8ac3a")
+    c.rect(18, 16, 19, 17, "fff4a8")
+    c.put(21, 16, "ffe080")
+    c.put(18, 19, "a5651f")
+
+
+def _herbs(c):
+    for x in (17, 18, 19):
+        c.rect(x, 16, x, 19, "4fae45")
+    for p in ((16, 14), (17, 13), (18, 14), (19, 13), (20, 14), (18, 15), (20, 15)):
+        c.put(*p, "a8e070")
+
+
+def _orb(c):
+    c.ellipse(18.5, 15.5, 2.1, 2.1, lambda x, y, dx, dy: "dba5ff" if dx + dy < -0.6 else ("9a50e0" if dx + dy < 0.6 else "57258f"))
+    c.put(18, 14, "ffffff")
+    c.put(21, 13, "dba5ff")
+    c.put(16, 12, "dba5ff")
+
+
+def _shield(c):
+    c.rect(2, 13, 6, 19, "94603a")
+    c.rect(2, 13, 6, 13, "c9ced9")
+    c.rect(2, 13, 2, 19, "c9ced9")
+    c.rect(6, 13, 6, 19, "8d93a6")
+    c.rect(3, 20, 5, 20, "8d93a6")
+    c.rect(4, 14, 4, 18, "e8ac3a")
+    c.rect(3, 16, 5, 16, "e8ac3a")
+
+
+def _lute(c):
+    c.ellipse(15.5, 17.5, 2.6, 2.3, lambda x, y, dx, dy: "e3ad75" if dx + dy < 0 else "a86c43")
+    c.put(15, 17, "3a2418")
+    for i in range(5):
+        c.put(18 + i, 15 - i, "5c3a24")
+
+
+HELD_FN = {"epee": _sword, "baton": _staff, "arc": _bow, "dagues": _daggers, "marteau": _hammer, "lance": _spear,
+           "fourche": _fork, "chope": _mug, "bourse": _purse, "livre": _book, "symbole": _symbol, "herbes": _herbs,
+           "orbe": _orb, "bouclier": _shield, "luth": _lute}
 
 
 UNITS_DEF = {
     # Classes Fantasy
-    "guerrier": dict(hair="court", hair_col="8a5a2a", outfit="8d93a6", hat="casque", held=("epee", "bouclier")),
-    "mage": dict(hair="long", hair_col="d8d0c0", outfit="3f6ad0", hat="chapeau_mage", held=("baton",)),
-    "assassin": dict(hair="court", hair_col="2b2734", outfit="4a4458", hat="capuche", held=("dagues",)),
-    "gardien": dict(hair="barbe", hair_col="a86c43", outfit="b0b4c0", hat="casque", held=("marteau", "bouclier")),
-    "soigneur": dict(hair="long", hair_col="e8c070", outfit="ece4d2", held=("symbole",)),
-    "rodeur": dict(hair="court", hair_col="6a4a2a", outfit="4f8a45", hat="capuche", held=("arc",)),
+    "guerrier": dict(hair="court", hair_col="8a5a2a", outfit="b4bac8", pants="5a4a6a", hat="casque", held=("epee", "bouclier"), cape="b03a3a"),
+    "mage": dict(hair="long", hair_col="e8e0d0", outfit="3f6ad0", hat="chapeau_mage", hat_col="2f4aa0", held=("baton",)),
+    "assassin": dict(hair="court", hair_col="2b2734", outfit="4a4458", hat="capuche", hat_col="3a3448", held=("dagues",), mask="2b2734"),
+    "gardien": dict(hair="barbe", hair_col="a86c43", outfit="c9ced9", pants="5a5a70", hat="casque", held=("marteau", "bouclier")),
+    "soigneur": dict(hair="long", hair_col="f0c870", outfit="ece4d2", pants="c8b890", held=("symbole",), belt="e8ac3a"),
+    "rodeur": dict(hair="court", hair_col="6a4a2a", outfit="4f8a45", pants="5c4a30", hat="capuche", hat_col="3f6a3a", held=("arc",)),
     "barde": dict(hair="long", hair_col="c94a3a", outfit="9a50e0", hat="foulard", hat_col="e8ac3a", held=("luth",)),
-    "druide": dict(hair="barbe", hair_col="6a8a4a", outfit="5f7a3a", held=("baton", "herbes")),
+    "druide": dict(hair="barbe", hair_col="8aa060", outfit="6a7a3a", pants="5c4a30", held=("baton", "herbes"), cape="4f6a30"),
     # Classes Légenders
-    "briseur": dict(hair="court", hair_col="c94a3a", outfit="b0503a", held=("marteau",)),
-    "ombre": dict(hair="court", hair_col="1b1420", outfit="2b2734", hat="capuche", held=("dagues",)),
-    "invocateur": dict(hair="long", hair_col="dba5ff", outfit="57258f", held=("orbe",)),
+    "briseur": dict(hair="court", hair_col="d0503a", outfit="b0503a", pants="3a3448", held=("marteau",)),
+    "ombre": dict(hair="court", hair_col="1b1420", outfit="2b2734", hat="capuche", hat_col="2b2734", held=("dagues",), eyes="dark"),
+    "invocateur": dict(hair="long", hair_col="dba5ff", outfit="57258f", held=("orbe",), cape="3a1a60"),
     "createur": dict(hair="court", hair_col="e8ac3a", outfit="2fb9b0", held=("livre",)),
-    "metamorphe": dict(hair="long", hair_col="7a4a2a", outfit="6f8a3a", hat="cornes", held=()),
+    "metamorphe": dict(hair="long", hair_col="7a4a2a", outfit="6f8a3a", hat="cornes"),
     "psychique": dict(hair="court", hair_col="9a50e0", outfit="d8d0f0", held=("orbe",)),
-    "tacticien": dict(hair="court", hair_col="3a3448", outfit="24438f", held=("livre",)),
-    "mutant": dict(hair="chauve", outfit="8a7a3a", skin=("b8d090", "88a060"), held=()),
+    "tacticien": dict(hair="court", hair_col="3a3448", outfit="24438f", held=("livre",), cape="85202f"),
+    "mutant": dict(hair="chauve", outfit="8a7a3a", skin="a8c880", held=()),
     # Métiers de PNJ
     "habitant": dict(hair="court", hair_col="8a5a2a", outfit="a07a4a"),
     "aubergiste": dict(hair="barbe", hair_col="6a4a2a", outfit="8a5a3a", apron=True, held=("chope",)),
-    "forgeron": dict(hair="chauve", outfit="5a4a3a", apron=True, held=("marteau",), skin=("e0a880", "b07050")),
+    "forgeron": dict(hair="chauve", outfit="5a4a3a", apron=True, held=("marteau",), skin="d89a70"),
     "marchand": dict(hair="court", hair_col="2b2734", outfit="c8a04a", hat="foulard", hat_col="d63d3d", held=("bourse",)),
-    "pretre": dict(hair="chauve", outfit="ece4d2", held=("symbole",)),
-    "garde": dict(hair="court", hair_col="6a4a2a", outfit="3f6ad0", hat="casque", held=("lance",)),
-    "capitaine": dict(hair="barbe", hair_col="b4a68e", outfit="24438f", hat="casque", held=("epee",)),
-    "fermier": dict(hair="court", hair_col="c8a04a", outfit="8a7a3a", hat="foulard", hat_col="e8d27a", held=("fourche",)),
-    "chasseur": dict(hair="court", hair_col="5a3a24", outfit="5a7a3a", hat="capuche", held=("arc",)),
+    "pretre": dict(hair="chauve", outfit="ece4d2", pants="c8b890", held=("symbole",), belt="e8ac3a"),
+    "garde": dict(hair="court", hair_col="6a4a2a", outfit="3f6ad0", pants="3a3448", hat="casque", held=("lance",)),
+    "capitaine": dict(hair="barbe", hair_col="b4a68e", outfit="24438f", hat="casque", plume="d63d3d", held=("epee",), cape="85202f"),
+    "fermier": dict(hair="court", hair_col="c8a04a", outfit="8a7a3a", pants="4a5a8a", hat="paille", held=("fourche",)),
+    "chasseur": dict(hair="court", hair_col="5a3a24", outfit="5a7a3a", hat="capuche", hat_col="4a5a2a", held=("arc",)),
     "herboriste": dict(hair="long", hair_col="7a4a2a", outfit="4fae45", apron=True, held=("herbes",)),
-    "noble": dict(hair="long", hair_col="e8c070", outfit="9a3a6a", hat="couronne", held=("bourse",)),
+    "noble": dict(hair="long", hair_col="f0c870", outfit="9a3a6a", hat="couronne", held=("bourse",), cape="57258f"),
     "pnj": dict(hair="court", hair_col="5a3a24", outfit="7a7a8a"),
     "heros": dict(hair="court", hair_col="7a4a2a", outfit="3f86e8", held=("epee",)),
+    # Monstres humanoïdes
+    "bandit": dict(hair="court", hair_col="2b2734", outfit="8a6a4a", pants="3a3448", hat="foulard", hat_col="b03a3a", mask="5a2a2a", held=("dagues",)),
+    "chef_bandit": dict(hair="barbe", hair_col="3a2418", outfit="b03a3a", pants="2b2734", hat="chapeau_noir", held=("epee",), cape="2b2734"),
+    "cultiste": dict(hair="chauve", outfit="6a2a9a", hat="capuche", hat_col="4a1a70", eyes="glow", held=("orbe",), skin="b08a90"),
+    "gobelin": dict(hair="chauve", outfit="8a6a3a", skin="7ab84a", hat="oreilles", eyes="glow", held=("dagues",), pants="5a4a2a"),
+    "gobelin_archer": dict(hair="chauve", outfit="4f6a30", skin="7ab84a", hat="oreilles", eyes="glow", held=("arc",), pants="5a4a2a"),
+    "squelette": dict(hair="chauve", outfit="d8d0c0", skin="ece4d2", eyes="socket", held=("epee",), bones=True),
 }
 
-MONSTERS = {
+
+def _pad24(rows):
+    rows = [r.ljust(24, ".")[:24] for r in rows]
+    return ["." * 24] * (24 - len(rows) - 1) + rows + ["." * 24]
+
+
+BEASTS = {
     "loup": [
-        "................",
-        "................",
-        "................",
-        "..M.M...........",
-        "..MMMM..........",
-        ".MmZmM..........",
-        "MMmmmMMMMMMMM...",
-        ".nMMMmmmmmmmMM.M",
-        "..nMMMmmmmmmMMMM",
-        "...MMMMMMMMMMM.M",
-        "...MMnMMMMnMMM..",
-        "...Mn.Mn..Mn.Mn.",
-        "...n..n...n..n..",
-        "................",
-        "................",
-        "................",
-    ],
-    "loup_alpha": [
-        "................",
-        "..z.z...........",
-        "..zzzz..........",
-        ".zZrZz..........",
-        "zzzzzzzzzzzzz...",
-        ".ZzzzzzzzzzzzzZ.",
-        "..ZzzzzzzzzzzzZz",
-        "..ZzzzzzzzzzzzzZ",
-        "...zzzzzzzzzzzz.",
-        "...zzZzzzzzZzzz.",
-        "...zZ.zZ..zZ.zZ.",
-        "...Z..Z...Z..Z..",
-        "................",
-        "................",
-        "................",
-        "................",
-    ],
-    "gobelin": [
-        "................",
-        "................",
-        "..G.........G...",
-        "..GG.gggggg.GG..",
-        "...GggggggggG...",
-        "....gRggggRg....",
-        "....ggggggggg...",
-        ".....gGxxGg.....",
-        "......GGGG......",
-        "....LLLLLLLL..M.",
-        "...gLLLLLLLLg.M.",
-        "...gLLLdLLLLgEM.",
-        "....LLLLLLLL..E.",
-        "....GG....GG....",
-        "....vv....vv....",
-        "................",
-    ],
-    "gobelin_archer": [
-        "................",
-        "................",
-        "..G.........G...",
-        "..GG.gggggg.GG..",
-        "...GggggggggG.E.",
-        "....gRggggRg.x.E",
-        "....ggggggggg.x.",
-        ".....gGxxGg...xE",
-        "......GGGG....x.",
-        "....vvvvvvvv.x.E",
-        "...gvvvvvvvvgxE.",
-        "...gvvvdvvvvg.E.",
-        "....vvvvvvvv....",
-        "....GG....GG....",
-        "....vv....vv....",
-        "................",
-    ],
-    "bandit": [
-        "................",
-        "................",
-        ".....ZZZZZZ.....",
-        "....ZZZZZZZZ....",
-        "....ssssssss....",
-        "....RRRRRRRR....",
-        "....sZssssZs....",
-        "....ssssssss....",
-        ".....qqqqqq.....",
-        "....LLLLLLLL...w",
-        "...sLLLLLLLLS.m.",
-        "...sLLLdLLLLSM..",
-        "....LLLLLLLL....",
-        "....zz....zz....",
-        "....ZZ....ZZ....",
-        "................",
-    ],
-    "chef_bandit": [
-        "................",
-        "...ZZZZZZZZZZ...",
-        ".....ZZZZZZ.....",
-        "....ZZRRRRZZ....",
-        "....ssssssss....",
-        "....sZssssZs....",
-        "....ssssssss....",
-        "....SLLLLLLS....",
-        ".....LLLLLL.....",
-        "..qqRRRRRRRRqq.w",
-        "..qRRRRRRRRRRqmw",
-        "...sRRRYYRRRRSm.",
-        "....RRRRRRRR.M..",
-        "....zz....zz....",
-        "....ZZ....ZZ....",
-        "................",
-    ],
-    "squelette": [
-        "................",
-        "................",
-        ".....xxxxxx.....",
-        "....xxxxxxxx....",
-        "....xZZxxZZx....",
-        "....xZZxxZZx....",
-        ".....xxZZxx.....",
-        "......xXxX......",
-        ".......xx.......",
-        "....xxxxxxxx..w.",
-        "...x.xX.Xx.x.m..",
-        "...x.xxxxxx.xM..",
-        "......xxxx......",
-        ".....x....x.....",
-        ".....x....x.....",
-        "....xx....xx....",
-    ],
-    "araignee": [
-        "................",
-        "................",
-        "................",
-        "..z..........z..",
-        "...z..zzzz..z...",
-        "....zzZZZZzz....",
-        "zz..zZzzzzZz..zz",
-        "..zzzZRzzRZzzz..",
-        "....zZzzzzZz....",
-        "..zzzZZZZZZzzz..",
-        "zz..zzzzzzzz..zz",
-        "...z.zzzzzz.z...",
-        "..z...zzzz...z..",
-        ".z............z.",
-        "................",
-        "................",
+        "...MM...................",
+        "...MmM..M...............",
+        "...MmmMMm...............",
+        "..MmmmmmmM..............",
+        ".MmZmmmmmMM.............",
+        "MmmmmmmmmmMMMMMMMMM.....",
+        "ZmmmmmmmmmmmmmmmmmmMM...",
+        ".wwmmmmmmmmmmmmmmmmmMMM.",
+        "..wwMmmmmmmmmmmmmmmmMMMM",
+        "...MMmmmmmmmmmmmmmmMM.MM",
+        "....MMmmmmmmmmmmmmMM....",
+        "....MnMMMMMMMMMMMnMM....",
+        "....Mn.Mn....MnMMnM.....",
+        "....Mn.Mn....Mn..Mn.....",
+        "....Mn.Mn....Mn..Mn.....",
+        "...nn.nn....nn..nn......",
     ],
     "ours": [
-        "................",
-        "...LL....LL.....",
-        "...LLLLLLLL.....",
-        "..LLlLLLLlLL....",
-        "..LLZLLLLZLL....",
-        "..LLLllllLLL....",
-        "...LLlZZlLL.....",
-        "..LLLLLLLLLLLL..",
-        ".LLLlllllllLLLL.",
-        ".LLllllllllllLL.",
-        ".LLlllllllllLLL.",
-        ".LLLllllllllLLL.",
-        "..LLLLLLLLLLLL..",
-        "..dLL..LL..LLd..",
-        "..dd...dd...dd..",
-        "................",
-    ],
-    "cultiste": [
-        "................",
-        "................",
-        ".....iiiiii.....",
-        "....iPPPPPPi....",
-        "...iPPPPPPPPi...",
-        "...iPZZZZZZPi...",
-        "...iPZrZZrZPi...",
-        "...iPZZZZZZPi...",
-        "....iPPPPPPi....",
-        "...iPPPPPPPPi...",
-        "..iPPPPyPPPPPi..",
-        "..iPPPPPPPPPPi..",
-        "..iPPPPPPPPPPi..",
-        "..iiPPPPPPPPii..",
-        "...iiiiiiiiii...",
-        "................",
+        ".....LL........LL.......",
+        "....LllL......LllL......",
+        "....LlLLLLLLLLLLlL......",
+        "....LLllllllllllLL......",
+        "...LLllllllllllllLL.....",
+        "...LllZZllllllZZlLL.....",
+        "...LlllllllllllllLL.....",
+        "...LLlllleeeelllLLL.....",
+        "....LLllleZZellLLL......",
+        ".....LLLleeeelLLL.......",
+        "...LLLLLLLLLLLLLLLLL....",
+        "..LLlllllllllllllllLL...",
+        "..LlllllleeeeeelllllL...",
+        ".LLllllleeeeeeeelllLLL..",
+        ".LlllllleeeeeeeellllLL..",
+        ".LLlllllleeeeeelllllLL..",
+        "..LLlllllleeeellllLLL...",
+        "..LLLLlllllllllLLLLLL...",
+        "..dLLL..LLLLLL..LLLd....",
+        "..ddd...dddddd...ddd....",
     ],
     "golem": [
-        "................",
-        ".....MMMMMM.....",
-        "....MmmmmmmM....",
-        "....MmCmmCmM....",
-        "....MmmmmmmM....",
-        "..MMMMMMMMMMMM..",
-        ".MmmMmmmmmmMmmM.",
-        ".MmmMmmCCmmMmmM.",
-        ".MmMMmmmmmmMMmM.",
-        ".MmM.MmmmmM.MmM.",
-        ".MMM.MmmmmM.MMM.",
-        ".....MMMMMM.....",
-        "....MmM..MmM....",
-        "....MMM..MMM....",
-        "...nnnn..nnnn...",
-        "................",
+        "........MMMMMMMM........",
+        ".......MmmmmmmmmM.......",
+        ".......MmCmmmmCmM.......",
+        ".......MmmmmmmmmM.......",
+        ".......MMmmCCmmMM.......",
+        "...MMMMMMMMMMMMMMMMMM...",
+        "..MmmmmMmmmmmmmmMmmmmM..",
+        "..MmmmmMmmmCCmmmMmmmmM..",
+        "..MmmmMMmmmmmmmmMMmmmM..",
+        "..MmmmM.MmmmmmmM.MmmmM..",
+        "..MmmmM.MmmCmmmM.MmmmM..",
+        "..MMMMM.MmmmmmmM.MMMMM..",
+        "..MmmmM.MMMMMMMM.MmmmM..",
+        "...MMM..MmmM.MmmM.MMM...",
+        "........MmmM.MmmM.......",
+        ".......MMmmM.MmmMM......",
+        ".......nnnnn.nnnnn......",
     ],
     "ombre_errante": [
-        "................",
-        "......zzzz......",
-        ".....zZZZZz.....",
-        "....zZZZZZZz....",
-        "....zZpZZpZz....",
-        "....zZZZZZZz....",
-        "...zZZZZZZZZz...",
-        "...zZZZZZZZZz...",
-        "..zZZZZZZZZZZz..",
-        "..zZZZZZZZZZZz..",
-        "..zZZZZZZZZZZz..",
-        "...zZz.zZz.zZ...",
-        "....z...z...z...",
-        "................",
-        "................",
-        "................",
+        ".........zzzzzz.........",
+        ".......zzZZZZZZzz.......",
+        "......zZZZZZZZZZZz......",
+        ".....zZZZZZZZZZZZZz.....",
+        ".....zZZppZZZZppZZz.....",
+        ".....zZZppZZZZppZZz.....",
+        ".....zZZZZZZZZZZZZz.....",
+        "....zZZZZZZZiiZZZZZz....",
+        "....zZZZZZZZZZZZZZZz....",
+        "...zZZZZZZZZZZZZZZZZz...",
+        "...zZZZZZZZZZZZZZZZZz...",
+        "..zZZzZZZZZZZZZZZZzZZz..",
+        "..zZz.zZZZZZZZZZZz.zZz..",
+        "..zz..zZZZZzZZZZZz..zz..",
+        "......zZZz.zZZz.zZz.....",
+        ".......zz...zz...zz.....",
     ],
     "jeune_dragon": [
-        "................",
-        "....RR..........",
-        "...RRRR....q....",
-        "..RRyRRR..qRq...",
-        "..RRRRRRRqRRRq..",
-        "..rRRRRRRRRRRq..",
-        "...q.RRRRRRRRq..",
-        "....RRrrrrRRRRq.",
-        "...RRrrrrrrRRRR.",
-        "...RRrrrrrrRR.RR",
-        "....RRRRRRRRR..R",
-        "....RR.RR.RR...R",
-        "....qq.qq.qq....",
-        "................",
-        "................",
-        "................",
+        ".................qq.....",
+        "...q............qRq.....",
+        "...qRq..........qRRq....",
+        "....qRRq.......qRRRq....",
+        "....qRRRq.....qRRRRq....",
+        ".....qRRRqRRRRqRRRq.....",
+        ".RRR..qRRRRRRRRRRq......",
+        "RRyRR..RRRRRRRRRRR......",
+        "RRRRRRRRRffffffRRRR.....",
+        ".qqRRRRRffffffffRRRR....",
+        "...q..RRffffffffRRRRR...",
+        "......RRRffffffRRR.RRR..",
+        "......RRRRRRRRRRR...RR..",
+        "......qRR.qRR.qRR....R..",
+        "......qq..qq..qq........",
     ],
     "monstre": [
-        "................",
-        "................",
-        "................",
-        "................",
-        "......GGGG......",
-        "....GGggggGG....",
-        "...GggggggggG...",
-        "...GgZggggZgG...",
-        "..GggggggggggG..",
-        "..GgggGGGGgggG..",
-        "..GGggggggggGG..",
-        "...vGGGGGGGGv...",
-        "................",
-        "................",
-        "................",
-        "................",
+        ".........GGGGGG.........",
+        ".......GGggggggGG.......",
+        "......GggwggggggGG......",
+        ".....GgwwgggggggggG.....",
+        "....GgggggggggggggGG....",
+        "....GggZZggggZZggggG....",
+        "...GgggZZggggZZgggggG...",
+        "...GgggggggggggggggggG..",
+        "...GggggggZZZZgggggggG..",
+        "...GGgggggggggggggggGG..",
+        "....GGGGgggggggggGGGG...",
+        "......vvGGGGGGGGGvv.....",
     ],
 }
+
+
+def spider():
+    c = Pix()
+    legs = [((10, 12), (5, 8), (2, 12)), ((10, 13), (4, 12), (1, 17)), ((10, 14), (5, 16), (3, 21)), ((11, 15), (7, 19), (6, 22))]
+    for (sx, sy), (kx, ky), (ex, ey) in legs:
+        for (ax, ay), (bx, by) in (((sx, sy), (kx, ky)), ((kx, ky), (ex, ey))):
+            n = max(abs(bx - ax), abs(by - ay))
+            for i in range(n + 1):
+                x = round(ax + (bx - ax) * i / n)
+                y = round(ay + (by - ay) * i / n)
+                c.put(x, y, "3a3448")
+                c.put(23 - x, y, "2b2734")
+    c.ellipse(12, 15, 5.2, 4.6, lambda x, y, dx, dy: "5a4a6a" if dx + dy < -0.7 else ("3a3448" if dx + dy < 0.6 else "2b2734"))
+    for p in ((12, 13), (11, 14), (12, 14), (12, 15), (11, 16), (12, 16)):
+        c.put(*p, "d63d3d")
+    c.ellipse(12, 9, 3.2, 2.6, lambda x, y, dx, dy: "4a4458" if dx < 0 else "3a3448")
+    for p in ((10, 9), (11, 8), (13, 8), (14, 9)):
+        c.put(*p, "ff5a4a")
+    c.put(11, 11, "ece4d2")
+    c.put(13, 11, "ece4d2")
+    return c.image()
+
+
+def build_units(out):
+    for k, spec in UNITS_DEF.items():
+        out[("units", k)] = character(**spec)
+    for k, rows in BEASTS.items():
+        out[("units", k)] = from_ascii(_pad24(rows))
+    out[("units", "loup_alpha")] = from_ascii(_pad24(BEASTS["loup"]), {"m": "5a5468", "M": "3a3448", "n": "26222e", "w": "8a8498", "Z": "ff5a4a"})
+    out[("units", "araignee")] = spider()
 
 
 def write(group, name, img):
@@ -2736,10 +2925,7 @@ def build():
     for name, cloth in (("tent_red", "c94a3a"), ("tent_blue", "3f6ad0"), ("tent_green", "4f8a45"), ("tent_beige", "c8b08a")):
         out[("props", name)] = tent(cloth)
     out[("props", "well")] = well()
-    for k, spec in UNITS_DEF.items():
-        out[("units", k)] = character(**spec)
-    for k, rows in MONSTERS.items():
-        out[("units", k)] = from_ascii(rows)
+    build_units(out)
     return out
 
 
