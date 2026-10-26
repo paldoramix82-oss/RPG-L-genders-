@@ -41,6 +41,7 @@ var content := {}
 var quests: Array = []
 ## Coffre commun du groupe : objets à se partager.
 var loot: Array = []
+var checks: CheckRunner
 var combat: Combat
 var music := {"track": "", "playing": false, "started_at": 0.0, "broadcast": true, "auto_combat": true}
 var _music_before_combat := {}
@@ -71,6 +72,7 @@ func _init(settings: Dictionary, send: Callable, kick: Callable, saved_data: Dic
 	_kick = kick
 	_rng.randomize()
 	combat = Combat.new(self, _rng)
+	checks = CheckRunner.new(self, _rng)
 	if not saved_data.is_empty():
 		_load(saved_data, settings)
 		return
@@ -270,6 +272,8 @@ func handle_command(peer_id: int, cmd: Variant, payload: Variant) -> void:
 			error = _cmd_talk(player, payload)
 		Protocol.CMD_QUEST_ACCEPT:
 			error = _cmd_quest_accept(player, payload)
+		Protocol.CMD_CHECK:
+			error = _cmd_check(player, payload)
 		_:
 			error = "Commande inconnue."
 
@@ -305,12 +309,41 @@ func _cmd_action(player: Dictionary, payload: Dictionary) -> String:
 	var text := Protocol.sanitize_text(payload.get("text", ""))
 	if text == "":
 		return "Décrivez votre action."
+	# Épreuve automatique : la compétence choisie (ou devinée d'après le texte)
+	# déclenche le jet, l'hôte le résout et applique les conséquences.
+	var skill := String(payload.get("skill", "auto")) if payload.get("skill", "auto") is String else "auto"
+	if skill == "auto":
+		skill = Checks.detect(text)
+	if skill != "" and bool(Content.rule(content, "auto_checks")) and characters.has(player.id):
+		return checks.run(player.id, skill, {"text": text, "to": to, "target": String(payload.get("target", ""))})
 	_add_message({
 		"kind": Protocol.KIND_ACTION, "from": player.id, "from_name": _speaker_name(player.id),
 		"to": to, "text": text, "status": Protocol.ACTION_PENDING, "result": "", "roll": {},
 	})
 	_log("Nouvelle action de %s." % player.name, "ask")
 	return ""
+
+
+func _cmd_check(player: Dictionary, payload: Dictionary) -> String:
+	if not payload.get("skill") is String:
+		return "Compétence inconnue."
+	return checks.run(player.id, String(payload.skill), {"target": String(payload.get("target", "")), "text": String(payload.get("text", "")),
+		"to": _target_from(payload) if payload.has("to") else Protocol.TO_ALL})
+
+
+## Le MJ fait passer une épreuve à une action en attente (jet immédiat, conséquences appliquées).
+func mj_check_action(message_id: String, skill_id: String, dc: int = 0) -> String:
+	var m := _message(message_id)
+	if m.is_empty() or String(m.get("kind", "")) != Protocol.KIND_ACTION:
+		return "Action introuvable."
+	if m.has("check"):
+		return "Cette action a déjà son épreuve."
+	return checks.run(String(m.from), skill_id, {"message_id": message_id, "dc": dc, "text": String(m.text)})
+
+
+## Conséquence en un clic sur une action (dégâts, soins, XP, or, objet, poison…).
+func mj_action_consequence(message_id: String, kind: String) -> String:
+	return checks.consequence(message_id, kind)
 
 
 func _cmd_roll(player: Dictionary, payload: Dictionary) -> String:
@@ -535,6 +568,8 @@ func _cmd_roll_answer(player: Dictionary, payload: Dictionary) -> String:
 			return "Ce jet a déjà été lancé."
 	else:
 		return "Ce message n'attend pas de jet."
+	if String(request.get("skill", "")) != "":
+		return checks.run(player.id, String(request.skill), {"message_id": String(message.id), "dc": int(request.get("difficulty", 0)), "text": String(request.get("label", ""))})
 	var result := Dice.roll(String(request.get("expr", "d20")), _rng)
 	if not result.ok:
 		return result.error
@@ -559,31 +594,37 @@ func _roll_view(result: Dictionary, difficulty: int) -> Dictionary:
 
 
 ## Demande au joueur auteur d'une action de lancer lui-même son dé.
-func mj_request_action_roll(message_id: String, expr: String, difficulty: int = 0) -> String:
+func mj_request_action_roll(message_id: String, expr: String, difficulty: int = 0, skill: String = "") -> String:
 	var message := _message(message_id)
 	if message.is_empty() or message.get("kind", "") != Protocol.KIND_ACTION:
 		return "Action introuvable."
+	if String(message.get("status", "")) not in [Protocol.ACTION_PENDING, Protocol.ACTION_ROLLED] or message.has("check"):
+		return "Cette action est déjà résolue."
 	var check := Dice.roll(expr, RandomNumberGenerator.new())
 	if not check.ok:
 		return check.error
 	message.status = Protocol.ACTION_ROLL
-	message.request = {"expr": check.expr, "difficulty": maxi(0, difficulty)}
+	message.request = {"expr": check.expr, "difficulty": maxi(0, difficulty), "skill": skill if Checks.SKILLS.has(skill) else ""}
 	message.roll = {}
 	_update_message(message)
 	return ""
 
 
 ## Demande un jet à un joueur, hors action (ex. « Perception, difficulté 12 »).
-func mj_request_roll(player_id: String, expr: String, label: String, difficulty: int = 0, public: bool = true) -> String:
+func mj_request_roll(player_id: String, expr: String, label: String, difficulty: int = 0, public: bool = true, skill: String = "") -> String:
 	if not players.has(player_id):
 		return "Joueur introuvable."
-	var check := Dice.roll(expr, RandomNumberGenerator.new())
+	if skill != "" and not Checks.SKILLS.has(skill):
+		return "Compétence inconnue."
+	var check := Dice.roll(expr if skill == "" else "d20", RandomNumberGenerator.new())
 	if not check.ok:
 		return check.error
+	if skill != "" and Protocol.sanitize_text(label, 80) == "":
+		label = String(Checks.SKILLS[skill].name)
 	_add_message({
 		"kind": Protocol.KIND_ROLL_REQUEST, "from": Protocol.MJ_ID, "from_name": session.mj_name, "to": player_id,
 		"text": Protocol.sanitize_text(label, 80), "status": "open", "roll": {},
-		"request": {"expr": check.expr, "difficulty": maxi(0, difficulty), "label": Protocol.sanitize_text(label, 80), "public": public},
+		"request": {"expr": check.expr, "difficulty": maxi(0, difficulty), "label": Protocol.sanitize_text(label, 80), "public": public, "skill": skill},
 	})
 	return ""
 
@@ -1287,6 +1328,8 @@ func mj_load_adventure(adv_id: String) -> String:
 		t.hidden = bool(n.get("hidden", false))
 		if String(n.get("note", "")) != "":
 			t.note = Protocol.sanitize_text(n.note, 500)
+		if QuestLibrary.ROLES.has(String(n.get("role", ""))):
+			t.role = String(n.role)
 	for m in adv.get("monsters", []):
 		mj_spawn_monster(String(m.get("id", "")), int(m.get("x", 0)), int(m.get("y", 0)), bool(m.get("hidden", true)))
 	for c in adv.get("chests", []):
@@ -1295,6 +1338,8 @@ func mj_load_adventure(adv_id: String) -> String:
 			"color": "#8a6a3a", "hidden": bool(c.get("hidden", false)), "note": "Coffre : à ouvrir sur place (butin « %s »)." % c.get("loot", "")})
 		if not t.is_empty():
 			t["loot"] = String(c.get("loot", "")) if String(c.get("loot", "")) != "" else "objets"
+			if int(c.get("lock", 0)) > 0:
+				t["lock"] = int(c.lock)
 			if c.get("items") is Array:
 				t["chest_items"] = (c.items as Array).duplicate(true)
 	for l in adv.get("labels", []):
@@ -1366,6 +1411,8 @@ func open_chest(token_id: String, player_id: String = "") -> String:
 	var t := MapData.token(map, token_id)
 	if t.is_empty() or String(t.get("kind", "")) != "object" or String(t.get("loot", "")) == "":
 		return "Rien à ouvrir ici."
+	if t.get("pickup", false):
+		return _pick_up(map, t, player_id)
 	var drop := Inventory.roll_loot(content, String(t.loot), _rng)
 	for it in t.get("chest_items", []):
 		var inst := Content.item_instance(content, String(it.get("item", "")), int(it.get("qty", 1)))
@@ -1380,6 +1427,27 @@ func open_chest(token_id: String, player_id: String = "") -> String:
 		lines = [{"t": "info", "text": "Il est vide…"}]
 	_add_message({"kind": Protocol.KIND_REWARD, "from": Protocol.MJ_ID, "from_name": session.mj_name, "to": Protocol.TO_ALL,
 		"text": "%s ouvre : %s" % [who, String(t.name).trim_suffix(" (vide)")], "lines": lines})
+	characters_changed.emit()
+	map_changed(active_map, true)
+	return ""
+
+
+## Objet à ramasser (quêtes) : directement dans le sac, puis il disparaît de la carte.
+func _pick_up(map: Dictionary, t: Dictionary, player_id: String) -> String:
+	var c: Dictionary = characters.get(player_id, {})
+	if c.is_empty():
+		return "Créez d'abord votre personnage."
+	var names: PackedStringArray = []
+	for it in t.get("chest_items", []):
+		_ensure_item(String(it.get("item", "")))
+		var inst := Content.item_instance(content, String(it.get("item", "")), int(it.get("qty", 1)))
+		if not inst.is_empty() and not Inventory.add(c, inst).is_empty():
+			names.append(String(inst.name))
+	(map.tokens as Array).erase(t)
+	_add_message({"kind": Protocol.KIND_REWARD, "from": Protocol.MJ_ID, "from_name": session.mj_name, "to": player_id,
+		"text": "%s ramasse : %s" % [c.name, ", ".join(names)], "lines": [{"t": "loot", "text": ", ".join(names)}]})
+	quest_event("item", {}, [player_id])
+	_mark("characters")
 	characters_changed.emit()
 	map_changed(active_map, true)
 	return ""
@@ -1483,6 +1551,9 @@ func mj_generate_map(kind: String, size_key: String, map_name: String = "", seed
 		MapData.add_label(map, int(l.x), int(l.y), String(l.text), bool(l.hidden))
 	maps[map.id] = map
 	map_order.append(map.id)
+	# Bâtiments prêts et leurs habitants (village, ville, lieux des grandes cartes).
+	for b in gen.get("buildings", []):
+		mj_place_prefab(map.id, String(b.id), int(b.x), int(b.y), true, true)
 	_unsaved = true
 	maps_changed.emit()
 	return map
@@ -2452,7 +2523,7 @@ func mj_set_rules(values: Dictionary) -> void:
 	for spec in Content.RULE_FIELDS:
 		if values.has(spec[0]):
 			content.rules[spec[0]] = clampi(int(values[spec[0]]), int(spec[2]), int(spec[3]))
-	for key in ["swap_in_combat", "loot_to_killer", "remove_dead", "auto_aggro", "auto_monsters"]:
+	for key in ["swap_in_combat", "loot_to_killer", "remove_dead", "auto_aggro", "auto_monsters", "auto_checks", "auto_npc_quests"]:
 		if values.has(key):
 			content.rules[key] = bool(values[key])
 	if values.has("shared_vision"):
@@ -2520,6 +2591,8 @@ func mj_quest_save(data: Dictionary) -> Dictionary:
 				clean.target = Protocol.sanitize_text(o.get("target", ""), 60)
 				clean.count = clampi(int(o.get("count", 1)), 1, 99)
 				clean.progress = clampi(int(o.get("progress", 0)), 0, 99)
+				if kind == "talk" and bool(o.get("return", false)):
+					clean["return"] = true
 				if kind == "reach":
 					clean.x = int(o.get("x", 0))
 					clean.y = int(o.get("y", 0))
@@ -2725,6 +2798,10 @@ func quest_event(kind: String, data: Dictionary, player_ids: Array) -> void:
 					hit = n >= int(o.get("count", 1))
 				"talk":
 					hit = String(o.get("target", "")).to_lower() == String(data.get("name", "")).to_lower()
+					# « Revenir voir » le PNJ : seulement une fois le reste accompli.
+					if hit and o.get("return", false) \
+							and not (q.objectives as Array).all(func(x): return x == o or x.get("done", false)):
+						hit = false
 			if hit:
 				o.done = true
 				changed = true
@@ -2732,6 +2809,8 @@ func quest_event(kind: String, data: Dictionary, player_ids: Array) -> void:
 					_add_message({"kind": Protocol.KIND_REWARD, "from": Protocol.MJ_ID, "from_name": "Quête", "to": to,
 						"text": "Objectif accompli : %s" % o.text, "lines": [{"t": "quest", "text": q.title}]})
 		if q.get("auto", false) and not (q.objectives as Array).is_empty() and (q.objectives as Array).all(func(o): return o.get("done", false)):
+			if q.has("template"):
+				_consume_quest_items(q, who)
 			mj_quest_complete(String(q.id))
 	if changed:
 		_quests_changed()
@@ -2742,6 +2821,9 @@ func _cmd_talk(player: Dictionary, payload: Dictionary) -> String:
 	var npc := _npc_near(player, String(payload.get("token", "")))
 	if npc.is_empty():
 		return "Approchez-vous de ce personnage pour lui parler."
+	if float(npc.get("talk_block_until", 0.0)) > _clock():
+		return "%s refuse de vous parler pour le moment." % npc.name
+	npc_offer(npc, player.id)
 	quest_event("talk", {"name": String(npc.name)}, [player.id])
 	return ""
 
@@ -2770,6 +2852,7 @@ func _cmd_quest_accept(player: Dictionary, payload: Dictionary) -> String:
 			"text": "Nouvelle quête : %s" % q.title, "lines": [{"t": "quest", "text": "Confiée par %s" % q.giver}], "banner": "quest_new", "quest": q.id})
 	else:
 		return "Vous avez déjà cette quête."
+	_quest_setup(q, player.id)
 	_quests_changed()
 	quest_event("talk", {"name": String(q.giver)}, [player.id])
 	quest_event("item", {}, [player.id])
@@ -2785,6 +2868,263 @@ func _npc_near(player: Dictionary, token_id: String) -> Dictionary:
 	if Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(npc.x), int(npc.y))) > 2:
 		return {}
 	return npc
+
+
+## Un PNJ propose une quête au joueur (s'il en a une, ou s'il peut en inventer
+## une selon son rôle). Renvoie le titre de la quête proposée, ou "".
+func npc_offer(npc: Dictionary, player_id: String) -> String:
+	var giver := String(npc.get("name", "")).to_lower()
+	for q in quests:
+		if String(q.get("giver", "")).to_lower() == giver and _offer_open(q, player_id):
+			return String(q.title)
+	# Une quête en cours pour ce joueur auprès de ce PNJ : il attend qu'elle soit finie.
+	for q in quests:
+		if String(q.get("giver", "")).to_lower() == giver and q.status == "active" and ((q.get("assigned", []) as Array).is_empty() or (q.assigned as Array).has(player_id)):
+			return ""
+	if String(npc.get("role", "")) == "" or not bool(Content.rule(content, "auto_npc_quests")):
+		return ""
+	var q := _role_quest(npc)
+	return String(q.get("title", ""))
+
+
+# ---------------------------------------------------------------------------
+# Bâtiments prêts, habitants à rôle, quêtes secondaires prêtes
+# ---------------------------------------------------------------------------
+
+## Pose un bâtiment prêt centré sur la case (murs, porte, meubles, nom, coffre,
+## habitant avec sa quête). Annulable avec « Annuler la dernière retouche ».
+func mj_place_prefab(map_id: String, prefab_id: String, x: int, y: int, with_npc: bool = true, generated: bool = false) -> Dictionary:
+	var map: Dictionary = maps.get(map_id, {})
+	var def := Prefabs.get_def(prefab_id)
+	if map.is_empty() or def.is_empty():
+		return {}
+	if not generated:
+		mj_snapshot(map_id)
+	var out := Prefabs.stamp(map, prefab_id, x, y)
+	var rect: Rect2i = out.rect
+	for t in map.tokens:
+		if rect.has_point(Vector2i(int(t.x), int(t.y))) and not MapData.passable(map, int(t.x), int(t.y)):
+			var p := MapData.free_cell_near(map, int(t.x), int(t.y))
+			t.x = p.x
+			t.y = p.y
+	var ly := rect.position.y - 1 if rect.position.y > 0 else rect.position.y
+	if def.get("label", true) and map.labels.filter(func(l): return int(l.x) == rect.get_center().x and int(l.y) == ly).is_empty():
+		MapData.add_label(map, rect.get_center().x, ly, String(def.name), false)
+	for c in out.chest:
+		var chest := MapData.add_token(map, {"kind": "object", "name": "Coffre", "x": c.x, "y": c.y, "color": "#a07a3a"})
+		if not chest.is_empty():
+			chest.loot = "coffre"
+			var lock: int = [0, 0, 12, 15][_rng.randi_range(0, 3)]
+			if lock > 0:
+				chest.lock = lock
+	for c in out.monster:
+		_spawn_on(map_id, String(def.get("monster", "squelette")), c, true)
+	var npc := {}
+	if with_npc and String(def.get("role", "")) != "" and not (out.npc as Array).is_empty():
+		npc = _add_role_npc(map_id, String(def.role), out.npc[0], not generated)
+	_unsaved = true
+	if not generated:
+		map_changed(map_id, true)
+	return {"rect": rect, "npc": npc}
+
+
+## Monstre du catalogue posé sur n'importe quelle carte (pas seulement celle affichée).
+func _spawn_on(map_id: String, monster_id: String, p: Vector2i, hidden: bool) -> Dictionary:
+	var map: Dictionary = maps.get(map_id, {})
+	var sheet := mj_create_monster(monster_id)
+	if map.is_empty() or sheet.is_empty():
+		return {}
+	var c := MapData.free_cell_near(map, p.x, p.y)
+	return MapData.add_token(map, {"kind": "monster", "name": sheet.name, "x": c.x, "y": c.y, "color": sheet.pawn.color,
+		"char_id": sheet.id, "hp": sheet.hp, "hp_max": sheet.hp_max, "hidden": hidden})
+
+
+## Place un habitant à rôle (aubergiste, garde…) sur une case libre.
+func mj_place_role_npc(map_id: String, role_id: String, x: int, y: int) -> Dictionary:
+	var map: Dictionary = maps.get(map_id, {})
+	if map.is_empty() or QuestLibrary.role(role_id).is_empty():
+		return {}
+	var t := _add_role_npc(map_id, role_id, MapData.free_cell_near(map, x, y))
+	map_changed(map_id, true)
+	return t
+
+
+func _add_role_npc(map_id: String, role_id: String, p: Vector2i, with_quest: bool = true) -> Dictionary:
+	var map: Dictionary = maps.get(map_id, {})
+	var r := QuestLibrary.role(role_id)
+	var taken: Array = []
+	for m in maps.values():
+		for t in m.tokens:
+			taken.append(String(t.name))
+	var t := MapData.add_token(map, {"kind": "npc", "name": QuestLibrary.pick_name(role_id, _rng, taken), "x": p.x, "y": p.y, "color": String(r.get("color", "#9a9a9a"))})
+	if t.is_empty():
+		return {}
+	t.role = role_id
+	t.side = "allies"
+	# Les habitants posés à la main ont tout de suite une quête ; ceux d'une carte
+	# générée en inventent une quand on leur parle (le journal du MJ reste lisible).
+	if with_quest and bool(Content.rule(content, "auto_npc_quests")):
+		_role_quest(t)
+	_unsaved = true
+	return t
+
+
+## Nouvelle quête prête (brouillon proposé par le PNJ) tirée des modèles de son rôle.
+func _role_quest(npc: Dictionary) -> Dictionary:
+	var r := QuestLibrary.role(String(npc.get("role", "")))
+	if r.is_empty():
+		return {}
+	var given: Array = npc.get("quests_given", [])
+	var others: Array = []
+	var home: Dictionary = maps.get(active_map, {})
+	for m in maps.values():
+		if not MapData.token(m, String(npc.id)).is_empty():
+			home = m
+	for t in home.get("tokens", []):
+		if String(t.get("kind", "")) == "npc" and t.id != npc.id and not t.get("hidden", false):
+			others.append(String(t.name))
+	var pool: Array = []
+	for tid in r.quests:
+		var tpl: Dictionary = QuestLibrary.TEMPLATES.get(tid, {})
+		if tpl.is_empty() or given.has(tid) or (tpl.get("needs_other", false) and others.is_empty()):
+			continue
+		pool.append(tid)
+	if pool.is_empty():
+		return {}
+	var tid: String = pool[_rng.randi_range(0, pool.size() - 1)]
+	var other := String(others[_rng.randi_range(0, others.size() - 1)]) if not others.is_empty() else ""
+	var data := QuestLibrary.build(tid, String(npc.name), other)
+	var q := mj_quest_save(data)
+	q.template = tid
+	q.giver_token = String(npc.id)
+	given.append(tid)
+	npc.quests_given = given
+	_quests_changed()
+	return q
+
+
+## Case libre et praticable à une distance donnée d'un point (au hasard).
+func _spot_far(map: Dictionary, center: Vector2i, dmin: int, dmax: int) -> Vector2i:
+	for attempt in 80:
+		var d := _rng.randi_range(dmin, dmax)
+		var a := _rng.randf() * TAU
+		var p := center + Vector2i(roundi(cos(a) * d), roundi(sin(a) * d))
+		if MapData.in_bounds(map, p.x, p.y) and MapData.passable(map, p.x, p.y) and MapData.token_at(map, p.x, p.y).is_empty():
+			return p
+	return MapData.free_cell_near(map, clampi(center.x + dmin, 0, int(map.w) - 1), center.y)
+
+
+func _ensure_item(item_id: String) -> void:
+	if Content.get_entry(content, "items", item_id).is_empty() and QuestLibrary.ITEMS.has(item_id):
+		if not content.get("items") is Dictionary:
+			content.items = {}
+		content.items[item_id] = (QuestLibrary.ITEMS[item_id] as Dictionary).duplicate(true)
+		_mark("content")
+		content_changed.emit()
+
+
+## À l'acceptation d'une quête prête : monstres, objets à ramasser, lieu à atteindre,
+## objets remis au joueur. Une seule fois par quête.
+func _quest_setup(q: Dictionary, player_id: String) -> void:
+	var tpl: Dictionary = QuestLibrary.TEMPLATES.get(String(q.get("template", "")), {})
+	if tpl.is_empty() or q.get("setup_done", false):
+		return
+	q.setup_done = true
+	var map: Dictionary = maps.get(active_map, {})
+	var giver := MapData.token(map, String(q.get("giver_token", "")))
+	var center := Vector2i(int(giver.x), int(giver.y)) if not giver.is_empty() else Vector2i(int(map.w) / 2, int(map.h) / 2)
+	var place := Vector2i(-1, -1)
+	if tpl.has("place"):
+		var pd: Array = tpl.place.dist
+		place = _spot_far(map, center, int(pd[0]), int(pd[1]))
+		MapData.add_label(map, place.x, place.y, "◆ " + String(tpl.place.name).capitalize(), false)
+		for o in q.objectives:
+			if String(o.get("kind", "")) == "reach":
+				o.x = place.x
+				o.y = place.y
+				o.radius = 2
+	var first_pickup := Vector2i(-1, -1)
+	for pk in tpl.get("pickups", []):
+		_ensure_item(String(pk.item))
+		var def := Content.get_entry(content, "items", String(pk.item))
+		var pd: Array = pk.dist
+		for i in int(pk.count):
+			var p := _spot_far(map, center, int(pd[0]), int(pd[1]))
+			if first_pickup.x < 0:
+				first_pickup = p
+			var t := MapData.add_token(map, {"kind": "object", "name": String(def.get("name", "Objet")), "x": p.x, "y": p.y, "color": "#d8c070"})
+			if not t.is_empty():
+				t.loot = "-"
+				t.pickup = true
+				t.chest_items = [{"item": String(pk.item), "qty": 1}]
+				t.quest = String(q.id)
+	var last := Vector2i(-1, -1)
+	for sp in tpl.get("spawn", []):
+		var anchor := center
+		var near := false
+		if sp.get("near_previous", false) and last.x >= 0:
+			anchor = last
+			near = true
+		elif sp.get("near_pickup", false) and first_pickup.x >= 0:
+			anchor = first_pickup
+			near = true
+		elif sp.get("near_place", false) and place.x >= 0:
+			anchor = place
+			near = true
+		var pd: Array = sp.get("dist", [10, 16])
+		for i in int(sp.get("count", 1)):
+			var p := MapData.free_cell_near(map, anchor.x + _rng.randi_range(-2, 2), anchor.y + _rng.randi_range(-2, 2)) if near else _spot_far(map, anchor, int(pd[0]), int(pd[1]))
+			if i == 0 and not near:
+				anchor = p
+				near = true
+			var m := mj_spawn_monster(String(sp.monster), p.x, p.y, bool(sp.get("hidden", false)))
+			if not m.is_empty():
+				m.quest = String(q.id)
+				last = Vector2i(int(m.x), int(m.y))
+	var c: Dictionary = characters.get(player_id, {})
+	for g in tpl.get("give", []):
+		_ensure_item(String(g.item))
+		var inst := Content.item_instance(content, String(g.item), int(g.get("qty", 1)))
+		if not c.is_empty() and not inst.is_empty():
+			Inventory.add(c, inst)
+	if tpl.has("deliver"):
+		q.deliver = String(tpl.deliver)
+	_mark("characters")
+	characters_changed.emit()
+	map_changed(active_map, true)
+
+
+## Quête prête terminée : les objets demandés sont remis au PNJ.
+func _consume_quest_items(q: Dictionary, who: Array) -> void:
+	var wanted := {}
+	if String(q.get("deliver", "")) != "":
+		wanted[String(q.deliver)] = 1
+	if QuestLibrary.TEMPLATES.get(String(q.get("template", "")), {}).get("return", false):
+		for o in q.objectives:
+			if String(o.get("kind", "")) == "item":
+				wanted[String(o.target)] = int(o.get("count", 1))
+	for item_id in wanted:
+		var left := int(wanted[item_id])
+		for pid in who:
+			var c: Dictionary = characters.get(pid, {})
+			for it in (c.get("inventory", []) as Array).duplicate():
+				if left <= 0:
+					break
+				if String(it.get("item_id", "")) == item_id:
+					var take := mini(left, int(it.get("qty", 1)))
+					it.qty = int(it.get("qty", 1)) - take
+					left -= take
+					if int(it.qty) <= 0:
+						(c.inventory as Array).erase(it)
+
+
+func _offer_open(q: Dictionary, player_id: String) -> bool:
+	if not q.get("offer", true) or q.status in ["done", "failed"]:
+		return false
+	if q.status == "draft":
+		return true
+	var assigned: Array = q.get("assigned", [])
+	return q.status == "active" and not assigned.is_empty() and not assigned.has(player_id)
 
 
 func _quests_changed() -> void:

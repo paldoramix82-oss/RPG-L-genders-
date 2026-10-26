@@ -60,10 +60,7 @@ func _host() -> void:
 	var py := int(pawn.get("y", 10))
 	if phase == "libre_npc":
 		# Un PNJ à côté du joueur, qui propose une quête.
-		var cell := MapData.free_cell_near(server.maps[map_id], px + 1, py)
-		server.mj_add_token(map_id, {"kind": "npc", "name": "Garde", "x": cell.x, "y": cell.y})
-		server.mj_quest_save({"title": "La meute du col", "kind": "side", "giver": "Garde", "description": "Des loups attaquent les voyageurs du col.",
-			"objectives": [{"text": "Vaincre 3 loups", "kind": "kill", "target": "Loup", "count": 3}], "rewards": {"xp": 60, "gold": 20}})
+		server.mj_place_role_npc(map_id, "herboriste", px + 1, py)
 	else:
 		server.mj_spawn_monster("loup", px + 1, py, false)
 		server.mj_spawn_monster("loup_alpha", px + 2, py + 1, false)
@@ -135,11 +132,25 @@ func _host() -> void:
 			screen._show_tools("adventure")
 		_:
 			if tab.begins_with("gen_"):
-				var m := server.mj_generate_map(tab.substr(4), "moyenne", "")
+				var spec := tab.substr(4).split(":")
+				var m := server.mj_generate_map(spec[0], spec[1] if spec.size() > 1 else "moyenne", "", 7)
 				screen._edit_map = m.id
 				screen._refresh_map_select()
 				screen._load_edit_map()
 				screen._show("table")
+				screen._show_tools("world")
+				if spec.size() > 2:
+					screen._prefab_id = spec[2]
+					screen._set_tool("prefab")
+					await get_tree().process_frame
+					for l in screen.find_children("*", "Label", true, false):
+						if String(l.text).to_lower().contains("bâtiments prêts"):
+							var sc: Node = l.get_parent()
+							while sc != null and not sc is ScrollContainer:
+								sc = sc.get_parent()
+							if sc != null:
+								await get_tree().process_frame
+								sc.scroll_vertical = int(l.global_position.y - sc.global_position.y) + sc.scroll_vertical - 10
 	# Laisse le téléphone se photographier avant que l'hôte ne ferme.
 	await get_tree().create_timer(4.0).timeout
 
@@ -208,11 +219,24 @@ func _player() -> void:
 		"chat":
 			screen._show_view("map")
 			screen._open_chat()
+		"checks_map":
+			screen._show_view("map")
+			c.check("perception")
+			await get_tree().create_timer(0.1).timeout
+		"checks":
+			c.check("fouille")
+			await get_tree().create_timer(0.6).timeout
+			c.declare_action(Protocol.TO_ALL, "J'escalade le rocher pour voir au loin", "auto")
+			await get_tree().create_timer(0.6).timeout
+			c.declare_action(Protocol.TO_ALL, "Je chante une chanson pour donner du courage", "auto")
+			await get_tree().create_timer(0.6).timeout
+			screen._show_view("story")
 		"npc":
 			screen._show_view("map")
 			for t in c.map.get("tokens", []):
-				if String(t.get("name", "")) == "Garde":
+				if String(t.get("role", "")) != "":
 					screen._on_token_selected(String(t.id))
+			await get_tree().create_timer(1.0).timeout
 		"ability":
 			var abilities := Rules.usable_abilities(c.my_character(), c.content)
 			if not abilities.is_empty():

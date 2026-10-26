@@ -71,6 +71,8 @@ const CMD_OPEN := "open_chest"
 ## Parler à un PNJ voisin (objectifs « parler à ») et accepter une quête qu'il propose.
 const CMD_TALK := "talk"
 const CMD_QUEST_ACCEPT := "quest_accept"
+## Épreuve : {skill, target?, text?, to?} → jet automatique et conséquences.
+const CMD_CHECK := "check"
 
 # --- Événements serveur -> client ---
 const EVT_JOIN_STATUS := "join_status"

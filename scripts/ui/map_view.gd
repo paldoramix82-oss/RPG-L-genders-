@@ -22,6 +22,8 @@ var map := {}
 var is_mj := false
 var my_id := ""
 var tool := "move"
+## Outil « bâtiment » : taille du plan affiché sous le curseur.
+var stamp_size := Vector2i.ZERO
 var selected := ""
 var current_turn := ""
 var combat_ids: Array = []
@@ -93,9 +95,11 @@ func _ready() -> void:
 		b.add_theme_font_size_override("font_size", 16)
 		b.focus_mode = Control.FOCUS_NONE
 		bar.add_child(b)
+	# Bandeau des dés : au-dessus du terrain (sinon caché quand la carte remplit
+	# la vue, comme sur téléphone), sous les boutons de zoom.
 	_dice_hud = DiceHud.new()
 	add_child(_dice_hud)
-	move_child(_dice_hud, 0)
+	move_child(_dice_hud, bar.get_index())
 	resized.connect(func():
 		if _map_key == "":
 			return
@@ -316,7 +320,13 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.6, 0.1, 0.1, 0.12))
 		draw_string(_font, Vector2(12, size.y - 14), "Touchez la cible", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Palette.DANGER.lightened(0.3))
 	if _hover.x >= 0 and tool != "move" and MapData.in_bounds(map, _hover.x, _hover.y):
-		draw_rect(Rect2(offset + Vector2(_hover) * cs, Vector2(cs, cs)), Color(1, 1, 1, 0.3), false, 2.0)
+		if stamp_size != Vector2i.ZERO:
+			var a := Vector2i(clampi(_hover.x - stamp_size.x / 2, 0, maxi(0, int(map.w) - stamp_size.x)), clampi(_hover.y - stamp_size.y / 2, 0, maxi(0, int(map.h) - stamp_size.y)))
+			var r := Rect2(offset + Vector2(a) * cs, Vector2(stamp_size) * cs)
+			draw_rect(r, Color(Palette.GOLD, 0.18))
+			draw_rect(r, Color(Palette.GOLD, 0.8), false, 2.0)
+		else:
+			draw_rect(Rect2(offset + Vector2(_hover) * cs, Vector2(cs, cs)), Color(1, 1, 1, 0.3), false, 2.0)
 	for l in map.get("labels", []):
 		_draw_label(l, cs)
 	var tokens: Array = map.get("tokens", []).duplicate()

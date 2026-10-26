@@ -110,6 +110,30 @@ Par défaut (règle *Monstres agressifs*), la partie commence en **Récit libre*
 - Objectifs automatiques : **Vaincre** (ex. 3 loups), **Atteindre un lieu** (case + rayon), **Obtenir un objet**, **Parler à un PNJ**. Ils se cochent tout seuls ; quand tout est fait, la quête se termine et les récompenses tombent (option *Terminer la quête toute seule*).
 - Une quête qui a un PNJ « Confiée par » est **proposée** par ce PNJ : en le touchant (2 cases au plus), on lit sa quête et on l'accepte. Une quête principale concerne le groupe ; une quête secondaire acceptée est **personnelle**. Le journal liste les quêtes proposées.
 
+### Épreuves : une action déclenche le jet, le résultat s'applique tout seul
+
+Hors combat (et en combat pour 1 PA), une action tentée se résout tout de suite : **d20 + caractéristique contre une difficulté (DD)**. L'hôte lance le dé, l'affiche au-dessus de la carte (« 14 + 7 = 21 contre DD 13 — Réussite ») et applique les conséquences.
+
+| Épreuve | Carac. | Réussite | Échec |
+|---|---|---|---|
+| **Athlétisme** (escalader, sauter, forcer) | Force | coffre forcé | chute : −1d4 PV (1 naturel : −1d6−1) |
+| **Discrétion** (se cacher) | Dextérité | invisible aux monstres 25 s (45 s sur 20) | les monstres proches vous repèrent et attaquent |
+| **Crochetage** (serrure, piège, poches) | Dextérité | coffre ouvert, or volé à un PNJ | 1 naturel : piège (−1d6 PV), PNJ fâché |
+| **Endurance** (tenir bon) | Constitution | chasse un effet néfaste (poison…) | −1d4 PV |
+| **Fouille** | Intelligence | objets, or, coffres cachés (une fois par endroit) | rien |
+| **Savoir** (identifier) | Intelligence | PV, Défense, résistances et point faible d'un monstre ; ou un souvenir (étiquette secrète révélée) | rien |
+| **Perception** (observer) | Esprit | monstres, objets, secrets cachés à 8 cases révélés | rien |
+| **Premiers soins** | Esprit | +1d6 + Esprit ÷ 2 PV à un allié voisin (une fois par minute et par blessé) | 1 naturel : −1 PV |
+| **Survie** (chasser, cueillir) | Esprit | nourriture, herbes (une fois par endroit) | rien |
+| **Persuasion** | Charisme | un PNJ propose une quête ou une rumeur ; un animal se calme | 1 naturel : le PNJ refuse de parler 30 s |
+| **Intimidation** | Charisme | un monstre s'enfuit (effrayé en combat ; jamais un boss) ; un PNJ parle | le monstre attaque |
+| **Arcanes** | Intelligence | coffres et secrets magiques révélés, +1d4 ressource | 1 naturel : −1d4 PV |
+
+- Difficultés : Facile 10, Moyen 14, Difficile 18, Héroïque 22 (un coffre verrouillé a sa propre difficulté ; Forcer = +2). **20 naturel** : réussite critique (effet renforcé, XP doublée) ; **1 naturel** : échec critique ; à 3 près : « Presque… » (échec sans pénalité).
+- Réussite : +5 XP (réglable). Même épreuve : 6 s d'attente (réglable). Les boutons affichent la chance de réussite (« Fouiller · 65 % »).
+- **Côté joueur** : boutons *Fouiller*, *Observer*, *Se cacher*, *Soigner*, *Chasser, cueillir*, *Autre…* sous la carte ; *Crocheter* / *Forcer* sur un coffre verrouillé ; *Convaincre*, *Intimider*, *Faire les poches* sur un PNJ ; *Intimider*, *Identifier*, *Se cacher* sur un monstre. Une **action libre** écrite (« J'escalade le mur ») déclenche l'épreuve devinée d'après le texte ; on peut choisir une autre compétence ou « Sans jet ».
+- **Côté MJ** : une action sans compétence reconnue attend dans *Actions en attente* : choisissez la compétence (devinée) et cliquez la difficulté — le jet est lancé et appliqué. *Le joueur lance* le lui fait lancer lui-même. Sous chaque action résolue, **conséquences en un clic** : −1d4 PV, −1d8 PV, +1d6 PV, +10 XP, +1d10 or, Objet trouvé, Empoisonné, Étourdi. *Demander un jet* propose aussi les épreuves.
+
 ### Le combat
 
 | Action | Coût |
@@ -205,7 +229,13 @@ L'écran est organisé en quatre zones, séparées par des **barres déplaçable
 
 **Aventures** (`data/adventures`, générées par `tools/make_adventures.py`) : *Les cloches de Valombre*, *La meute des Cendres*, *Les ruines du temple oublié*, *Une nuit au Corbeau Rieur* (Fantasy), *Le test de la magie*, *Premier jour à la Division de l'Encre* (Légenders). Chacune installe une carte, des PNJ placés (avec notes pour le MJ), des monstres cachés, des coffres, des étiquettes secrètes, des **quêtes en brouillon** et des **scènes** : texte à raconter, conseils pour le MJ et action en un clic (donner une quête, épreuve de groupe, révéler les monstres et lancer le combat). On la choisit à la création de la campagne ou dans l'onglet **Aventure** du MJ.
 
-**Cartes** (onglet *Monde*) : **Générer…** crée une carte jouable en un clic — forêt, village, donjon, grotte, plaine avec rivière, île — en trois tailles, avec des lieux nommés et quelques étiquettes secrètes. Outils de retouche : **Peindre** (pinceau réglable), **Remplir** (toute une zone d'un même terrain), **Rectangle**, **Pièce** (sol + murs autour, en deux touches), et **Annuler la dernière retouche** (Ctrl + Z, 20 étapes).
+**Cartes** (onglet *Monde*) : **Générer…** crée une carte jouable en un clic — forêt, village, **ville** (remparts, portes, avenues, marché, quartiers), donjon, grotte, plaine avec rivière, île — en cinq tailles (jusqu'à **Immense, 100 × 68**), avec des lieux nommés et quelques étiquettes secrètes. Villages et villes arrivent **construits et habités** (auberge, forge, échoppe, temple, caserne, manoir, maisons…, chacun avec son habitant) ; les grandes cartes sauvages ont des campements, ruines, cryptes, fermes à découvrir.
+
+**Bâtiments prêts** (*Monde › Bâtiments prêts*) : maison, grande maison, auberge, forge, échoppe, temple, tour de garde, caserne, ferme et champs, grange, place du marché, puits, campement, tour du mage, herboristerie, manoir, ruine, entrée de crypte. Choisissez, puis touchez la carte (le contour du bâtiment suit le curseur) : murs, porte, meubles, nom, coffre (parfois verrouillé), monstre caché pour la crypte et la ruine, et **son habitant**. *Annuler la dernière retouche* le retire.
+
+**Habitants** (*Monde › Habitants*) : villageois, aubergiste, forgeron, marchand, prêtre, garde, capitaine, fermier, chasseur, herboriste, mage, noble. Touchez la carte pour en placer un, puis déplacez-le avec *Déplacer*.
+
+**Quêtes secondaires prêtes** : 25 quêtes (loups, brigands, chef des bandits, gobelins, araignées, ours, squelettes, ombres, golem, cultistes, cave infestée, herbes de lune, champignons, minerai, outils volés, récolte, cristaux, gemmes, relique, peaux, antidote, colis, lettre, patrouille, compagnon perdu), chacune liée aux métiers qui peuvent la confier. **Un habitant salue et propose une quête dès qu'on lui parle** (toucher le PNJ à 2 cases au plus suffit) ; une fois finie, il en propose une autre. À l'acceptation, la quête **s'installe toute seule** : monstres à vaincre placés plus loin, objets à ramasser sur la carte, lieu à atteindre marqué, colis ou lettre remis au joueur. Les objectifs se cochent seuls ; on termine en **revenant voir** le PNJ (qui reprend les objets demandés) et les récompenses tombent. Les PNJ des aventures prêtes ont aussi un métier. Outils de retouche : **Peindre** (pinceau réglable), **Remplir** (toute une zone d'un même terrain), **Rectangle**, **Pièce** (sol + murs autour, en deux touches), et **Annuler la dernière retouche** (Ctrl + Z, 20 étapes).
 
 ## Musique
 

@@ -39,6 +39,10 @@ var _paint_code := "."
 var _brush := 0
 var _stroke := false
 var _rect_start := Vector2i(-1, -1)
+## Bâtiment prêt / habitant à poser au prochain toucher.
+var _prefab_id := ""
+var _prefab_npc := true
+var _role_id := ""
 var _token_tpl := {"kind": "monster", "name": "Monstre", "color": "#b0605a", "hp": 10, "hidden": true}
 var _label_tpl := {"text": "", "hidden": false}
 var _inspector: VBoxContainer
@@ -895,6 +899,38 @@ func _build_world_tools() -> Control:
 	_tool_options = VBoxContainer.new()
 	tc.add_child(_tool_options)
 
+	# --- Bâtiments prêts ---
+	var bc := UIKit.card(side, "Bâtiments prêts")
+	bc.add_child(UIKit.label("Choisissez, puis touchez la carte : murs, porte, meubles, nom, coffre et habitant (avec une quête prête) sont posés d'un coup.", "MutedLabel", true))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	bc.add_child(grid)
+	for id in Prefabs.LIST:
+		grid.add_child(_prefab_button(String(id)))
+	var with_npc := CheckBox.new()
+	with_npc.text = "Avec son habitant (PNJ qui propose des quêtes)"
+	with_npc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	with_npc.button_pressed = _prefab_npc
+	with_npc.toggled.connect(func(on): _prefab_npc = on)
+	bc.add_child(with_npc)
+
+	# --- Habitants ---
+	var hc := UIKit.card(side, "Habitants")
+	hc.add_child(UIKit.label("Un PNJ avec un métier : il salue, propose des quêtes secondaires prêtes dès qu'on lui parle, et en invente de nouvelles. Déplacez-le ensuite avec l'outil « Déplacer ».", "MutedLabel", true))
+	var roles := HFlowContainer.new()
+	roles.add_theme_constant_override("h_separation", 6)
+	roles.add_theme_constant_override("v_separation", 6)
+	hc.add_child(roles)
+	for rid in Prefabs.ROLE_ORDER:
+		var r := QuestLibrary.role(rid)
+		var b := _small_button(String(r.title).capitalize(), "", func():
+			_role_id = rid
+			_set_tool("npc_role"))
+		b.icon = null
+		roles.add_child(b)
+
 	_set_tool(_tool)
 	return parts[0]
 
@@ -980,11 +1016,19 @@ func _on_maps_changed() -> void:
 func _set_tool(tool: String) -> void:
 	_tool = tool
 	_map_view.tool = tool
+	_map_view.stamp_size = Prefabs.size_of(_prefab_id) if tool == "prefab" else Vector2i.ZERO
 	_rect_start = Vector2i(-1, -1)
 	if _tool_buttons.has(tool):
 		_tool_buttons[tool].set_pressed_no_signal(true)
+	else:
+		for b in _tool_buttons.values():
+			b.set_pressed_no_signal(false)
 	UIKit.clear(_tool_options)
 	match tool:
+		"prefab":
+			_tool_options.add_child(GameUI.hint("%s : touchez la carte pour le poser (centré sur la case). « Annuler la dernière retouche » le retire." % Prefabs.get_def(_prefab_id).get("name", "")))
+		"npc_role":
+			_tool_options.add_child(GameUI.hint("Touchez une case pour placer : %s." % String(QuestLibrary.role(_role_id).get("title", ""))))
 		"move":
 			_tool_options.add_child(UIKit.label("Touchez un pion pour le sélectionner, puis une case pour l'y déplacer (ou glissez-le). Molette ou deux doigts : zoom.", "MutedLabel", true))
 		"paint", "fill", "rect", "room":
@@ -1043,6 +1087,52 @@ func _set_tool(tool: String) -> void:
 			_tool_options.add_child(UIKit.label("Touchez un pion (hors pions de joueurs) ou une étiquette pour la supprimer.", "MutedLabel", true))
 		"spawn":
 			_tool_options.add_child(UIKit.label("Touchez la case où apparaissent les pions des joueurs.", "MutedLabel", true))
+
+
+## Bouton de bâtiment avec son plan en miniature.
+func _prefab_button(id: String) -> Control:
+	var def := Prefabs.get_def(id)
+	var b := Button.new()
+	b.tooltip_text = String(def.name)
+	b.custom_minimum_size = Vector2(96, 84)
+	b.pressed.connect(func():
+		_prefab_id = id
+		_set_tool("prefab"))
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 4)
+	b.add_child(box)
+	var plan := Control.new()
+	plan.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plan.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	plan.custom_minimum_size = Vector2(80, 50)
+	plan.draw.connect(func():
+		var rows: Array = def.rows
+		var sz := Prefabs.size_of(id)
+		var cs := minf(plan.size.x / sz.x, plan.size.y / sz.y)
+		var off := (plan.size - Vector2(sz) * cs) * 0.5
+		for j in rows.size():
+			for i in String(rows[j]).length():
+				var ch := String(rows[j])[i]
+				if ch == " ":
+					continue
+				var code: String = String(def.get("floor", "d")) if ch in ["+", "@", "$", "M"] else ch
+				var col := MapData.terrain_color(code)
+				if ch == "#":
+					col = Color("8a8378")
+				elif ch == "@":
+					col = Palette.GOLD
+				elif ch == "$":
+					col = Color("a07a3a")
+				plan.draw_rect(Rect2(off + Vector2(i, j) * cs, Vector2(cs, cs)), col))
+	box.add_child(plan)
+	var l := UIKit.label(String(def.name), "MutedLabel")
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 12)
+	l.clip_text = true
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(l)
+	return b
 
 
 func _terrain_button(code: String, group: ButtonGroup) -> Button:
@@ -1145,6 +1235,15 @@ func _on_cell_tapped(x: int, y: int) -> void:
 				_map_status.add_theme_color_override("font_color", Palette.WARN)
 		"spawn":
 			server.mj_update_map(_edit_map, {"spawn_x": x, "spawn_y": y})
+		"prefab":
+			var res := server.mj_place_prefab(_edit_map, _prefab_id, x, y, _prefab_npc)
+			if not (res.get("npc", {}) as Dictionary).is_empty():
+				_notifier.push("%s posé, avec %s." % [Prefabs.get_def(_prefab_id).name, res.npc.name], "success")
+		"npc_role":
+			var npc := server.mj_place_role_npc(_edit_map, _role_id, x, y)
+			if not npc.is_empty():
+				_map_view.selected = String(npc.id)
+				_refresh_inspector()
 
 
 # --- Inspecteur du pion sélectionné ---
@@ -1525,17 +1624,17 @@ func _refresh_lobby_bar() -> void:
 ## Carte générée en un clic : type, taille, nom. Le MJ la retouche ensuite.
 func _dialog_generate_map() -> void:
 	var panel := _open_overlay("generate", "Générer une carte", "map")
-	panel.body.add_child(GameUI.hint("Une carte jouable en un clic, avec des lieux nommés (et quelques secrets pour le MJ). Retouchez-la ensuite avec Peindre, Remplir, Rectangle ou Pièce."))
+	panel.body.add_child(GameUI.hint("Une carte jouable en un clic, avec des lieux nommés (et quelques secrets pour le MJ). Villages et villes arrivent avec leurs bâtiments et leurs habitants, qui proposent des quêtes. Retouchez-la ensuite avec Peindre, Remplir, Rectangle ou Pièce."))
 	var kind := OptionButton.new()
 	for k in MapGen.KINDS:
 		kind.add_item(MapGen.KINDS[k])
 		kind.set_item_metadata(kind.item_count - 1, k)
 	UIKit.field(panel.body, "Type de lieu", kind)
 	var size := OptionButton.new()
-	for spec in [["petite", "Petite (24 × 16)"], ["moyenne", "Moyenne (34 × 22)"], ["grande", "Grande (48 × 32)"]]:
-		size.add_item(spec[1])
-		size.set_item_metadata(size.item_count - 1, spec[0])
-	size.select(1)
+	for k in MapGen.SIZES:
+		size.add_item(String(MapGen.SIZE_NAMES[k]))
+		size.set_item_metadata(size.item_count - 1, k)
+	size.select(2)
 	UIKit.field(panel.body, "Taille", size)
 	var name_edit := UIKit.line_edit("", "Ex. : Bois des Murmures (facultatif)")
 	UIKit.field(panel.body, "Nom", name_edit)
@@ -1825,6 +1924,11 @@ func _build_story() -> Control:
 	_feed = FeedView.new(Protocol.MJ_ID, true)
 	_feed.resolve_requested.connect(_on_resolve)
 	_feed.roll_request_requested.connect(_on_request_action_roll)
+	_feed.check_requested.connect(_on_check_requested)
+	_feed.consequence_requested.connect(func(id, kind):
+		var err := Net.server.mj_action_consequence(id, kind)
+		if err != "":
+			_feed.add_notice(err, Palette.DANGER))
 	main.add_child(_feed)
 	var pending := UIKit.card(null, "")
 	var pending_panel := pending.get_parent() as Control
@@ -2047,6 +2151,12 @@ func _on_message_updated(m: Dictionary) -> void:
 	_refresh_pending()
 
 
+func _on_check_requested(message_id: String, skill: String, dc: int, player_rolls: bool) -> void:
+	var err := Net.server.mj_request_action_roll(message_id, "d20", dc, skill) if player_rolls else Net.server.mj_check_action(message_id, skill, dc)
+	if err != "":
+		_feed.add_notice(err, Palette.DANGER)
+
+
 func _on_request_action_roll(message_id: String, expr: String, difficulty: int) -> void:
 	var err := Net.server.mj_request_action_roll(message_id, expr, difficulty)
 	if err != "":
@@ -2056,19 +2166,27 @@ func _on_request_action_roll(message_id: String, expr: String, difficulty: int) 
 func _dialog_request_roll(player_id: String, player_name: String) -> void:
 	var box := VBoxContainer.new()
 	box.custom_minimum_size.x = 340
-	var label := UIKit.line_edit("", "Ex. : Perception, Escalade…")
-	UIKit.field(box, "Pour quoi ?", label)
+	var skill := OptionButton.new()
+	skill.fit_to_longest_item = false
+	for id in Checks.SKILLS:
+		skill.add_item("%s (d20 + %s)" % [Checks.SKILLS[id].name, Checks.SKILLS[id].stat])
+		skill.set_item_metadata(skill.item_count - 1, id)
+	skill.add_item("Dé libre (formule ci-dessous)")
+	skill.set_item_metadata(skill.item_count - 1, "")
+	UIKit.field(box, "Épreuve (résultat et conséquences automatiques)", skill)
+	var label := UIKit.line_edit("", "Ex. : Grimper au clocher")
+	UIKit.field(box, "Pour quoi ? (facultatif)", label)
 	var row := HBoxContainer.new()
 	box.add_child(row)
-	var expr := UIKit.field(row, "Dé", UIKit.line_edit("d20", "d20, 2d6+1…")) as LineEdit
-	var diff := UIKit.field(row, "Difficulté (0 = aucune)", UIKit.spin(0, 0, 100)) as SpinBox
+	var expr := UIKit.field(row, "Dé libre", UIKit.line_edit("d20", "d20, 2d6+1…")) as LineEdit
+	var diff := UIKit.field(row, "Difficulté (DD)", UIKit.spin(14, 0, 100)) as SpinBox
 	var public := CheckBox.new()
 	public.text = "Résultat visible par tout le groupe"
 	public.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	public.button_pressed = true
 	box.add_child(public)
 	_dialog("Demander un jet à %s" % player_name, box, func():
-		var err := Net.server.mj_request_roll(player_id, expr.text, label.text, int(diff.value), public.button_pressed)
+		var err := Net.server.mj_request_roll(player_id, expr.text, label.text, int(diff.value), public.button_pressed, String(skill.get_item_metadata(skill.selected)))
 		if err != "":
 			_feed.add_notice(err, Palette.DANGER))
 
@@ -2133,7 +2251,7 @@ func _refresh_pending() -> void:
 		var card := UIKit.card(_pending_box, "", "InsetPanel")
 		card.add_child(UIKit.label("%s  ·  %s%s" % [m.from_name, Protocol.format_time(m.ts), "  · privé" if m.to != Protocol.TO_ALL else ""], "MutedLabel", true))
 		card.add_child(UIKit.label(String(m.text), "", true))
-		card.add_child(_feed.resolve_form(String(m.id)))
+		card.add_child(_feed.resolve_form(String(m.id), String(m.text)))
 
 
 # ---------------------------------------------------------------------------

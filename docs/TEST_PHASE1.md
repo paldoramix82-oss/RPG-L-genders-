@@ -108,6 +108,14 @@ Cocher chaque ligne et noter les remarques.
 - [ ] L6. Toucher un PNJ qui confie une quête → *Accepter* ; vaincre les monstres demandés : l'objectif se coche et la quête se termine avec ses récompenses.
 - [ ] L7. Victoire : XP pour les participants seulement ; le bandeau « Victoire ! » n'apparaît que chez eux.
 
+### M. Épreuves, bâtiments et quêtes prêtes
+- [ ] M1. Sous la carte, *Fouiller* : le d20 s'affiche au-dessus de la carte, le résultat et l'objet trouvé arrivent tout seuls ; refouiller au même endroit : « déjà fouillé ».
+- [ ] M2. Écrire l'action « J'escalade le mur » : l'épreuve d'Athlétisme est lancée et résolue sans le MJ.
+- [ ] M3. Écrire « Je chante une chanson » : le MJ la voit en attente, clique *Moyen 14* (Persuasion) puis *−1d4 PV* : le joueur voit tout.
+- [ ] M4. Coffre verrouillé d'une aventure : *Crocheter* (raté : il reste fermé ; réussi : butin).
+- [ ] M5. MJ : *Générer…* une ville *Très grande* : bâtiments, noms, habitants ; poser une *Auberge* d'un toucher, puis *Annuler*.
+- [ ] M6. Joueur : toucher un habitant à côté de soi : salutation et quête proposée ; *Accepter* : cibles sur la carte ; terminer et revenir le voir : récompenses, puis nouvelle quête proposée.
+
 ## Rapport
 
 Merci d'indiquer, pour chaque ligne en échec : modèle de téléphone, version d'Android, type de réseau (box / partage de connexion de quel téléphone), et le message affiché. Ces informations permettent de corriger avant la phase 2.

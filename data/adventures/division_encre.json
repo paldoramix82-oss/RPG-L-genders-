@@ -14,7 +14,8 @@
    "x": 15,
    "y": 13,
    "hidden": false,
-   "note": ""
+   "note": "",
+   "role": "habitant"
   },
   {
    "pack": "legenders_shima",
@@ -22,7 +23,8 @@
    "x": 26,
    "y": 12,
    "hidden": false,
-   "note": ""
+   "note": "",
+   "role": "habitant"
   },
   {
    "pack": "legenders_shima",
@@ -30,7 +32,8 @@
    "x": 14,
    "y": 15,
    "hidden": false,
-   "note": ""
+   "note": "",
+   "role": "habitant"
   },
   {
    "pack": "legenders_monde",

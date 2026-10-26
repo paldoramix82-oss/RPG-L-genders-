@@ -64,7 +64,8 @@
    "x": 26,
    "y": 16,
    "loot": "magique",
-   "hidden": true
+   "hidden": true,
+   "lock": 13
   }
  ],
  "labels": [],

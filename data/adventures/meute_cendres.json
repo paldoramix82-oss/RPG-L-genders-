@@ -14,7 +14,8 @@
    "x": 2,
    "y": 15,
    "hidden": false,
-   "note": "Survivant de la dernière attaque, blessé."
+   "note": "Survivant de la dernière attaque, blessé.",
+   "role": "garde"
   }
  ],
  "monsters": [

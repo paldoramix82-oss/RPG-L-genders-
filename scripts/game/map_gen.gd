@@ -6,24 +6,32 @@ extends RefCounted
 
 const KINDS := {
 	"foret": "Forêt (clairières, sentier, étang)",
-	"village": "Village (rues, maisons, place)",
+	"village": "Village (rues, maisons, place, habitants)",
+	"ville": "Ville (remparts, quartiers, marché, habitants)",
 	"donjon": "Donjon (salles et couloirs)",
 	"grotte": "Grotte (galeries naturelles)",
 	"plaine": "Plaine (rivière, pont, champs)",
 	"ile": "Île (plage, forêt, sommet)",
 }
-const SIZES := {"petite": Vector2i(24, 16), "moyenne": Vector2i(34, 22), "grande": Vector2i(48, 32)}
+const SIZES := {"petite": Vector2i(24, 16), "moyenne": Vector2i(34, 22), "grande": Vector2i(48, 32),
+	"tres_grande": Vector2i(72, 48), "immense": Vector2i(100, 68)}
+const SIZE_NAMES := {"petite": "Petite (24 × 16)", "moyenne": "Moyenne (34 × 22)", "grande": "Grande (48 × 32)",
+	"tres_grande": "Très grande (72 × 48)", "immense": "Immense (100 × 68)"}
 
 
-## Renvoie {cells, w, h, spawn: {x, y}, labels: [{x, y, text, hidden}]}.
+## Renvoie {cells, w, h, spawn: {x, y}, labels: [{x, y, text, hidden}],
+## buildings: [{id, x, y}]} — bâtiments prêts (Prefabs) à poser par l'hôte,
+## centrés sur (x, y), avec leurs habitants.
 static func generate(kind: String, w: int, h: int, seed_value: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
-	var g := {"w": w, "h": h, "cells": PackedStringArray(), "spawn": Vector2i(1, h / 2), "labels": []}
+	var g := {"w": w, "h": h, "cells": PackedStringArray(), "spawn": Vector2i(1, h / 2), "labels": [], "buildings": [], "rects": []}
 	g.cells.resize(w * h)
 	match kind:
 		"village":
 			_village(g, rng)
+		"ville":
+			_city(g, rng)
 		"donjon":
 			_dungeon(g, rng)
 		"grotte":
@@ -34,8 +42,48 @@ static func generate(kind: String, w: int, h: int, seed_value: int) -> Dictionar
 			_island(g, rng)
 		_:
 			_forest(g, rng)
+	# Grandes cartes sauvages : quelques lieux à découvrir.
+	var extra := (w * h) / 900
+	var pois: Array = {"foret": ["campement", "ruine", "crypte"], "plaine": ["ferme", "campement", "ruine", "tour_garde"],
+		"ile": ["campement", "ruine"], "grotte": [], "donjon": []}.get(kind, [])
+	for i in mini(extra, 6):
+		if not pois.is_empty():
+			_try_building(g, rng, String(pois[i % pois.size()]), Rect2i(2, 2, w - 4, h - 4), ["W", "w", "#", "r", "p", "B", "m", "s"])
 	_fix_spawn(g)
-	return {"cells": "".join(g.cells), "w": w, "h": h, "spawn": {"x": g.spawn.x, "y": g.spawn.y}, "labels": g.labels}
+	return {"cells": "".join(g.cells), "w": w, "h": h, "spawn": {"x": g.spawn.x, "y": g.spawn.y}, "labels": g.labels, "buildings": g.buildings}
+
+
+## Cherche une place pour un bâtiment prêt dans la zone (sans chevaucher les
+## routes, l'eau, les autres bâtiments). Renvoie true s'il est placé.
+static func _try_building(g: Dictionary, rng: RandomNumberGenerator, id: String, area: Rect2i, avoid: Array, tries: int = 40) -> bool:
+	var sz := Prefabs.size_of(id)
+	if sz.x == 0 or area.size.x < sz.x or area.size.y < sz.y:
+		return false
+	for attempt in tries:
+		var cx := rng.randi_range(area.position.x + sz.x / 2, area.end.x - 1 - (sz.x - 1 - sz.x / 2))
+		var cy := rng.randi_range(area.position.y + sz.y / 2, area.end.y - 1 - (sz.y - 1 - sz.y / 2))
+		var rect := Rect2i(cx - sz.x / 2, cy - sz.y / 2, sz.x, sz.y)
+		if rect.position.x < 0 or rect.position.y < 0 or rect.end.x > int(g.w) or rect.end.y > int(g.h):
+			continue
+		var ok := true
+		for o in g.rects:
+			if (o as Rect2i).grow(1).intersects(rect):
+				ok = false
+				break
+		if ok:
+			for y in range(rect.position.y - 1, rect.end.y + 1):
+				for x in range(rect.position.x - 1, rect.end.x + 1):
+					if _at(g, x, y) in avoid and x >= 0 and y >= 0 and x < int(g.w) and y < int(g.h):
+						ok = false
+		if not ok:
+			continue
+		g.rects.append(rect)
+		g.buildings.append({"id": id, "x": cx, "y": cy})
+		# Un chemin devant la porte (bas du bâtiment), s'il y a de la place.
+		if rect.end.y < int(g.h) and _at(g, cx, rect.end.y) in [".", "y", "f", "z"]:
+			_put(g, cx, rect.end.y, "r")
+		return true
+	return false
 
 
 ## Le départ doit être praticable : sinon, la case praticable la plus proche.
@@ -137,33 +185,65 @@ static func _village(g: Dictionary, rng: RandomNumberGenerator) -> void:
 	_rect(g, Rect2i(cx - 3, mid - 2, 8, 6), "p")
 	_put(g, cx, mid, "w")
 	_put(g, cx + 1, mid, "w")
+	g.rects.append(Rect2i(cx - 3, mid - 2, 8, 6))
 	g.spawn = Vector2i(0, mid)
 	_label(g, cx, mid - 3, "Place du puits")
-	var names := ["Auberge", "Forge", "Échoppe", "Maison du chef", "Grange", "Chapelle", "Herboriste"]
-	names.shuffle()
-	var placed := 0
-	for attempt in 60:
-		var bw := rng.randi_range(3, 5)
-		var bh := rng.randi_range(2, 4)
-		var x := rng.randi_range(1, int(g.w) - bw - 1)
-		var y := rng.randi_range(1, int(g.h) - bh - 1)
-		var r := Rect2i(x, y, bw, bh)
-		var ok := true
-		for yy in range(y - 1, y + bh + 1):
-			for xx in range(x - 1, x + bw + 1):
-				if _at(g, xx, yy) in ["r", "p", "R", "w"]:
-					ok = false
-		if not ok:
-			continue
-		_rect(g, r, "R")
-		# Porte côté rue (case pavée devant).
-		_put(g, x + bw / 2, y + bh, "p")
-		if placed < names.size():
-			_label(g, x + bw / 2, y, names[placed])
-		placed += 1
-		if placed >= 9:
-			break
+	# Bâtiments prêts, avec leurs habitants : les incontournables d'abord.
+	var wanted := ["auberge", "forge", "echoppe", "temple", "herboristerie", "tour_garde", "grange", "ferme"]
+	var houses := maxi(2, (int(g.w) * int(g.h)) / 260)
+	for i in houses:
+		wanted.append("maison" if i % 3 != 2 else "grande_maison")
+	var area := Rect2i(1, 1, int(g.w) - 2, int(g.h) - 2)
+	for id in wanted:
+		_try_building(g, rng, String(id), area, ["r", "p", "w", "W"])
 
+
+## Ville fortifiée : remparts et portes, avenues pavées, marché central, quartiers.
+static func _city(g: Dictionary, rng: RandomNumberGenerator) -> void:
+	var w := int(g.w)
+	var h := int(g.h)
+	var n := _noise(rng, 0.12)
+	for y in h:
+		for x in w:
+			_put(g, x, y, "f" if n.get_noise_2d(x, y) > 0.35 else ("y" if n.get_noise_2d(x, y) < -0.4 else "."))
+	var wall := Rect2i(3, 3, w - 6, h - 6)
+	for x in range(wall.position.x, wall.end.x):
+		_put(g, x, wall.position.y, "#")
+		_put(g, x, wall.end.y - 1, "#")
+	for y in range(wall.position.y, wall.end.y):
+		_put(g, wall.position.x, y, "#")
+		_put(g, wall.end.x - 1, y, "#")
+	_rect(g, wall.grow(-1), ".")
+	var cx := w / 2
+	var cy := h / 2
+	# Avenues et portes.
+	_rect(g, Rect2i(0, cy - 1, w, 3), "p")
+	_rect(g, Rect2i(cx - 1, 0, 3, h), "p")
+	_rect(g, Rect2i(0, cy - 1, 3, 3), "r")
+	_rect(g, Rect2i(w - 3, cy - 1, 3, 3), "r")
+	_label(g, wall.position.x, cy - 2, "Porte de l'Ouest")
+	_label(g, wall.end.x - 1, cy - 2, "Porte de l'Est")
+	_label(g, cx, wall.position.y - 1 if wall.position.y > 0 else 0, "Porte du Nord")
+	# Ruelles secondaires.
+	for i in (w / 30 if w >= 60 else 0):
+		var yy := rng.randi_range(wall.position.y + 3, wall.end.y - 4)
+		_rect(g, Rect2i(wall.position.x + 1, yy, wall.size.x - 2, 1), "p")
+		var xx := rng.randi_range(wall.position.x + 3, wall.end.x - 4)
+		_rect(g, Rect2i(xx, wall.position.y + 1, 1, wall.size.y - 2), "p")
+	g.spawn = Vector2i(0, cy)
+	# Marché au centre, puis les grands bâtiments, puis les maisons.
+	var msz := Prefabs.size_of("marche")
+	g.rects.append(Rect2i(cx - 1, cy - 1, 3, 3))
+	g.buildings.append({"id": "marche", "x": cx + msz.x / 2 + 2, "y": cy - msz.y / 2 - 2})
+	g.rects.append(Rect2i(cx + 2, cy - msz.y - 2, msz.x, msz.y))
+	var inside := wall.grow(-2)
+	var wanted := ["caserne", "temple", "manoir", "maison_mage", "auberge", "auberge", "forge", "echoppe", "echoppe", "herboristerie", "tour_garde", "puits"]
+	var houses := maxi(4, (w * h) / 220)
+	for i in houses:
+		wanted.append("maison" if i % 3 != 2 else "grande_maison")
+	for id in wanted:
+		_try_building(g, rng, String(id), inside, ["p", "#", "w", "W", "r"], 60)
+	_label(g, cx, cy - 3, "Grand-Place")
 
 static func _dungeon(g: Dictionary, rng: RandomNumberGenerator) -> void:
 	_fill(g, "#")

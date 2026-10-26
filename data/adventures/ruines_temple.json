@@ -47,7 +47,8 @@
    "x": 14,
    "y": 17,
    "loot": "boss",
-   "hidden": true
+   "hidden": true,
+   "lock": 16
   }
  ],
  "labels": [],

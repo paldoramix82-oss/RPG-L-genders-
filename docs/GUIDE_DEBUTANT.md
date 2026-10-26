@@ -191,6 +191,9 @@ Pour une capacité : touchez-la dans la barre du bas. Le panneau explique ce qu'
 
 Quand vous avez fini : **Fin du tour**.
 
+### Tenter quelque chose : le dé est lancé tout seul
+Sous la carte : **Fouiller**, **Observer**, **Se cacher**, **Soigner**, **Chasser, cueillir**, **Autre…** — chaque bouton montre votre chance (« 65 % »). Touchez : le d20 roule au-dessus de la carte, le résultat tombe (« Réussite ! Vous trouvez une potion »), et ce qui doit arriver arrive (objet dans le sac, monstre repéré, chute…). Pareil sur un coffre verrouillé (*Crocheter*, *Forcer*), un PNJ (*Convaincre*, *Intimider*) ou un monstre (*Intimider*, *Identifier*). Une action écrite (« J'escalade le mur ») lance aussi le bon dé tout seul.
+
 ### Les dés, en 30 secondes
 - `d20` = un dé à 20 faces (résultat de 1 à 20). `2d6` = deux dés à 6 faces additionnés. `+3` = on ajoute 3.
 - Pour **toucher** un ennemi, il faut atteindre sa **Défense** (d20 + votre caractéristique).
@@ -245,6 +248,10 @@ Les séparations entre les zones se **déplacent à la souris** : agrandissez la
 4. **Pour un combat** : *Événement rapide › Embuscade* (choisissez des monstres, le combat démarre tout seul), ou *Créer › Monstres › Placer*, puis la phase **Combat**. Quand c'est le tour d'un monstre, la carte **Phase de jeu** propose ses attaques et capacités, ou **Jouer automatiquement**.
 5. **Après la victoire** : XP, or et butin sont distribués tout seuls. Passez en **Repos** ou en **Récit libre**.
 6. **Quête accomplie** : *Réussie : distribuer*. Les récompenses sont données une seule fois.
+
+**Construire vite** : *Monde › Générer…* une **ville** ou un **village** (déjà construits et habités), ou posez des **Bâtiments prêts** d'un toucher. Chaque habitant (aubergiste, forgeron, garde…) propose des **quêtes secondaires prêtes** dès qu'on lui parle et installe tout seul ce qu'il faut sur la carte.
+
+**Les dés aussi sont automatiques** : les joueurs tentent des épreuves (fouiller, crocheter, convaincre…) résolues et appliquées seules. Une action écrite sans compétence reconnue vous attend : un clic sur la difficulté suffit ; ajoutez au besoin une conséquence en un clic (−1d4 PV, objet trouvé…).
 
 **Le jeu fait le gros du travail** : les monstres attaquent et jouent seuls, les combats ne concernent que ceux qui y sont, les quêtes avancent et se terminent seules. Votre rôle : raconter, répondre aux actions, et surveiller **Combat › Combats en cours** (reprendre la main sur un combat, passer un tour, le terminer). Pour tout faire à la main, décochez *Monstres agressifs* et *Monstres automatiques* dans *Créer › Règles*.
 

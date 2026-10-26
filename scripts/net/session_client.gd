@@ -74,8 +74,15 @@ func send_chat(to: String, text: String) -> String:
 	return send_command(Protocol.CMD_CHAT_SEND, {"to": to, "text": text})
 
 
-func declare_action(to: String, text: String) -> String:
-	return send_command(Protocol.CMD_ACTION, {"to": to, "text": text})
+## skill : "auto" (l'hôte devine la compétence d'après le texte), un id de
+## compétence (épreuve automatique), ou "" (le MJ tranche).
+func declare_action(to: String, text: String, skill: String = "auto") -> String:
+	return send_command(Protocol.CMD_ACTION, {"to": to, "text": text, "skill": skill})
+
+
+## Épreuve directe (Fouiller, Observer, Crocheter ce coffre…) : jet et conséquences par l'hôte.
+func check(skill: String, target: String = "", text: String = "") -> String:
+	return send_command(Protocol.CMD_CHECK, {"skill": skill, "target": target, "text": text})
 
 
 func roll(expr: String, to: String, label: String = "") -> String:

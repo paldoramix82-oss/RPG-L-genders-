@@ -10,7 +10,7 @@ extends RefCounted
 
 const DIR := "res://data/maps"
 const MAX_SIZE := 128
-const MAX_TOKENS := 120
+const MAX_TOKENS := 250
 const MAX_LABELS := 120
 const KINDS := ["pc", "npc", "monster", "object"]
 const KIND_NAMES := {"pc": "Personnage", "npc": "PNJ", "monster": "Monstre", "object": "Objet"}

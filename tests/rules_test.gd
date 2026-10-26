@@ -22,6 +22,8 @@ func _ready() -> void:
 	_test_adventures()
 	_test_map_tools()
 	_test_encounters()
+	_test_checks()
+	_test_town()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -588,3 +590,215 @@ func _test_encounters() -> void:
 	pb.y = 4
 	s._after_move(pb)
 	_expect(String(s._quest(q2.id).status) == "done", "lieu atteint : quête terminée et récompensée seule")
+
+
+func _test_checks() -> void:
+	print("\n— Épreuves automatiques (action → jet → conséquences)")
+	_expect(Checks.detect("J'escalade le mur du manoir") == "athletisme", "« J'escalade » → Athlétisme")
+	_expect(Checks.detect("Je fouille le bureau du maire") == "fouille", "« Je fouille » → Fouille")
+	_expect(Checks.detect("Je tente de convaincre le garde") == "persuasion", "« convaincre » → Persuasion")
+	_expect(Checks.detect("Je chante une chanson") == "", "phrase sans compétence → le MJ décide")
+	var s := _server()
+	var a := _add_player(s, "Aria")
+	var b := _add_player(s, "Bram")
+	s._cmd_char_create(a, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Aria"}})
+	s._cmd_char_create(b, {"class_id": "pretre" if not Rules.get_class_def(s.content, "pretre").is_empty() else "mage", "alloc": Rules.get_class_def(s.content, "mage").recommended, "choices": [0], "identity": {"name": "Bram"}})
+	var m := s.mj_create_map("Plaine", 50, 24)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	var map: Dictionary = s.maps[s.active_map]
+	var pa := MapData.token(map, "pawn_" + a.id)
+	var pb := MapData.token(map, "pawn_" + b.id)
+	pa.x = 5
+	pa.y = 10
+	pb.x = 6
+	pb.y = 10
+	var ca: Dictionary = s.characters[a.id]
+	# Fouille réussie : objets ou or dans le sac, résultat publié avec le jet.
+	s.checks.forced_d20 = 18
+	var gold0 := int(ca.gold)
+	var bag0 := (ca.inventory as Array).size()
+	_expect(s._cmd_action(a, {"to": Protocol.TO_ALL, "text": "Je fouille les buissons", "skill": "auto"}) == "", "action « Je fouille » : épreuve lancée")
+	var last: Dictionary = s.messages[-1]
+	_expect(last.get("check", {}).get("skill", "") == "fouille" and last.status == Protocol.ACTION_RESOLVED, "résultat immédiat (Fouille, résolue)")
+	_expect(int(last.check.total) == 18 + int(last.check.bonus) and int(last.check.dc) > 0, "jet : d20 + caractéristique contre DD")
+	_expect(int(ca.gold) > gold0 or (ca.inventory as Array).size() > bag0 or str(last.lines).contains("trouve") or str(last.lines).contains("Rien"), "conséquence appliquée : trouvaille dans le sac")
+	_expect(s._cmd_check(a, {"skill": "fouille"}) != "", "même épreuve aussitôt : délai")
+	s.checks._cooldown.clear()
+	s._cmd_check(a, {"skill": "fouille"})
+	_expect(str(s.messages[-1].lines).contains("déjà été fouillé"), "un endroit ne se fouille qu'une fois")
+	# Chute : échec → dégâts.
+	s.checks.forced_d20 = 1
+	var hp0 := int(pa.hp)
+	s._cmd_action(a, {"to": Protocol.TO_ALL, "text": "J'escalade la falaise", "skill": "auto"})
+	_expect(int(pa.hp) < hp0 and String(s.messages[-1].check.outcome) == "fumble", "escalade ratée (1 naturel) : chute, PV perdus")
+	# Perception : monstre caché repéré.
+	s.checks.forced_d20 = 17
+	var hidden := s.mj_spawn_monster("loup", 12, 10, true)
+	s._cmd_check(a, {"skill": "perception"})
+	_expect(not hidden.get("hidden", true), "Observer : le loup caché est repéré")
+	_expect(s.encounters.is_empty(), "repéré à temps : le loup n'attaque pas tout de suite")
+	map.tokens.erase(hidden)
+	# Coffre verrouillé : crochetage.
+	var chest := s.mj_add_token(m.id, {"kind": "object", "name": "Coffre", "x": 5, "y": 11})
+	chest.loot = "coffre"
+	chest.lock = 15
+	s.checks.forced_d20 = 3
+	s._cmd_check(a, {"skill": "crochetage", "target": chest.id})
+	_expect(chest.has("loot"), "crochetage raté : le coffre reste fermé")
+	s.checks._cooldown.clear()
+	s.checks.forced_d20 = 19
+	s._cmd_check(a, {"skill": "crochetage", "target": chest.id})
+	_expect(not chest.has("loot"), "crochetage réussi : le coffre s'ouvre")
+	# Intimider un monstre : réussi, il s'enfuit ; raté, il attaque.
+	var w := s.mj_spawn_monster("loup", 9, 12, false)
+	w.calm_until = SessionServer._clock() + 60.0
+	s.checks.forced_d20 = 20
+	s._cmd_check(a, {"skill": "intimidation", "target": w.id})
+	_expect(MapData.token(map, w.id).is_empty(), "intimidation réussie : le loup s'enfuit")
+	var w2 := s.mj_spawn_monster("loup", 9, 12, false)
+	w2.calm_until = SessionServer._clock() + 60.0
+	s.checks._cooldown.clear()
+	s.checks.forced_d20 = 1
+	s._cmd_check(a, {"skill": "intimidation", "target": w2.id})
+	_expect(not s.encounter_of(pa.id).is_empty(), "intimidation ratée : le loup attaque (combat local)")
+	var enc := s.encounter_of(pa.id)
+	if not enc.is_empty() and s._with(enc, s._current_token) != pa.id:
+		_expect(s._cmd_check(a, {"skill": "perception"}) != "", "en combat : pas d'épreuve hors de son tour")
+	if not enc.is_empty():
+		s.mj_encounter_end(String(enc.id))
+	map.tokens.erase(w2)
+	# Premiers soins sur un allié voisin, une fois par minute.
+	s.checks.forced_d20 = 15
+	s._damage_token(pa, 10)
+	var hp1 := int(pa.hp)
+	_expect(s._cmd_check(b, {"skill": "soins", "target": pa.id}) == "" and int(pa.hp) > hp1, "premiers soins : Aria récupère des PV")
+	s.checks._cooldown.clear()
+	hp1 = int(pa.hp)
+	s._cmd_check(b, {"skill": "soins", "target": pa.id})
+	_expect(int(pa.hp) == hp1, "pas deux soins de suite sur le même blessé")
+	# Discrétion : invisible aux monstres un moment.
+	s.checks.forced_d20 = 16
+	s._cmd_check(a, {"skill": "discretion"})
+	var w3 := s.mj_spawn_monster("loup", 9, 10, false)
+	s._after_move(pa)
+	_expect(s.encounter_of(pa.id).is_empty(), "caché : le loup ne voit pas Aria")
+	map.tokens.erase(w3)
+	# Action sans compétence : le MJ la tranche en un clic, puis ajoute une conséquence.
+	s._cmd_action(a, {"to": Protocol.TO_ALL, "text": "Je chante une chanson paillarde", "skill": "auto"})
+	var act: Dictionary = s.messages[-1]
+	_expect(act.status == Protocol.ACTION_PENDING and not act.has("check"), "action libre sans compétence : en attente du MJ")
+	s.checks.forced_d20 = 15
+	_expect(s.mj_check_action(String(act.id), "persuasion", 10) == "" and act.status == Protocol.ACTION_RESOLVED and act.has("check"), "MJ : épreuve en un clic (Persuasion, DD 10)")
+	var hp2 := int(pa.hp)
+	_expect(s.mj_action_consequence(String(act.id), "dmg_small") == "" and int(pa.hp) < hp2, "MJ : conséquence en un clic (−1d4 PV)")
+	# Jet demandé par le MJ avec une compétence : le joueur lance, tout se résout.
+	s.mj_request_roll(a.id, "d20", "", 12, true, "endurance")
+	var req: Dictionary = s.messages[-1]
+	_expect(s._cmd_roll_answer(a, {"message_id": req.id}) == "" and req.status == "done" and req.has("check"), "jet demandé (Endurance) : résolu avec la caractéristique")
+	s.checks.forced_d20 = 0
+
+
+func _test_town() -> void:
+	print("\n— Bâtiments prêts, habitants à rôle, quêtes secondaires prêtes")
+	for id in Prefabs.LIST:
+		var rows: Array = Prefabs.LIST[id].rows
+		_expect(rows.all(func(r): return String(r).length() == String(rows[0]).length()), "plan régulier : %s" % id)
+	for tid in QuestLibrary.TEMPLATES:
+		var built := QuestLibrary.build(tid, "Berthe, aubergiste", "Gérald, garde")
+		_expect(not built.is_empty() and not str(built).contains("{giver}") and not str(built).contains("{other}") and not str(built).contains("{place}"), "modèle de quête complet : %s" % tid)
+	var s := _server()
+	var a := _add_player(s, "Aria")
+	s._cmd_char_create(a, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Aria"}})
+	var m := s.mj_create_map("Bourg", 60, 40)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	var map: Dictionary = s.maps[s.active_map]
+	var corner := Prefabs.anchor(map, "auberge", 20, 12)
+	var placed := s.mj_place_prefab(m.id, "auberge", 20, 12)
+	var npc: Dictionary = placed.get("npc", {})
+	_expect(MapData.cell(map, corner.x, corner.y) == "#" and not npc.is_empty() and String(npc.get("role", "")) == "aubergiste", "auberge posée : murs, et son aubergiste")
+	_expect(map.labels.any(func(l): return l.text == "Auberge"), "nom du bâtiment sur la carte")
+	_expect(s.quests.any(func(q): return q.giver == npc.name and q.status == "draft" and q.get("offer", false)), "l'aubergiste a déjà une quête à proposer")
+	_expect(s.mj_undo(m.id) and MapData.cell(map, corner.x, corner.y) == ".", "bâtiment annulable")
+	s.mj_place_prefab(m.id, "forge", 30, 20)
+	var garde := s.mj_place_role_npc(m.id, "herboriste", 10, 30)
+	_expect(String(garde.get("role", "")) == "herboriste", "habitant à rôle placé seul")
+	# On parle au PNJ : quête prête, on l'accepte, les cibles apparaissent, la quête se termine en revenant.
+	var pa := MapData.token(map, "pawn_" + a.id)
+	pa.x = int(garde.x) + 1
+	pa.y = int(garde.y)
+	_expect(s._cmd_talk(a, {"token": garde.id}) == "", "parler à l'herboriste")
+	var offers := s.quests_for(a.id).filter(func(q): return q.status == "offer" and q.giver == garde.name)
+	_expect(not offers.is_empty(), "il propose une quête dès qu'on lui parle (%s)" % (offers[0].title if not offers.is_empty() else "-"))
+	var qid := String(offers[0].id) if not offers.is_empty() else ""
+	var tokens_before := (map.tokens as Array).size()
+	_expect(s._cmd_quest_accept(a, {"quest": qid}) == "" and s._quest(qid).status == "active", "quête acceptée")
+	var q := s._quest(qid)
+	var tpl: Dictionary = QuestLibrary.TEMPLATES[q.template]
+	_expect(not tpl.has("spawn") and not tpl.has("pickups") or (map.tokens as Array).size() > tokens_before, "à l'acceptation, les cibles apparaissent sur la carte")
+	# Résoudre les objectifs comme le ferait le joueur.
+	var guard := 0
+	while q.status == "active" and guard < 30:
+		guard += 1
+		for o in q.objectives:
+			if o.get("done", false):
+				continue
+			match String(o.kind):
+				"kill":
+					for t in (map.tokens as Array).duplicate():
+						if String(t.get("quest", "")) == qid and String(t.kind) == "monster":
+							s.combat._on_defeated(t, pa)
+							(map.tokens as Array).erase(t)
+				"item":
+					var picked := false
+					for t in (map.tokens as Array).duplicate():
+						if t.get("pickup", false) and String(t.get("quest", "")) == qid:
+							s.open_chest(String(t.id), a.id)
+							picked = true
+					if not picked:
+						s.mj_give_item(a.id, String(o.target), int(o.count), false)
+				"reach":
+					pa.x = int(o.x)
+					pa.y = int(o.y)
+					s._after_move(pa)
+				"talk":
+					var who := String(o.target)
+					for t in map.tokens:
+						if String(t.name) == who:
+							pa.x = int(t.x) + 1
+							pa.y = int(t.y)
+							s._cmd_talk(a, {"token": t.id})
+			break
+	_expect(q.status == "done", "quête prête menée au bout : terminée automatiquement (%s)" % q.title)
+	var leftover := (s.characters[a.id].inventory as Array).filter(func(it): return QuestLibrary.ITEMS.has(String(it.get("item_id", ""))))
+	_expect(leftover.is_empty() or not tpl.get("return", false), "objets de quête remis au PNJ")
+	_expect(s._cmd_talk(a, {"token": garde.id}) == "" and s.quests.filter(func(x): return x.giver == garde.name).size() >= 2, "en lui reparlant, il propose une nouvelle quête")
+
+	# Cartes générées : villages et villes avec leurs bâtiments et habitants, accessibles à pied.
+	for kind in ["village", "ville", "foret"]:
+		for size in ["grande", "immense"]:
+			for seed_value in [3, 11]:
+				var gm := s.mj_generate_map(kind, size, "", seed_value)
+				var npcs := (gm.tokens as Array).filter(func(t): return String(t.get("role", "")) != "")
+				var reach := _reachable(gm, Vector2i(int(gm.spawn.x), int(gm.spawn.y)))
+				var stuck := npcs.filter(func(t): return not reach.has(Vector2i(int(t.x), int(t.y))))
+				if kind != "foret":
+					_expect(npcs.size() >= (4 if size == "grande" else 8), "%s %s (graine %d) : %d habitants" % [kind, size, seed_value, npcs.size()])
+				_expect(stuck.is_empty(), "%s %s (graine %d) : chaque habitant est accessible à pied (%d coincés)" % [kind, size, seed_value, stuck.size()])
+	_expect(MapGen.SIZES.immense.x >= 100, "taille immense disponible (100 × 68)")
+
+
+## Cases atteignables à pied depuis une case (8 directions, comme les déplacements).
+func _reachable(map: Dictionary, start: Vector2i) -> Dictionary:
+	var seen := {start: true}
+	var queue: Array[Vector2i] = [start]
+	while not queue.is_empty():
+		var p: Vector2i = queue.pop_front()
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				var n := p + Vector2i(dx, dy)
+				if not seen.has(n) and MapData.in_bounds(map, n.x, n.y) and MapData.passable(map, n.x, n.y):
+					seen[n] = true
+					queue.append(n)
+	return seen

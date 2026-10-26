@@ -91,6 +91,10 @@ var _was_my_turn := false
 ## Défaite ne s'affichent qu'aux participants d'un combat local.
 var _combat_seen_ms := -100000
 var _was_combat := false
+## Panneau de PNJ ouvert (rafraîchi quand ses quêtes changent) et salutations tirées.
+var _npc_panel := ""
+var _greetings := {}
+var _rng := RandomNumberGenerator.new()
 var _was_started := false
 var _wizard_open := false
 var _last_level := 0
@@ -339,14 +343,11 @@ func _build_feed_page() -> VBoxContainer:
 	_ideas_menu.custom_minimum_size.y = 32
 	_ideas_menu.add_theme_font_size_override("font_size", 14)
 	_ideas_menu.visible = false
-	var ideas := [["Examiner…", "J'examine "], ["Parler à…", "Je vais parler à "], ["Interagir avec…", "J'interagis avec "], ["Fouiller…", "Je fouille "], ["Se cacher", "Je me cache "], ["Action libre…", ""], ["Utiliser un objet (sac)", "@bag"]]
+	var ideas := [["Fouiller (jet)", "@fouille"], ["Observer (jet)", "@perception"], ["Se cacher (jet)", "@discretion"], ["Toutes les épreuves…", "@checks"],
+		["Parler à…", "Je vais parler à "], ["Action libre…", ""], ["Utiliser un objet (sac)", "@bag"]]
 	for spec in ideas:
 		_ideas_menu.get_popup().add_item(spec[0])
-	_ideas_menu.get_popup().index_pressed.connect(func(i):
-		if ideas[i][1] == "@bag":
-			_open_inventory("bag")
-		else:
-			_composer.start_action(ideas[i][1]))
+	_ideas_menu.get_popup().index_pressed.connect(func(i): _idea(String(ideas[i][1])))
 	var filler := Control.new()
 	filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	filters.add_child(filler)
@@ -358,11 +359,12 @@ func _build_feed_page() -> VBoxContainer:
 	_quick_actions.add_theme_constant_override("h_separation", 6)
 	_quick_actions.add_theme_constant_override("v_separation", 6)
 	page.add_child(_quick_actions)
-	for spec in [["Examiner", "J'examine "], ["Parler à…", "Je vais parler à "], ["Interagir", "J'interagis avec "], ["Fouiller", "Je fouille "], ["Se cacher", "Je me cache "], ["Action libre…", ""]]:
-		var b := UIKit.button(spec[0], "PrimaryButton" if spec[1] == "" else "", func(): _composer.start_action(spec[1]))
+	for spec in [["Fouiller", "@fouille"], ["Observer", "@perception"], ["Se cacher", "@discretion"], ["Épreuves…", "@checks"], ["Parler à…", "Je vais parler à "], ["Action libre…", ""]]:
+		var b := UIKit.button(spec[0], "PrimaryButton" if spec[1] == "" else "", _idea.bind(String(spec[1])))
 		b.custom_minimum_size.y = 34
 		b.add_theme_font_size_override("font_size", 15)
-		b.tooltip_text = "Décrivez librement ce que tente votre personnage : le MJ décide du résultat."
+		b.tooltip_text = "Jet automatique : le résultat et ses conséquences s'appliquent tout de suite." if String(spec[1]).begins_with("@") \
+			else "Décrivez ce que tente votre personnage : si l'action correspond à une compétence, le dé est lancé tout seul ; sinon le MJ décide."
 		_quick_actions.add_child(b)
 	var use_item := UIKit.button("Utiliser un objet", "", _open_inventory.bind("bag"))
 	use_item.custom_minimum_size.y = 34
@@ -374,8 +376,8 @@ func _build_feed_page() -> VBoxContainer:
 	_composer.send_message.connect(func(to, text):
 		_client.send_chat(to, text)
 		_refresh_outbox())
-	_composer.send_action.connect(func(to, text):
-		_client.declare_action(to, text)
+	_composer.send_action.connect(func(to, text, skill):
+		_client.declare_action(to, text, skill)
 		_refresh_outbox())
 	_composer.send_roll.connect(_roll)
 	_feed.roll_answer_requested.connect(func(id, expr, label):
@@ -890,7 +892,7 @@ func _open_chat() -> void:
 		[["Au groupe", Protocol.TO_ALL], ["Au MJ (privé)", Protocol.TO_MJ]],
 		[["Jet visible", Protocol.TO_ALL], ["Jet secret (MJ)", Protocol.TO_MJ]])
 	composer.send_message.connect(func(to, text): _client.send_chat(to, text))
-	composer.send_action.connect(func(to, text): _client.declare_action(to, text))
+	composer.send_action.connect(func(to, text, skill): _client.declare_action(to, text, skill))
 	composer.send_roll.connect(_roll)
 	panel.body.add_child(composer)
 	panel.body.add_child(GameUI.hint("Parler est gratuit : aucun point d'action dépensé, le combat continue."))
@@ -1045,6 +1047,11 @@ func _show_loot(items: Array, gold: int) -> void:
 func _on_quests() -> void:
 	for q in _client.quests:
 		_known_quests[q.id] = q.status
+	if _overlay_kind == "npc" and _npc_panel != "":
+		var t := MapData.token(_client.map, _npc_panel)
+		var me := _client.my_token()
+		if not t.is_empty() and not me.is_empty():
+			_open_npc_panel(t, Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))), false)
 	_refresh_header()
 	_refresh_overlay("journal")
 
@@ -1204,6 +1211,8 @@ func _refresh_turn_bar() -> void:
 		_turn_bar.add_child(UIKit.label("%s — %s" % [phase.get("name", ""), move], "MutedLabel", true))
 		if phase.get("move", "free") == "free":
 			_turn_bar.add_child(GameUI.hint("Touchez un monstre pour l'attaquer, un PNJ pour lui parler. Attention : un monstre qui vous voit attaque."))
+		if not _client.my_token().is_empty():
+			_turn_bar.add_child(_quick_checks())
 		_turn_bar.add_child(_dice_row())
 		return
 	if not _client.is_my_turn():
@@ -1258,6 +1267,10 @@ func _refresh_turn_bar() -> void:
 		item.disabled = ap < int(r.item_ap) or busy
 		item.tooltip_text = "Ouvrir le sac pour boire une potion ou utiliser un objet."
 		buttons.append(item)
+		var test := UIKit.button("Épreuve · %d PA" % int(r.get("check_ap", 1)), "", _open_checks.bind(""))
+		test.disabled = ap < int(r.get("check_ap", 1)) or busy
+		test.tooltip_text = "Intimider, observer, soigner un allié… (jet automatique)."
+		buttons.append(test)
 		if phase.has("encounter"):
 			var flee_ap := int(r.move_ap)
 			var flee := UIKit.button("Fuir · %d PA" % flee_ap, "", func(): _client.turn_action("flee"))
@@ -1531,14 +1544,28 @@ func _on_token_selected(token_id: String) -> void:
 
 func _open_chest_panel(t: Dictionary, near: bool) -> void:
 	var token_id := String(t.id)
+	if t.get("pickup", false):
+		var pp := _open_overlay("chest", String(t.get("name", "Objet")), "bag")
+		pp.body.add_child(UIKit.label("Un objet que l'on vous a demandé de trouver.", "", true))
+		if near:
+			pp.body.add_child(UIKit.button("Ramasser", "PrimaryButton", func():
+				_close_overlay()
+				_client.open_chest(token_id)))
+		else:
+			pp.body.add_child(GameUI.hint("Approchez-vous (case voisine) pour le ramasser."))
+		return
 	var panel := _open_overlay("chest", String(t.get("name", "Coffre")), "chest")
-	panel.body.add_child(UIKit.label("Un coffre fermé. Qui sait ce qu'il contient ?", "", true))
-	if near:
+	var lock := int(t.get("lock", 0))
+	panel.body.add_child(UIKit.label("Un coffre verrouillé (difficulté %d, %s)." % [lock, Checks.dc_name(lock)] if lock > 0 else "Un coffre fermé. Qui sait ce qu'il contient ?", "", true))
+	if not near:
+		panel.body.add_child(GameUI.hint("Approchez-vous (case voisine) pour l'ouvrir."))
+	elif lock > 0:
+		panel.body.add_child(_check_button("crochetage", "Crocheter la serrure", token_id, lock))
+		panel.body.add_child(_check_button("athletisme", "Forcer le coffre", token_id, lock + 2))
+	else:
 		panel.body.add_child(UIKit.button("Ouvrir le coffre", "PrimaryButton", func():
 			_close_overlay()
 			_client.open_chest(token_id)))
-	else:
-		panel.body.add_child(GameUI.hint("Approchez-vous (case voisine) pour l'ouvrir."))
 
 
 ## Hors combat, on peut engager un monstre (ou un PNJ hostile) : le combat ne
@@ -1564,24 +1591,51 @@ func _open_monster_panel(t: Dictionary, dist: int) -> void:
 	panel.body.add_child(UIKit.button("Attaquer (engager le combat)", "DangerButton", func():
 		_close_overlay()
 		_client.engage(token_id)))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
+	panel.body.add_child(row)
+	if dist <= 4:
+		row.add_child(_check_button("intimidation", "Intimider (le faire fuir)", token_id, clampi(10 + int(t.get("hp_max", 10)) / 6, 10, 24)))
+	row.add_child(_check_button("savoir", "Identifier (points faibles)", token_id))
+	row.add_child(_check_button("discretion", "Se cacher"))
 
 
-func _open_npc_panel(t: Dictionary, dist: int) -> void:
+func _open_npc_panel(t: Dictionary, dist: int, auto_talk: bool = true) -> void:
 	var token_id := String(t.id)
 	var name := String(t.get("name", "PNJ"))
 	var panel := _open_overlay("npc", name, "chat")
+	_npc_panel = token_id
 	var near := dist <= 2
+	# À côté de lui, on lui parle tout de suite : il salue et propose ses quêtes.
+	if near and auto_talk:
+		_client.talk_to(token_id)
+	var role := String(t.get("role", ""))
+	if role != "" and near:
+		if not _greetings.has(token_id):
+			_greetings[token_id] = QuestLibrary.greeting(role, _rng)
+		var g := UIKit.label("« %s »" % _greetings[token_id], "", true)
+		g.add_theme_color_override("font_color", Palette.GOLD.lightened(0.2))
+		panel.body.add_child(g)
 	if String(t.get("description", "")) != "":
 		panel.body.add_child(UIKit.label(String(t.description), "", true))
 	if not near:
 		panel.body.add_child(GameUI.hint("Approchez-vous (2 cases au plus) pour lui parler ou accepter ses quêtes."))
-	var talk := UIKit.button("Parler", "PrimaryButton", func():
+	var talk := UIKit.button("Lui dire quelque chose…", "PrimaryButton" if role == "" else "", func():
 		_close_overlay()
-		_client.talk_to(token_id)
 		_show_view("story")
 		_composer.start_action("Je parle à %s : " % name))
 	talk.disabled = not near
 	panel.body.add_child(talk)
+	if near:
+		var acts := HFlowContainer.new()
+		acts.add_theme_constant_override("h_separation", 6)
+		acts.add_theme_constant_override("v_separation", 6)
+		panel.body.add_child(acts)
+		acts.add_child(_check_button("persuasion", "Convaincre", token_id))
+		acts.add_child(_check_button("intimidation", "Intimider", token_id))
+		if dist <= 1:
+			acts.add_child(_check_button("crochetage", "Faire les poches", token_id))
 	var offers: Array = _client.quests.filter(func(q): return q.status == "offer" and String(q.get("giver", "")).to_lower() == name.to_lower())
 	if not offers.is_empty():
 		panel.body.add_child(GameUI.section_title("Quêtes proposées"))
@@ -1980,3 +2034,71 @@ func _confirm_leave() -> void:
 	ConfirmBox.ask(self, "Quitter la partie ?", "Vous pourrez revenir : votre place et votre personnage sont conservés.", "Quitter", func():
 		Net.leave()
 		App.goto(App.SCENE_JOIN), true, "Rester")
+
+
+# ---------------------------------------------------------------------------
+# Épreuves : une action déclenche le jet ; l'hôte résout et applique les conséquences
+# ---------------------------------------------------------------------------
+
+## Bouton d'épreuve avec la chance de réussite (d20 + caractéristique contre DD).
+func _check_button(skill: String, label: String, target: String = "", dc: int = 0) -> Button:
+	var sk := Checks.get_skill(skill)
+	var dcv := dc if dc > 0 else int(sk.get("dc", 14))
+	var bonus := Checks.bonus(_client.my_character(), _client.content, skill)
+	var b := UIKit.button("%s · %d %%" % [label, Checks.chance(bonus, dcv)], "", func():
+		_close_overlay()
+		_client.check(skill, target)
+		_refresh_outbox())
+	b.tooltip_text = "%s : d20 + %s (%+d) contre DD %d. %s" % [sk.get("name", ""), sk.get("stat", ""), bonus, dcv, sk.get("hint", "")]
+	b.custom_minimum_size.y = 40
+	return b
+
+
+## Actions rapides d'exploration (sous la carte).
+func _quick_checks() -> Control:
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
+	for skill in Checks.QUICK:
+		var b := _check_button(skill, String(Checks.QUICK_LABELS[skill]))
+		b.custom_minimum_size.y = 36
+		b.add_theme_font_size_override("font_size", 14)
+		row.add_child(b)
+	var more := UIKit.button("Autre…", "", _open_checks.bind(""))
+	more.custom_minimum_size.y = 36
+	row.add_child(more)
+	return row
+
+
+## Toutes les épreuves, avec leur chance de réussite.
+func _open_checks(target: String) -> void:
+	var panel := _open_overlay("checks", "Tenter une épreuve", "target")
+	panel.body.add_child(UIKit.label("Le dé est lancé tout de suite : d20 + caractéristique contre la difficulté. Le résultat et ses conséquences s'appliquent automatiquement.", "MutedLabel", true))
+	for skill in Checks.SKILLS:
+		var sk: Dictionary = Checks.SKILLS[skill]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		panel.body.add_child(row)
+		row.add_child(GameUI.icon_badge(String(sk.icon), Palette.GOLD, 30))
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(col)
+		col.add_child(UIKit.label("%s (%s)" % [sk.name, sk.stat], "StrongLabel"))
+		col.add_child(UIKit.label(String(sk.hint), "MutedLabel", true))
+		var b := _check_button(skill, String(Checks.QUICK_LABELS.get(skill, sk.name)), target)
+		b.custom_minimum_size.x = 150
+		row.add_child(b)
+
+
+func _idea(spec: String) -> void:
+	match spec:
+		"@bag":
+			_open_inventory("bag")
+		"@checks":
+			_open_checks("")
+		_:
+			if spec.begins_with("@"):
+				_client.check(spec.substr(1))
+				_refresh_outbox()
+			else:
+				_composer.start_action(spec)

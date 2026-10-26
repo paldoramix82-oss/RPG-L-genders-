@@ -14,7 +14,8 @@
    "x": 6,
    "y": 9,
    "hidden": false,
-   "note": ""
+   "note": "",
+   "role": "aubergiste"
   },
   {
    "pack": "fantasy_valombre",
@@ -22,7 +23,8 @@
    "x": 14,
    "y": 9,
    "hidden": false,
-   "note": ""
+   "note": "",
+   "role": "pretre"
   },
   {
    "pack": "fantasy_valombre",
@@ -30,7 +32,8 @@
    "x": 7,
    "y": 15,
    "hidden": false,
-   "note": ""
+   "note": "",
+   "role": "forgeron"
   },
   {
    "pack": "fantasy_valombre",
@@ -38,7 +41,8 @@
    "x": 14,
    "y": 15,
    "hidden": false,
-   "note": ""
+   "note": "",
+   "role": "noble"
   },
   {
    "pack": "fantasy_valombre",
@@ -46,7 +50,8 @@
    "x": 27,
    "y": 14,
    "hidden": false,
-   "note": ""
+   "note": "",
+   "role": "herboriste"
   },
   {
    "pack": "fantasy_valombre",
@@ -54,7 +59,8 @@
    "x": 11,
    "y": 11,
    "hidden": false,
-   "note": ""
+   "note": "",
+   "role": "capitaine"
   },
   {
    "pack": "fantasy_valombre",
@@ -97,7 +103,8 @@
    "x": 16,
    "y": 6,
    "loot": "coffre",
-   "hidden": true
+   "hidden": true,
+   "lock": 14
   },
   {
    "name": "Caisse abandonnée",

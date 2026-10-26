@@ -8,6 +8,10 @@ signal resolve_requested(message_id: String, status: String, result: String, rol
 signal roll_request_requested(message_id: String, expr: String, difficulty: int)
 ## Le joueur touche « Lancer le dé ».
 signal roll_answer_requested(message_id: String, expr: String, label: String)
+## MJ : épreuve en un clic sur une action (player_rolls : le joueur lance lui-même).
+signal check_requested(message_id: String, skill: String, dc: int, player_rolls: bool)
+## MJ : conséquence en un clic (dégâts, soins, XP…) sur une action.
+signal consequence_requested(message_id: String, kind: String)
 
 var viewer_id := ""
 var is_mj := false
@@ -291,11 +295,21 @@ func _action(m: Dictionary) -> Control:
 		Protocol.ACTION_RESOLVED: ["Résolue", Palette.OK],
 		Protocol.ACTION_REFUSED: ["Refusée", Palette.DANGER],
 	}.get(status, ["?", Palette.MUTED])
+	var check: Dictionary = m.get("check", {})
+	if not check.is_empty():
+		_check_block(col, m)
+		if is_mj:
+			col.add_child(consequence_row(String(m.id)))
+		return col.get_parent()
 	col.add_child(UIKit.chip(chip[0], chip[1]))
 	if status == Protocol.ACTION_ROLL:
 		col.add_child(_roll_prompt(m, String(m.get("text", "")).substr(0, 40)))
 	var roll: Dictionary = m.get("roll", {})
 	var result := String(m.get("result", ""))
+	if not (m.get("lines", []) as Array).is_empty():
+		_add_lines(col, m.lines)
+	if is_mj and status == Protocol.ACTION_RESOLVED:
+		col.add_child(consequence_row(String(m.id)))
 	if not roll.is_empty() or result != "":
 		var res := UIKit.card(col, "", "BubbleMJ")
 		if not roll.is_empty():
@@ -314,7 +328,9 @@ func _roll_request(m: Dictionary) -> Control:
 	if label != "":
 		col.add_child(UIKit.label(label, "StrongLabel", true))
 	var roll: Dictionary = m.get("roll", {})
-	if m.get("status", "") == "open":
+	if not (m.get("check", {}) as Dictionary).is_empty():
+		_check_block(col, m)
+	elif m.get("status", "") == "open":
 		col.add_child(_roll_prompt(m, label))
 	elif not roll.is_empty():
 		col.add_child(UIKit.label("Résultat : %s  (%s : %s)" % [roll.get("total", ""), roll.get("expr", ""), roll.get("detail", "")], "", true))
@@ -328,6 +344,8 @@ func _roll_prompt(m: Dictionary, label: String) -> Control:
 	var request: Dictionary = m.get("request", {})
 	var box := VBoxContainer.new()
 	var text := "Lancez %s" % request.get("expr", "d20")
+	if String(request.get("skill", "")) != "" and Checks.SKILLS.has(String(request.skill)):
+		text = "Épreuve de %s (d20 + %s)" % [Checks.SKILLS[request.skill].name, Checks.SKILLS[request.skill].stat]
 	if int(request.get("difficulty", 0)) > 0:
 		text += "  ·  difficulté %d" % int(request.difficulty)
 	box.add_child(UIKit.label(text, "", true))
@@ -348,35 +366,81 @@ func _success_chip(roll: Dictionary) -> Control:
 	return UIKit.chip(("Réussite" if ok else "Échec") + "  (difficulté %d)" % int(roll.get("difficulty", 0)), Palette.OK if ok else Palette.DANGER)
 
 
-## Formulaire de résolution d'une action (MJ).
-func resolve_form(message_id: String) -> Control:
+## Formulaire de résolution d'une action (MJ) : épreuve en un clic (compétence
+## devinée d'après le texte, difficulté), ou résultat écrit à la main.
+func resolve_form(message_id: String, text: String = "") -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
-	var result := UIKit.line_edit("", "Résultat, conséquence…")
-	box.add_child(result)
-	var row := HBoxContainer.new()
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
 	box.add_child(row)
-	var roll := UIKit.line_edit("", "Jet (ex. d20+2)")
-	roll.custom_minimum_size.x = 120
-	roll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(roll)
-	var ok := UIKit.button("Résoudre", "PrimaryButton", func():
-		resolve_requested.emit(message_id, Protocol.ACTION_RESOLVED, result.text, roll.text))
-	row.add_child(ok)
-	var no := UIKit.button("Refuser", "DangerButton", func():
-		resolve_requested.emit(message_id, Protocol.ACTION_REFUSED, result.text, ""))
-	row.add_child(no)
-	# Faire lancer le dé par le joueur lui-même.
-	var ask := HBoxContainer.new()
-	box.add_child(ask)
-	var expr := UIKit.line_edit("d20", "Dé à lancer")
-	expr.custom_minimum_size.x = 90
-	expr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ask.add_child(expr)
-	var diff := UIKit.spin(0, 0, 100)
-	diff.prefix = "diff."
-	diff.custom_minimum_size.x = 110
-	ask.add_child(diff)
-	ask.add_child(UIKit.button("Le joueur lance", "", func():
-		roll_request_requested.emit(message_id, expr.text, int(diff.value))))
+	var skill := OptionButton.new()
+	skill.fit_to_longest_item = false
+	skill.custom_minimum_size = Vector2(190, 38)
+	var guess := Checks.detect(text)
+	for id in Checks.SKILLS:
+		skill.add_item("%s (%s)" % [Checks.SKILLS[id].name, Checks.SKILLS[id].stat])
+		skill.set_item_metadata(skill.item_count - 1, id)
+		if id == guess:
+			skill.select(skill.item_count - 1)
+	row.add_child(skill)
+	var picked := func() -> String: return String(skill.get_item_metadata(skill.selected))
+	for k in Checks.DC:
+		var dc := int(Checks.DC[k])
+		var b := UIKit.button("%s %d" % [Checks.DC_NAMES[k], dc], "PrimaryButton" if k == "moyen" else "", func():
+			check_requested.emit(message_id, picked.call(), dc, false))
+		b.tooltip_text = "Lancer l'épreuve maintenant : jet, résultat et conséquences automatiques."
+		row.add_child(b)
+	var ask := UIKit.button("Le joueur lance (DD 14)", "", func(): check_requested.emit(message_id, picked.call(), 14, true))
+	ask.tooltip_text = "Le joueur touche « Lancer le dé » sur son téléphone ; le reste est automatique."
+	row.add_child(ask)
+	var row2 := HBoxContainer.new()
+	box.add_child(row2)
+	var result := UIKit.line_edit("", "Ou écrivez le résultat vous-même…")
+	result.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row2.add_child(result)
+	row2.add_child(UIKit.button("Résoudre", "", func():
+		resolve_requested.emit(message_id, Protocol.ACTION_RESOLVED, result.text, "")))
+	row2.add_child(UIKit.button("Refuser", "DangerButton", func():
+		resolve_requested.emit(message_id, Protocol.ACTION_REFUSED, result.text, "")))
 	return box
+
+
+## Conséquences en un clic (MJ), appliquées à l'auteur de l'action.
+func consequence_row(message_id: String) -> Control:
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 4)
+	row.add_theme_constant_override("v_separation", 4)
+	var l := UIKit.label("Ajouter :", "MutedLabel")
+	row.add_child(l)
+	for spec in CheckRunner.CONSEQUENCES:
+		var kind: String = spec[1]
+		var b := UIKit.button(String(spec[0]), "", func(): consequence_requested.emit(message_id, kind))
+		b.custom_minimum_size = Vector2(0, 30)
+		b.add_theme_font_size_override("font_size", 13)
+		row.add_child(b)
+	return row
+
+
+## Bloc d'une épreuve : compétence, dé, total contre DD, issue, récit et conséquences.
+func _check_block(col: VBoxContainer, m: Dictionary) -> void:
+	var c: Dictionary = m.get("check", {})
+	var outcome := String(c.get("outcome", "failure"))
+	var color: Color = {"crit": Palette.ULT, "success": Palette.OK, "partial": Palette.WARN, "failure": Palette.DANGER, "fumble": Palette.DANGER}.get(outcome, Palette.TEXT)
+	var box := UIKit.card(col, "", "InsetPanel")
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	box.add_child(head)
+	head.add_child(GameUI.icon_badge(String(Checks.get_skill(String(c.get("skill", ""))).get("icon", "target")), color, 26))
+	var title := UIKit.label("%s (%s)%s" % [c.get("name", "?"), c.get("stat", ""), ("  →  " + String(c.target_name)) if String(c.get("target_name", "")) != "" else ""], "StrongLabel", true)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	head.add_child(UIKit.chip(String(c.get("label", outcome)), color))
+	var dice := UIKit.label("d20 : %d   %+d   =   %d     contre DD %d (%s)" % [int(c.d20), int(c.bonus), int(c.total), int(c.dc), Checks.dc_name(int(c.dc))], "StrongLabel", true)
+	dice.add_theme_font_size_override("font_size", 18)
+	dice.add_theme_color_override("font_color", color.lightened(0.15))
+	box.add_child(dice)
+	if String(m.get("result", "")) != "":
+		box.add_child(UIKit.label(String(m.result), "", true))
+	_add_lines(box, m.get("lines", []))

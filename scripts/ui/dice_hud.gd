@@ -7,7 +7,7 @@ extends Control
 ## s'enchaînent (plus vite s'il y en a beaucoup). Le détail reste dans le récit.
 
 const ROLL_TIME := 0.45
-const SHOW_TIME := 2.6
+const SHOW_TIME := 4.0
 
 ## Cartes en attente : [{actor, target, label, attack: {}, damage: {}, heal: {}}]
 var _queue: Array = []
@@ -93,7 +93,7 @@ func _draw() -> void:
 	var rows := _rows()
 	var w := minf(size.x - 16.0, 420.0)
 	var h := 30.0 + rows * 46.0 + 6.0
-	var top := 56.0 if size.y > 300 else 8.0
+	var top := 54.0 if size.y > 200 else 8.0
 	var rect := Rect2(Vector2((size.x - w) * 0.5, top), Vector2(w, h))
 	var bg := OrnateStyle.make(Color(Palette.PANEL_ALT, 0.95 * alpha), Color(Palette.BG_DEEP, 0.95 * alpha), Color(Palette.GOLD_DIM, alpha), Color(Palette.GOLD, 0.8 * alpha), 6, 8)
 	draw_style_box(bg, rect)
@@ -114,10 +114,10 @@ func _draw() -> void:
 			col = {"crit": Palette.ULT, "hit": Palette.HEAL, "miss": Palette.MUTED, "fumble": Palette.DANGER}.get(outcome, Palette.TEXT)
 		_d20(Vector2(x0 + 20, y + 20), 19.0, val, col, alpha)
 		var tx := x0 + 48
-		var line := "%+d  =  %d   contre Défense %d" % [int(atk.bonus), int(atk.bonus) + val, int(atk.vs)] if settled else "…"
+		var line := "%+d  =  %d   contre %s %d" % [int(atk.bonus), int(atk.bonus) + val, String(atk.get("vs_label", "Défense")), int(atk.vs)] if settled else "…"
 		draw_string(_font, Vector2(tx, y + 18), line, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(Palette.TEXT, alpha))
 		if settled:
-			var tag: String = {"crit": "CRITIQUE !", "hit": "TOUCHÉ", "miss": "RATÉ", "fumble": "ÉCHEC CRITIQUE"}.get(outcome, "")
+			var tag: String = String(atk.get("tag", "")) if String(atk.get("tag", "")) != "" else {"crit": "CRITIQUE !", "hit": "TOUCHÉ", "miss": "RATÉ", "fumble": "ÉCHEC CRITIQUE"}.get(outcome, "")
 			draw_string(_font, Vector2(tx, y + 37), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(col, alpha))
 		y += 46
 	for kind in ["damage", "heal"]:

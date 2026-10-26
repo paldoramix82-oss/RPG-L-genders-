@@ -272,7 +272,8 @@ func _check_server3() -> void:
 	server.mj_quest_complete(q.id)
 	_expect(q.status == "done" and int(server.characters[dana.id].gold) >= 20 + 15, "quête réussie : or distribué au groupe")
 	_expect(server.loot.is_empty() and server.characters[dana.id].inventory.any(func(i): return i.name == "Potion de soin"), "Dana a pris la potion du coffre commun")
-	_expect(server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and m.status == Protocol.ACTION_RESOLVED).size() == 1, "action de Dana résolue par le MJ")
+	_expect(server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and m.status == Protocol.ACTION_RESOLVED and not m.has("check")).size() == 1, "action de Dana résolue par le MJ")
+	_expect(server.messages.any(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and m.get("check", {}).get("skill", "") == "perception" and m.status == Protocol.ACTION_RESOLVED), "épreuve de Dana (Observer) : jet et résultat par l'hôte")
 	_expect(int(_state.get("imported", 0)) >= 10, "pack de PNJ importé (%d fiches)" % int(_state.get("imported", 0)))
 	var eli_req := server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ROLL_REQUEST)
 	_expect(eli_req.size() == 1 and eli_req[0].status == "done" and eli_req[0].roll.has("success"), "Eli a lancé lui-même le jet demandé")
@@ -322,8 +323,9 @@ func _run_dana() -> void:
 					_state.target = p
 					break
 			c.move_pawn(pawn.id, _state.target.x, _state.target.y)
-			c.declare_action(Protocol.TO_ALL, "Je force la porte.")
+			c.declare_action(Protocol.TO_ALL, "Je force la porte.", "")
 			c.roll("2d6+3", Protocol.TO_ALL, "Escalade")
+			c.check("perception")
 			c.turn_action("end")
 		elif c.phase.type == "exploration" and int(c.phase.round) >= 2:
 			c.turn_action("end")
@@ -360,7 +362,7 @@ func _check_dana() -> void:
 	_expect(labels.has("jet pour Dana"), "Dana voit le jet que le MJ lui montre")
 	var rolls := c.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ROLL and m.text == "Escalade")
 	_expect(rolls.size() == 1 and int(rolls[0].roll.total) >= 5 and int(rolls[0].roll.total) <= 15, "jet 2d6+3 calculé par l'hôte")
-	var actions := c.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION)
+	var actions := c.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and not m.has("check"))
 	_expect(actions.size() == 1 and actions[0].status == Protocol.ACTION_RESOLVED and actions[0].result == "La porte cède.", "Dana reçoit la résolution de son action")
 	_expect(actions.size() == 1 and actions[0].roll.get("difficulty", 0) == 12 and actions[0].roll.has("success"), "Dana a lancé elle-même le dé demandé (difficulté 12)")
 	_expect(not labels.has("Perception secrète"), "Dana ne voit pas le jet secret demandé à Eli")

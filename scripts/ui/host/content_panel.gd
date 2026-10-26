@@ -250,9 +250,20 @@ func _rules() -> void:
 	auto_m.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	auto_m.button_pressed = bool(rules.get("auto_monsters", true))
 	card.add_child(auto_m)
+	var auto_c := CheckBox.new()
+	auto_c.text = "Épreuves automatiques : une action reconnue (fouiller, escalader, convaincre…) lance le dé et applique ses conséquences sans le MJ"
+	auto_c.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	auto_c.button_pressed = bool(rules.get("auto_checks", true))
+	card.add_child(auto_c)
+	var auto_q := CheckBox.new()
+	auto_q.text = "Les habitants (PNJ à métier) inventent des quêtes secondaires prêtes quand on leur parle"
+	auto_q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	auto_q.button_pressed = bool(rules.get("auto_npc_quests", true))
+	card.add_child(auto_q)
 	card.add_child(UIKit.button("Appliquer les règles", "PrimaryButton", func():
 		var values := {"swap_in_combat": swap.button_pressed, "shared_vision": shared.button_pressed, "loot_to_killer": killer.button_pressed, "remove_dead": dead.button_pressed,
-			"auto_aggro": aggro.button_pressed, "auto_monsters": auto_m.button_pressed}
+			"auto_aggro": aggro.button_pressed, "auto_monsters": auto_m.button_pressed,
+			"auto_checks": auto_c.button_pressed, "auto_npc_quests": auto_q.button_pressed}
 		for k in spins:
 			values[k] = int(spins[k].value)
 		server.mj_set_rules(values)

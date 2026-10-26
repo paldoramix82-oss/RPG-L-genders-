@@ -13,16 +13,24 @@ import os
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "adventures")
 
 
-def npc(pack, name, x, y, hidden=False, note=""):
-    return {"pack": pack, "name": name, "x": x, "y": y, "hidden": hidden, "note": note}
+# role : métier du PNJ (voir QuestLibrary.ROLES) ; il salue et propose des
+# quêtes secondaires prêtes quand on lui parle, en plus de celles de l'aventure.
+def npc(pack, name, x, y, hidden=False, note="", role=""):
+    n = {"pack": pack, "name": name, "x": x, "y": y, "hidden": hidden, "note": note}
+    if role:
+        n["role"] = role
+    return n
 
 
 def mon(id_, x, y, hidden=True):
     return {"id": id_, "x": x, "y": y, "hidden": hidden}
 
 
-def chest(name, x, y, loot, hidden=False, items=()):
+# lock : difficulté pour crocheter ou forcer (0 = ouvert).
+def chest(name, x, y, loot, hidden=False, items=(), lock=0):
     c = {"name": name, "x": x, "y": y, "loot": loot, "hidden": hidden}
+    if lock:
+        c["lock"] = lock
     if items:
         c["items"] = [{"item": i, "qty": q} for i, q in items]
     return c
@@ -64,12 +72,12 @@ ADVENTURES = [
         "name": "Les cloches de Valombre", "length": "1 à 2 séances · 2 à 5 joueurs · niveau 1",
         "tagline": "Chaque nuit, à minuit, les cloches du temple sonnent toutes seules.",
         "description": "Une petite ville tranquille, une prêtresse inquiète, un champ brûlé sans flammes et une crypte qu'on n'ouvre plus. Idéal pour une première partie : discussions, enquête, un peu d'exploration et un combat final.",
-        "npcs": [npc("fantasy_valombre", "Bertrand", 6, 9), npc("fantasy_valombre", "Sœur Aveline", 14, 9),
-                 npc("fantasy_valombre", "Dorn", 7, 15), npc("fantasy_valombre", "Bourgmestre Hallis", 14, 15),
-                 npc("fantasy_valombre", "Mirelle", 27, 14), npc("fantasy_valombre", "Capitaine Roderic", 11, 11),
+        "npcs": [npc("fantasy_valombre", "Bertrand", 6, 9, role="aubergiste"), npc("fantasy_valombre", "Sœur Aveline", 14, 9, role="pretre"),
+                 npc("fantasy_valombre", "Dorn", 7, 15, role="forgeron"), npc("fantasy_valombre", "Bourgmestre Hallis", 14, 15, role="noble"),
+                 npc("fantasy_valombre", "Mirelle", 27, 14, role="herboriste"), npc("fantasy_valombre", "Capitaine Roderic", 11, 11, role="capitaine"),
                  npc("fantasy_valombre", "Le Voyageur encapuchonné", 5, 7, note="Sait ce qui se cache sous le temple ; ne parle que si on lui offre à boire.")],
         "monsters": [mon("squelette", 13, 6), mon("squelette", 15, 6), mon("ombre_errante", 14, 5), mon("ombre_errante", 28, 5)],
-        "chests": [chest("Coffre du sonneur", 16, 6, "coffre", True), chest("Caisse abandonnée", 29, 16, "brigand", items=[("minerai_fer", 2)]),
+        "chests": [chest("Coffre du sonneur", 16, 6, "coffre", True, lock=14), chest("Caisse abandonnée", 29, 16, "brigand", items=[("minerai_fer", 2)]),
                    chest("Touffes d'herbes", 27, 16, "", items=[("herbes_medicinales", 3)]), chest("Sac oublié", 4, 9, "", items=[("lettre_scellee", 1)])],
         "labels": [{"x": 14, "y": 6, "text": "Crypte (entrée sous l'autel)", "hidden": True}],
         "quests": [
@@ -104,7 +112,7 @@ ADVENTURES = [
         "name": "La meute des Cendres", "length": "1 séance · 2 à 4 joueurs · niveau 1-2",
         "tagline": "Des loups au pelage gris de cendre attaquent les voyageurs.",
         "description": "Une chasse en forêt : suivre des traces, choisir sa route, affronter la meute et son alpha dans la clairière. Beaucoup de combat, un mystère en bonus.",
-        "npcs": [npc("bestiaire", "Garde", 2, 15, note="Survivant de la dernière attaque, blessé.")],
+        "npcs": [npc("bestiaire", "Garde", 2, 15, note="Survivant de la dernière attaque, blessé.", role="garde")],
         "monsters": [mon("loup", 21, 12), mon("loup", 24, 16), mon("loup_alpha", 16, 9), mon("araignee", 27, 3)],
         "chests": [chest("Sac d'un chasseur disparu", 9, 18, "coffre"), chest("Nid de l'araignée", 28, 2, "bete", True)],
         "labels": [{"x": 8, "y": 17, "text": "Traces de lutte", "hidden": False}],
@@ -131,7 +139,7 @@ ADVENTURES = [
         "description": "Exploration de donjon : salles, pièges racontés, cultistes et golem. Parfait pour montrer le brouillard de guerre (la vision limitée rend chaque couloir inquiétant).",
         "npcs": [],
         "monsters": [mon("cultiste", 10, 9), mon("cultiste", 18, 9), mon("squelette", 12, 14), mon("squelette", 16, 15)],
-        "chests": [chest("Reliquaire de l'autel", 15, 6, "magique"), chest("Trésor de la crypte", 14, 17, "boss", True)],
+        "chests": [chest("Reliquaire de l'autel", 15, 6, "magique"), chest("Trésor de la crypte", 14, 17, "boss", True, lock=16)],
         "labels": [],
         "quests": [
             quest("Le cœur du temple", "main", "", "On dit qu'une relique dort sous l'autel. Des cultistes pensent la même chose.",
@@ -181,7 +189,7 @@ ADVENTURES = [
         "npcs": [npc("legenders_monde", "Examinateur Dorrow", 9, 11, note="Observe tout, n'aide personne… officiellement."),
                  npc("legenders_monde", "Nib", 14, 15, True)],
         "monsters": [mon("loup", 18, 8), mon("loup", 19, 9), mon("ours", 25, 14), mon("araignee", 6, 19)],
-        "chests": [chest("Ravitaillement largué", 20, 10, "coffre"), chest("Cache d'un ancien candidat", 26, 16, "magique", True)],
+        "chests": [chest("Ravitaillement largué", 20, 10, "coffre"), chest("Cache d'un ancien candidat", 26, 16, "magique", True, lock=13)],
         "labels": [],
         "quests": [
             quest("Survivre dix jours", "main", "Examinateur Dorrow", "Atteindre le point de rendez-vous avant la fin du test.",
@@ -206,7 +214,7 @@ ADVENTURES = [
         "name": "Premier jour à la Division de l'Encre", "length": "1 séance · 2 à 5 joueurs · niveau 1",
         "tagline": "Nouvelles recrues, premier entraînement… et un trafic d'AEC noir.",
         "description": "Rencontres avec des mages d'État, entraînement contre un golem, puis une petite enquête sur de l'AEC noir qui circule dans la division.",
-        "npcs": [npc("legenders_shima", "Youri", 15, 13), npc("legenders_shima", "Midori", 26, 12), npc("legenders_shima", "Kenji", 14, 15),
+        "npcs": [npc("legenders_shima", "Youri", 15, 13, role="habitant"), npc("legenders_shima", "Midori", 26, 12, role="habitant"), npc("legenders_shima", "Kenji", 14, 15, role="habitant"),
                  npc("legenders_monde", "Sabbas", 30, 18, True, "Contrebandier d'AEC noir caché près du terrain.")],
         "monsters": [mon("golem", 27, 14, False), mon("cultiste", 31, 17), mon("cultiste", 29, 19)],
         "chests": [chest("Caisse d'AEC noir", 31, 19, "magique", True)],

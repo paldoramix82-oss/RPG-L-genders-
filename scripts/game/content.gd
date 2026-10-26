@@ -45,6 +45,7 @@ const DEFAULT_RULES := {
 	"loot_to_killer": true, "remove_dead": true,
 	"auto_aggro": true, "aggro_radius": 4, "encounter_radius": 6, "auto_monsters": true, "monster_delay": 2,
 	"turn_timeout": 0, "free_move_mult": 2,
+	"auto_checks": true, "check_ap": 1, "check_xp": 5, "check_cooldown": 6, "auto_npc_quests": true,
 }
 ## Réglages des règles exposés au MJ : [clé, libellé, min, max].
 const RULE_FIELDS := [
@@ -78,6 +79,9 @@ const RULE_FIELDS := [
 	["encounter_radius", "Rayon d'un combat local : meute et joueurs proches s'y joignent", 1, 20],
 	["monster_delay", "Délai avant qu'un monstre joue seul (secondes)", 0, 30],
 	["turn_timeout", "Tour d'un joueur passé après N secondes (0 : jamais)", 0, 600],
+	["check_xp", "XP gagnée pour une épreuve réussie", 0, 100],
+	["check_cooldown", "Délai avant de retenter la même épreuve (secondes)", 0, 120],
+	["check_ap", "Coût d'une épreuve en combat (PA)", 0, 3],
 	["free_move_mult", "Déplacement libre : N × vitesse par mouvement (0 : illimité)", 0, 10],
 ]
 

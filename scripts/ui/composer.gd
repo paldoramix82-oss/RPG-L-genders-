@@ -4,7 +4,8 @@ extends PanelContainer
 ## Les cibles possibles sont fournies par l'écran (joueur ou MJ).
 
 signal send_message(target: String, text: String)
-signal send_action(target: String, text: String)
+## skill : "auto", un id de compétence (épreuve automatique) ou "" (le MJ tranche).
+signal send_action(target: String, text: String, skill: String)
 signal send_roll(target: String, expr: String, label: String)
 
 var _mode := "message"
@@ -20,6 +21,10 @@ var _count: SpinBox
 var _dice_targets: Array = []
 var _text_targets: Array = []
 var _allow_action := true
+## Épreuve liée à l'action : choix de la compétence et aperçu.
+var _skill_row: HBoxContainer
+var _skill: OptionButton
+var _skill_hint: Label
 
 
 ## targets : [[libellé, cible], …] pour messages/actions ; dice_targets pour les dés.
@@ -62,6 +67,27 @@ func _init(text_targets: Array, dice_targets: Array, allow_action: bool = true) 
 	var send := UIKit.button("Envoyer", "PrimaryButton", _submit)
 	send.custom_minimum_size.x = 96
 	_text_row.add_child(send)
+
+	_skill_row = HBoxContainer.new()
+	_skill_row.add_theme_constant_override("separation", 6)
+	col.add_child(_skill_row)
+	_skill = OptionButton.new()
+	_skill.fit_to_longest_item = false
+	_skill.custom_minimum_size = Vector2(150, 36)
+	_skill.add_item("Jet auto (d'après le texte)")
+	_skill.set_item_metadata(0, "auto")
+	for id in Checks.SKILLS:
+		_skill.add_item("%s (%s)" % [Checks.SKILLS[id].name, Checks.SKILLS[id].stat])
+		_skill.set_item_metadata(_skill.item_count - 1, id)
+	_skill.add_item("Sans jet : le MJ décide")
+	_skill.set_item_metadata(_skill.item_count - 1, "")
+	_skill.item_selected.connect(func(_i): _update_skill_hint())
+	_skill_row.add_child(_skill)
+	_skill_hint = UIKit.label("", "MutedLabel")
+	_skill_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skill_hint.clip_text = true
+	_skill_row.add_child(_skill_hint)
+	_text.text_changed.connect(func(_t): _update_skill_hint())
 
 	_dice_box = VBoxContainer.new()
 	_dice_box.add_theme_constant_override("separation", 6)
@@ -129,6 +155,8 @@ func _set_mode(mode: String) -> void:
 	_mode = mode
 	_text_row.visible = mode != "dice"
 	_dice_box.visible = mode == "dice"
+	_skill_row.visible = mode == "action"
+	_update_skill_hint()
 	_text.placeholder_text = {
 		"message": "Écrire un message…",
 		"action": "Décrivez librement ce que vous tentez…",
@@ -154,7 +182,9 @@ func _submit() -> void:
 	if text == "":
 		return
 	if _mode == "action":
-		send_action.emit(_current_target(), text)
+		send_action.emit(_current_target(), text, String(_skill.get_item_metadata(_skill.selected)))
+		_skill.select(0)
+		_update_skill_hint()
 	else:
 		send_message.emit(_current_target(), text)
 	_text.clear()
@@ -172,3 +202,18 @@ func _roll_expr() -> void:
 	if expr == "":
 		return
 	send_roll.emit(_current_target(), expr, _label.text.strip_edges())
+
+
+## Compétence qui sera jouée : l'épreuve est lancée et résolue dès l'envoi.
+func _update_skill_hint() -> void:
+	if _skill_hint == null:
+		return
+	var chosen := String(_skill.get_item_metadata(_skill.selected))
+	if chosen == "auto":
+		chosen = Checks.detect(_text.text)
+		_skill_hint.text = ("→ jet de %s (%s), résolu tout de suite" % [Checks.SKILLS[chosen].name, Checks.SKILLS[chosen].stat]) if chosen != "" \
+			else ("Aucune compétence reconnue : le MJ décidera" if _text.text.strip_edges() != "" else "Ex. : « J'escalade le mur », « Je fouille le bureau »")
+	elif chosen == "":
+		_skill_hint.text = "Le MJ tranche (il peut lancer un jet en un clic)"
+	else:
+		_skill_hint.text = String(Checks.SKILLS[chosen].hint)
