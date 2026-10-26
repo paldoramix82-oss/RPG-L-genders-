@@ -14,6 +14,7 @@ signal characters_changed
 signal maps_changed
 signal combat_changed
 signal saved(error: String)
+signal music_changed(state: Dictionary)
 
 var session := {}
 var universe := {}
@@ -27,6 +28,8 @@ var maps := {}
 var map_order: Array = []
 var active_map := ""
 var combat := {"active": false, "order": [], "turn": 0, "round": 1}
+var music := {"track": "", "playing": false, "started_at": 0.0, "broadcast": true, "auto_combat": true}
+var _music_before_combat := {}
 
 var _send: Callable  # func(peer_id: int, evt: String, payload: Dictionary)
 var _kick: Callable  # func(peer_id: int, delay: float)
@@ -224,6 +227,8 @@ func handle_command(peer_id: int, cmd: Variant, payload: Variant) -> void:
 			error = _cmd_char_save(player, payload)
 		Protocol.CMD_PAWN_MOVE:
 			error = _cmd_pawn_move(player, payload)
+		Protocol.CMD_ROLL_ANSWER:
+			error = _cmd_roll_answer(player, payload)
 		_:
 			error = "Commande inconnue."
 
@@ -320,7 +325,7 @@ func _cmd_pawn_move(player: Dictionary, payload: Dictionary) -> String:
 		return "Combat en cours : attendez votre tour."
 	t.x = x
 	t.y = y
-	_mark("map")
+	_mark("tokens")
 	_unsaved = true
 	maps_changed.emit()
 	return ""
@@ -351,6 +356,74 @@ func mj_roll(expr: String, to: String, label: String = "") -> String:
 
 
 ## Résout ou refuse une action déclarée. Le résultat suit la visibilité de l'action.
+## Le joueur lance lui-même le dé que le MJ lui a demandé (le tirage reste fait par l'hôte).
+func _cmd_roll_answer(player: Dictionary, payload: Dictionary) -> String:
+	var message := _message(String(payload.get("message_id", "")))
+	if message.is_empty():
+		return "Demande de jet introuvable."
+	var kind := String(message.get("kind", ""))
+	var request: Dictionary = message.get("request", {})
+	if kind == Protocol.KIND_ACTION:
+		if message.from != player.id or message.status != Protocol.ACTION_ROLL:
+			return "Aucun jet n'est attendu pour cette action."
+	elif kind == Protocol.KIND_ROLL_REQUEST:
+		if message.to != player.id or message.status != "open":
+			return "Ce jet a déjà été lancé."
+	else:
+		return "Ce message n'attend pas de jet."
+	var result := Dice.roll(String(request.get("expr", "d20")), _rng)
+	if not result.ok:
+		return result.error
+	message.roll = _roll_view(result, int(request.get("difficulty", 0)))
+	message.status = Protocol.ACTION_ROLLED if kind == Protocol.KIND_ACTION else "done"
+	_update_message(message)
+	if kind == Protocol.KIND_ROLL_REQUEST and request.get("public", true):
+		var label := String(request.get("label", ""))
+		_add_message({
+			"kind": Protocol.KIND_ROLL, "from": player.id, "from_name": _speaker_name(player.id), "to": Protocol.TO_ALL,
+			"text": label if label != "" else "Jet demandé par le MJ", "roll": message.roll,
+		})
+	return ""
+
+
+func _roll_view(result: Dictionary, difficulty: int) -> Dictionary:
+	var view := {"expr": result.expr, "detail": Dice.describe(result), "total": result.total}
+	if difficulty > 0:
+		view.difficulty = difficulty
+		view.success = int(result.total) >= difficulty
+	return view
+
+
+## Demande au joueur auteur d'une action de lancer lui-même son dé.
+func mj_request_action_roll(message_id: String, expr: String, difficulty: int = 0) -> String:
+	var message := _message(message_id)
+	if message.is_empty() or message.get("kind", "") != Protocol.KIND_ACTION:
+		return "Action introuvable."
+	var check := Dice.roll(expr, RandomNumberGenerator.new())
+	if not check.ok:
+		return check.error
+	message.status = Protocol.ACTION_ROLL
+	message.request = {"expr": check.expr, "difficulty": maxi(0, difficulty)}
+	message.roll = {}
+	_update_message(message)
+	return ""
+
+
+## Demande un jet à un joueur, hors action (ex. « Perception, difficulté 12 »).
+func mj_request_roll(player_id: String, expr: String, label: String, difficulty: int = 0, public: bool = true) -> String:
+	if not players.has(player_id):
+		return "Joueur introuvable."
+	var check := Dice.roll(expr, RandomNumberGenerator.new())
+	if not check.ok:
+		return check.error
+	_add_message({
+		"kind": Protocol.KIND_ROLL_REQUEST, "from": Protocol.MJ_ID, "from_name": session.mj_name, "to": player_id,
+		"text": Protocol.sanitize_text(label, 80), "status": "open", "roll": {},
+		"request": {"expr": check.expr, "difficulty": maxi(0, difficulty), "label": Protocol.sanitize_text(label, 80), "public": public},
+	})
+	return ""
+
+
 func mj_resolve_action(message_id: String, status: String, result_text: String, roll_expr: String = "") -> String:
 	var message := _message(message_id)
 	if message.is_empty() or message.get("kind", "") != Protocol.KIND_ACTION:
@@ -361,7 +434,7 @@ func mj_resolve_action(message_id: String, status: String, result_text: String, 
 		var result := Dice.roll(roll_expr, _rng)
 		if not result.ok:
 			return result.error
-		message.roll = {"expr": result.expr, "detail": Dice.describe(result), "total": result.total}
+		message.roll = _roll_view(result, int(message.get("request", {}).get("difficulty", 0)))
 	message.status = status
 	message.result = Protocol.sanitize_text(result_text)
 	_update_message(message)
@@ -471,6 +544,24 @@ func mj_create_npc(npc_name: String = "") -> Dictionary:
 	return sheet
 
 
+## Ajoute des PNJ d'un pack (fiches modèles) à la campagne.
+func mj_import_npcs(entries: Array) -> int:
+	var count := 0
+	for entry in entries:
+		if not entry is Dictionary:
+			continue
+		var id := "npc_" + Protocol.random_hex(4)
+		var sheet := CharacterData.sanitize(entry, CharacterData.create(universe, id, ""))
+		sheet.id = id
+		sheet.owner = ""
+		characters[id] = sheet
+		count += 1
+	if count > 0:
+		_unsaved = true
+		characters_changed.emit()
+	return count
+
+
 func mj_delete_character(id: String) -> void:
 	if not characters.has(id) or players.has(id):
 		return
@@ -494,10 +585,10 @@ func mj_place_character(id: String) -> Dictionary:
 			return t
 	var p := MapData.free_cell_near(map, int(map.spawn.x), int(map.spawn.y))
 	var t := MapData.add_token(map, {
-		"kind": "npc", "name": sheet.name, "x": p.x, "y": p.y, "color": sheet.pawn.color,
-		"char_id": id, "hp": sheet.hp, "hp_max": sheet.hp_max, "hidden": true,
+		"kind": "monster" if sheet.get("kind", "") == "monster" else "npc", "name": sheet.name, "x": p.x, "y": p.y,
+		"color": sheet.pawn.color, "char_id": id, "hp": sheet.hp, "hp_max": sheet.hp_max, "hidden": true,
 	})
-	map_changed(map.id)
+	map_changed(map.id, true)
 	return t
 
 
@@ -598,7 +689,7 @@ func mj_add_token(map_id: String, data: Dictionary) -> Dictionary:
 	if map.is_empty():
 		return {}
 	var t := MapData.add_token(map, data)
-	map_changed(map_id)
+	map_changed(map_id, true)
 	return t
 
 
@@ -616,7 +707,7 @@ func mj_update_token(map_id: String, token_id: String, data: Dictionary) -> void
 		characters[cid].hp_max = t.hp_max
 		_mark("characters")
 		characters_changed.emit()
-	map_changed(map_id)
+	map_changed(map_id, true)
 
 
 func mj_remove_token(map_id: String, token_id: String) -> void:
@@ -625,7 +716,7 @@ func mj_remove_token(map_id: String, token_id: String) -> void:
 		return
 	map.tokens = map.tokens.filter(func(t): return t.id != token_id)
 	combat.order.erase(token_id)
-	map_changed(map_id)
+	map_changed(map_id, true)
 
 
 func mj_add_label(map_id: String, x: int, y: int, text: String, hidden: bool) -> void:
@@ -654,11 +745,12 @@ func mj_toggle_label_hidden_at(map_id: String, x: int, y: int) -> void:
 	map_changed(map_id)
 
 
-## À appeler après toute modification d'une carte par le MJ.
-func map_changed(map_id: String) -> void:
+## À appeler après toute modification d'une carte par le MJ. tokens_only : seuls
+## les pions ont changé (envoi plus léger que la carte complète).
+func map_changed(map_id: String, tokens_only: bool = false) -> void:
 	_unsaved = true
 	if map_id == active_map:
-		_mark("map")
+		_mark("tokens" if tokens_only else "map")
 	maps_changed.emit()
 
 
@@ -683,6 +775,11 @@ func mj_combat_start(include_hidden: bool = false) -> void:
 		names.append("%s (%d)" % [MapData.token(map, id).name, rolls[id]])
 	_system_message("Le combat commence ! Initiative : " + ", ".join(names) + ".")
 	_combat_changed()
+	if music.auto_combat:
+		var fights := MusicLibrary.by_mood("Combat")
+		if not fights.is_empty():
+			_music_before_combat = {"track": music.track, "playing": music.playing}
+			mj_music(String(fights[_rng.randi_range(0, fights.size() - 1)].id), true)
 
 
 func mj_combat_next() -> void:
@@ -722,6 +819,35 @@ func mj_combat_end() -> void:
 	combat = {"active": false, "order": [], "turn": 0, "round": 1}
 	_system_message("Le combat est terminé.")
 	_combat_changed()
+	if not _music_before_combat.is_empty():
+		mj_music(String(_music_before_combat.track), bool(_music_before_combat.playing))
+		_music_before_combat = {}
+
+
+# --- Musique ---
+
+## Lance (ou arrête) un morceau. Il est joué chez l'hôte et, si la diffusion est
+## active, sur les téléphones (synchronisés sur l'heure de départ).
+func mj_music(track: String, playing: bool) -> void:
+	if track != "" and MusicLibrary.track(track).is_empty():
+		return
+	music.track = track
+	music.playing = playing and track != ""
+	music.started_at = Protocol.now()
+	music_changed.emit(music.duplicate())
+	_mark("music")
+
+
+func mj_music_settings(broadcast: bool, auto_combat: bool) -> void:
+	music.broadcast = broadcast
+	music.auto_combat = auto_combat
+	_mark("music")
+
+
+func music_view_for_player() -> Dictionary:
+	if not music.broadcast:
+		return {"track": "", "playing": false, "started_at": 0.0}
+	return {"track": music.track, "playing": music.playing, "started_at": music.started_at}
 
 
 func _current_combat_token() -> String:
@@ -732,7 +858,6 @@ func _current_combat_token() -> String:
 
 func _combat_changed() -> void:
 	_mark("combat")
-	_mark("map")
 	combat_changed.emit()
 
 
@@ -767,8 +892,14 @@ func flush() -> void:
 		_broadcast_characters()
 	if dirty.has("map"):
 		_broadcast_map()
+	elif dirty.has("tokens"):
+		_broadcast_tokens()
 	if dirty.has("combat"):
 		_broadcast_combat()
+	if dirty.has("music"):
+		var view := music_view_for_player()
+		for player in _accepted_online():
+			_send.call(player.peer_id, Protocol.EVT_MUSIC, {"music": view})
 
 
 func _mark(what: String) -> void:
@@ -835,6 +966,7 @@ func _send_welcome(player: Dictionary) -> void:
 		"characters": characters_for(player.id),
 		"map": _map_view(),
 		"combat": combat_view_for_player(),
+		"music": music_view_for_player(),
 	})
 
 
@@ -876,6 +1008,12 @@ func _broadcast_map() -> void:
 	var view := _map_view()
 	for player in _accepted_online():
 		_send.call(player.peer_id, Protocol.EVT_MAP, {"map": view})
+
+
+func _broadcast_tokens() -> void:
+	var view := _map_view()
+	for player in _accepted_online():
+		_send.call(player.peer_id, Protocol.EVT_TOKENS, {"map_id": view.get("id", ""), "tokens": view.get("tokens", [])})
 
 
 func _broadcast_combat() -> void:
@@ -973,7 +1111,7 @@ func _message(message_id: String) -> Dictionary:
 
 
 func pending_actions() -> Array:
-	return messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and m.get("status", "") == Protocol.ACTION_PENDING)
+	return messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and m.get("status", "") in [Protocol.ACTION_PENDING, Protocol.ACTION_ROLL, Protocol.ACTION_ROLLED])
 
 
 func peer_id_of(player_id: String) -> int:
@@ -1069,7 +1207,7 @@ func save() -> String:
 		players_out[p.id] = {"id": p.id, "name": p.name, "token": p.token, "status": p.status, "joined_at": p.joined_at, "last_seen": p.last_seen}
 	var error := CampaignStore.save({
 		"session": session, "players": players_out, "characters": characters, "maps": maps,
-		"map_order": map_order, "active_map": active_map, "messages": messages, "next_message": _next_message,
+		"map_order": map_order, "active_map": active_map, "messages": messages, "next_message": _next_message, "music": music,
 	})
 	if error == "":
 		_unsaved = false
@@ -1109,4 +1247,7 @@ func _load(data: Dictionary, settings: Dictionary) -> void:
 		active_map = map_order[0] if not map_order.is_empty() else ""
 	messages = data.get("messages", [])
 	_next_message = int(data.get("next_message", messages.size() + 1))
+	if data.get("music") is Dictionary:
+		music.merge(data.music, true)
+		music.playing = false
 	_log("Campagne « %s » chargée." % session.name, "ok")

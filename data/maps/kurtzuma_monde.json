@@ -1,0 +1,223 @@
+{
+ "id": "kurtzuma_monde",
+ "name": "Kurtzuma — carte du monde",
+ "description": "Le continent, ses nations, ses mers et les quatre cicatrices des Légenders. Idéale pour les voyages.",
+ "universe": "legenders",
+ "w": 120,
+ "h": 80,
+ "rows": [
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWgggggggggggggggggggggggggnnnnnnnnnnnnnnnnnnggggggggggggggggggggggggnnWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWgggggggggggggggggggggggggnnnnnnnnnnnnnnnnnnnggggggggggggggggggggggnnnWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWggggggggggggggggggggggggggnnnnnnnnnnnnnnnnnngggggggggggggggggggnnnnnnWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWgggggggggggggggggggggggggggnnnnnnnnnnnnnnnnnnggggggggggggggggnnnnnnnnWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWggggggggggggggggggggggggggnnnngggggggggnnnnnnnngggggggggggggnnnnnnnWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWggggggggggggggggggnnngggnnnnnngggggggggggnnnnnnnnggggggggggnnnnnnnWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWnnnWWWWWwwwwwwwwwhsswwwwwwwwWWWwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwnnnwwwwwwwwwwwwhhhssssswwwwwwwwwwwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwwwwwwwwwwwwwwwwww.hhhhssssssssssswwwwwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWffffffffffWWWWWWWWWWWWWWWWWWWWWWWwwwwwwwwwwwwwwwwwwwww....hhhsssssssssssssssswwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWfffffFFFFWWWWWWWWWWWWWWWWWWWWWwwwwwwwwwwwwwwwww..........hhhssssssssssssssssnwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWffffFFFFWWWWWWWWWWWWWWWWWWwwwwwwwwhhhhhwwwwppp..........hhhssssssssssssssssnnwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWffffFFFWWWWWWWWWWWWWWWWWwwwwwwwhhhhhhh....Rrp.......hhhhhhssssssssssssssssnnwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWffffFFWWWWWWWWWWWWWWWWWwwwwwwhhhhhhhh....rpphhhhhhhhhhhhhssssssssssssssssnnnwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWffffFFWWWWWWWWWWWWWWWWwwwwwwhhhhhhhhhhhhhrhhhhhhhhhhhhhhhssssssssssssssssnnnnwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWfffFFWWWWWWWWWWWWWWWwwwwwwwhhhhhhhhhhhhrhhhhhhhhhhhhhhhhssssssssssssssssnnnnwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWfffFFWWWWWWWWWWWWWWwwwwwwwhhhhhhhhhhhhrhhhhhhhhhhhhhhhhhssssssssssssssssnnnnnwwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWfffFFWWWWWWWWWWWWWwwwwwwwhhhhhhhhhhhhhrhhhhhhhhhhhhhhhhhssssssssssssssssnnnnnnnwwwwwwWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWffFFWWWWWWWWWWWwwwwwwwhhhhhhhhhhhhhhrhhhhhhhhhhhhhhhhhhssssssssssssssssnnnnnnnnnnwwwwWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWfffFWWWWWWWWWWwwwwwwwhhhhhhhhhhhhhhrhhhhhhhhhhhhhhhhhhhssssssssssssssssnnnnnnnnnnnwwwwWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWffffWWWWWWWWWWwwwwwwwhhhhhhhhhhhhhhrhhhhhhhhhhhhhhhhhhhssssssssssssssssnnnnnnnnnnnnwwwwWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWffffWWWWWWWWWWwwwwww..hhhhhppphhhhrhhhhhhhhhhhhhhhhhhhhssssssssssssssssnnnnnnnnnnnnnwwwwwwwwWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWfffWWWWWWWWWwwwwwww.......RRp...r....w..........................................hhh..wwwwwwwwWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWffffWWWWWWW...wwwww........ppp...r....w.........mmnmmmmmmmmmmmmm.................hhhh..wwwwwwwwwWWWWWWWWWWWW",
+  "WWWWWWWWWWWWffffWWWWWWW...wwww..............r.....w......mmnmmmmmmmmmmmmmmmmmmm..............hhhhhhhhhhwwwwwwWWWWWWWWWWW",
+  "WWWWWWWWWWWfffffWWWWWWW...www.ppp..........r......w....mmnmmmmmmmmmmmmmmmmmmmmmmm............hhhhhhhhhhhwwwwwWWWWWWWWWWW",
+  "WWWWWWWWWfffffffWWWWWWWWwwww..Rrr..........r....www...mmnmmmmmmmssssssssmmmmmmmmmmm.....mmmm.hhhhhhhhhhhhwwwwwWWWWWWWWWW",
+  "ffffffffffffffffWWWWWWWWwww...prprr.......r.....w...mmnmmmmmmssssssssssss..mmmmmmmmm....mmmm..hhhhhhhhhhhwwwaWWWWWWWWWWW",
+  "ffffffffffffffffWWWWWWWWwww.....r..rr....r.....w...mmnmmmmmssssssssssssss....mmmmmmmm...mmmm..hhhhhhhhhhhhaaaaaWWWWWWWWW",
+  "ffffffffffffffffWWWWWWWWwww.....r....rrppr.....w..mmnmmmmmssssspppsssssss.....mmmmmmmm..mmmm..hhhhhhhhhhhwaaoaaWWWWWWWWW",
+  "ffffffffffffffffWWWWWWWWwww......r.....rrrrrrrrrrrrrrrrrrrrrrrrrrpsssssss.......mmmmmmm.mmmm.hhhhhhhhhhhhaaoooaaWWWWWWWW",
+  "ffffffffffffffffWWWWWWWWwww......r.....ppp......wmnmmmm...sssssprrrssssss........mmmmmm.mmmm.hhh.....hhhhwaaoaaWWWWWWWWW",
+  "ffffffffffffffffWWWWWWWwwwwzzzzzzrzzzzzzzzzz....wmnmmm....sssssssrsrrssss.........mmmmmmmmmm............wwaaaaaWWWWWWWWW",
+  "fffffffffFFFFfffWWWWWWwwwwzzzzzzzzrzzzzzzzzz...wmnmmmm....sssssssrsssrsss.........mmmmmmmmmm............wwwwaWWWWWWWWWWW",
+  "ffffffffFFFFFFffWWWWWWwwwwzzzzzzzzrzzzzzzzzz..wwmnmmm.....sssssssrssssrrs..........mmmmmmmmm...........wwwwwwWWWWWWWWWWW",
+  "fffffffFFFFFFfffWWWWWWwwwzzzzzzzzzrzzzzzzzzz..wmnmmm......ssssssssrsssssr...............mmmm...........wwwwwwWWWWWWWWWWW",
+  "ffffffFFFFFfffFFWWWWWWwwwzzzzzzzzzzrzzzzzzzwwwmmnmmm......ssssssssrssssssrr.............mmmm............wwwwwWWWWWWWWWWW",
+  "ffffffFFFFFFfFFFWWWWWwwwwzzzzzzzzzzrzzzzzzzw..mmnmmm..............r........r............mmmm............wwwwwWWWWWWWWWWW",
+  "ffffffFFFFFFFFFFWWWWwwwwwzzzzzzzzzzzrzzzzzzw..mmnmm................r........rr..........mmmm............wwwwwWWWWWWWWWWW",
+  "ffffffFFFFFFFFFFWWWwwaaazzzzzzzzzzzzrzzzzzzzw.mmmmm................r..........rr........mmmm.....ppp....wwwwwWWWWWWWWWWW",
+  "fffffffFFFFFFFFFWWWwwaaazzzzzzzzzzzzrzzzzzzww.mmmmm................r............rrrrrrrrrrrrrrrrrrrp....wwwwwWWWWWWWWWWW",
+  "fffffffFFFFFFFFFWWWwwaaazzzzzzzzzzzzzrzzzzzw..mmmmm.................r...................mmmm.....ppp....wwwwwWWWWWWWWWWW",
+  "ffffffffFFFFFFFFWWWwwwwzzzzzzzzzzzzzzrzzwwwz..mmmmm.................r...................mmmm.......h.....wwwwwWWWWWWWWWW",
+  "fffffffffffFFFFFWWWwwwwaaazzzzzzzzzzzprpwzzz..mmmmm.................r...................mmmm.......hhhhhhhwwwwWWWWWWWWWW",
+  "fffffffffffffFFFWWWwwwzaaazzzzzzzzzzzRrpwwzz..mmmmm..................r..................mmmm.......hhhhhhhhwwwwWWWWWWWWW",
+  "fffffffffffffFFFWWWaaazaaazzzzzzzzzzzpppzzzz..mmmmm..................r..................mmmm.......hhhhhhhhhwwwwWWWWWWWW",
+  "ffffffffffffffFFWWWaaazzzzzzzzzzzzzzzwwzzzzz..mmmmm..................r.........w........mmmm.......hhhhhhhhhwwwwwWWWWWWW",
+  "ffffffffffffffFFWWWaaazzzzzzzzzzzzzzzwzzzzzz..mmmmmm..................r........w........mmmm.......hhhhhhhhhhwwwwWWWWWWW",
+  "ffffffffffffffFFWWWWwwwzzzzzzzzzzzzzzzwzzzzz..mmmmmm..................r........ww.......mmmm.......hhhhhhhhhhwwwwWWWWWWW",
+  "ffffffffffffffFFWWWWwwwzzzzzzzzzzzzzzwzzzzzz...mmmmmm..................r........w.......mmmm.......hhhhhhhhhhwwwwWWWWWWW",
+  "ffffffffFFFFfffFWWWWwwwwzzzzzzzzzzzwwwzzzzzz...mmmmmmm.................r.......ww.......mmmm.......hhhhhhhhhwwwwWWWWWWWW",
+  "ffffffffFFFFFFFFWWWWWwwwwzzzzzzzzzwzzzzzzzzz....mmmmmm..................r.....w.........mmmm......hhhhhhhhhhwwwWWWWWWWWW",
+  "WWffffffffffFFFFWWWWWWwwwzzzzzzzzwzzzzzzzzzz.....mmmmmm.........w.......r...ww..........mmmm......hhhhhhhhhwwwwWWWWWWWWW",
+  "WWffffffffffffFFWWWWWWWwww.......................mmmmmmm.....w....w......r..w...........mmmm......hhhhhhhhwwwwWWWWWWWWWW",
+  "ffffffffffffffffWWWWWWWWwww.......................mmmmmmm......ww..w......r.ww..........mmmm........hhhhwwwwwWWWWWWWWWWW",
+  "ffffffffffffffffWWWWWWWWwwwffffffffffffffffffffffffmmmmmmmmfwfwwWwwwffffffrffwfffffff...mmmm.........wwwwwwwWWWWWWWWWWWW",
+  "ffffffffffffffffWWWWWWWWWwwwffffffffffffffffffffffffmmmmmmmmmwWWWWWwwffffffrfwfffffff............wwwwwwwwwwWWWWWWWWWWWWW",
+  "fffffffffffWWWWWWWWWWWWWWWwwwffffffffffffffffffffffffmmmmmmmwwWWWWWwwwffffffrffffffff...........wwwwwwwwwWWWWsssWWWWWWWW",
+  "ffffffffffWWWWWWWWWWWWWWWWWwwwff.....ffffff....ffffffffmmmmwwWWWWWWWwwffwwfwrffffffff.........wwwwwwwwwWWWWWWsssWWWWWWWW",
+  "ffffffffffWWWWWWWWWWWWWWWWWWwwww....ffffffff......ffff...mmmwwWWWWWwwfffwffffrffffff.........wwwwwwwWWWWWWWWWsssWWWWWWWW",
+  "fffffffffWWWWWWWWWWWWWWWWWWWWwwww.fffffffffffff.....ff.....mwwWWWWWwwwffwwffffrffff........wwwwwwwWWWWWWWWWWWWWWWWWWWWWW",
+  "fffffffffffffWWWWWWWWWWWWWWWWWwwwwffffffffffffff....fff....fwwwwWwwwwfffwfffffrfff........wwwwwwWWWWWWWWWWWWWWWWWWWWWWWW",
+  "ffffffffffffffWWWWWWWWWWWWWWWWWwwwfffffffffffffff...ffff..ffffwwwwfwwwfwfffffffrf........wwwwwwWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWffffffffffffWWWWWWWWWWWWWWWWwwwwffffffffffffffffff..ffffffwfwwffffffffffffffrpp......wwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWfffffffffWWWWWWWWWWWWWWWWWwwwwfffffffffffffffff..fffffffffwffffffffffffffRrp.....wwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWfffffffffWWWWWWWWWWWWWWWWWWwwwwffffffffffffffffffffffffffffffffffffffffffppp....wwwwwWWWWWWWWWWWWWWsssWWWWWWWWWWWW",
+  "WWWWWWWfffffffffWWWWWWWWWWWWWWWWWWwwwwwfffffffffffffffffffffffffffffffffffffff.......wwwwwwWWWWWWWWWWWWWWsssWWWWWWWWWWWW",
+  "fWWWWWWfffffffffWWWWWWWWWWWWWWWWWWWWwwwwww.fffffffffffffffffffffffffffffffff........wwwwwwWWWWWWWWWWWWWWWsssWWWWWWWWWWWW",
+  "WWWWWWWfffffffffWWWWWWWWWWWWWWWWWWWWWWwwwwwwfffffffffffffffffffffffffffffff.........wwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWfffffffffWWWWWWWWWWWWWWWWWWWWWWWWWwwwwfffffffffffffffffffff......ff.......wwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwffffffffffffffffffff...........wwwwwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwfffffffffffffffffff.......wwwwwwwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwfffffffffffffffffff...wwwwwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwfffffffffffffcccccwwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwfffwwwwwwffccccccwwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwwwwwwwwwwwcclllcwwwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwwwwwwwwwwcclllccwWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwwwwwwwwclllccWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwcccccWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwccWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+ ],
+ "spawn": {
+  "x": 31,
+  "y": 28
+ },
+ "labels": [
+  {
+   "x": 56,
+   "y": 15,
+   "text": "PIK",
+   "hidden": false
+  },
+  {
+   "x": 44,
+   "y": 27,
+   "text": "RAC",
+   "hidden": false
+  },
+  {
+   "x": 31,
+   "y": 24,
+   "text": "Shima",
+   "hidden": false
+  },
+  {
+   "x": 38,
+   "y": 46,
+   "text": "TRÈFLE",
+   "hidden": false
+  },
+  {
+   "x": 98,
+   "y": 37,
+   "text": "KAROH",
+   "hidden": false
+  },
+  {
+   "x": 82,
+   "y": 61,
+   "text": "KEURD",
+   "hidden": false
+  },
+  {
+   "x": 64,
+   "y": 27,
+   "text": "Alsaora",
+   "hidden": false
+  },
+  {
+   "x": 40,
+   "y": 32,
+   "text": "Napo",
+   "hidden": false
+  },
+  {
+   "x": 24,
+   "y": 22,
+   "text": "Mapo",
+   "hidden": false
+  },
+  {
+   "x": 8,
+   "y": 30,
+   "text": "Forêt-Monde",
+   "hidden": false
+  },
+  {
+   "x": 65,
+   "y": 2,
+   "text": "Désert de Cristal",
+   "hidden": false
+  },
+  {
+   "x": 110,
+   "y": 26,
+   "text": "Abîme Englouti",
+   "hidden": false
+  },
+  {
+   "x": 66,
+   "y": 73,
+   "text": "Grande Caldeira",
+   "hidden": false
+  },
+  {
+   "x": 64,
+   "y": 54,
+   "text": "Mer intérieure",
+   "hidden": false
+  },
+  {
+   "x": 22,
+   "y": 49,
+   "text": "Îles Flottantes",
+   "hidden": false
+  },
+  {
+   "x": 110,
+   "y": 56,
+   "text": "Îles Bawlies",
+   "hidden": false
+  },
+  {
+   "x": 106,
+   "y": 69,
+   "text": "Îles Hier",
+   "hidden": false
+  },
+  {
+   "x": 50,
+   "y": 4,
+   "text": "Îles Enneigées",
+   "hidden": false
+  },
+  {
+   "x": 40,
+   "y": 20,
+   "text": "Mako",
+   "hidden": false
+  },
+  {
+   "x": 92,
+   "y": 58,
+   "text": "Lidaknie",
+   "hidden": false
+  },
+  {
+   "x": 76,
+   "y": 20,
+   "text": "Lac Retourné",
+   "hidden": true
+  }
+ ],
+ "tokens": []
+}

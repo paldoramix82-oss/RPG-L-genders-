@@ -9,7 +9,7 @@ extends RefCounted
 ## Les éléments « hidden » ne sont visibles que du MJ : view_for_player() les retire.
 
 const DIR := "res://data/maps"
-const MAX_SIZE := 64
+const MAX_SIZE := 128
 const MAX_TOKENS := 120
 const MAX_LABELS := 120
 const KINDS := ["pc", "npc", "monster", "object"]
@@ -41,6 +41,11 @@ const TERRAINS := {
 	"l": ["Lave", "b4472a", true],
 	"a": ["Cristal AEC", "7b6fab", true],
 	"v": ["Vide", "0f0e12", false],
+	"y": ["Prairie fleurie", "5a6b3f", true],
+	"z": ["Champs", "8b7d45", true],
+	"q": ["Rochers", "6a665e", true],
+	"R": ["Toits rouges", "8a4a36", true],
+	"u": ["Sol de grotte", "3d3833", true],
 }
 
 static var _templates: Array = []

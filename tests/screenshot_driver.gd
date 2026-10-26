@@ -8,6 +8,7 @@ const CODE := "VALMBR"
 
 var shot := "menu"
 var tab := ""
+var map_template := "ile_test"
 var out := "user://shot.png"
 
 
@@ -17,6 +18,8 @@ func _ready() -> void:
 			shot = arg.get_slice("=", 1)
 		elif arg.begins_with("--tab="):
 			tab = arg.get_slice("=", 1)
+		elif arg.begins_with("--map="):
+			map_template = arg.get_slice("=", 1)
 		elif arg.begins_with("--out="):
 			out = arg.get_slice("=", 1)
 	match shot:
@@ -40,7 +43,7 @@ func _host() -> void:
 	Net.host({"name": "Légenders — Le test de la magie", "mj_name": "Le Conteur", "port": PORT, "max_players": 4, "code": CODE, "universe": "legenders", "auto_accept": true})
 	var server := Net.server
 	for id in server.map_order:
-		if server.maps[id].get("template", "") == "ile_test":
+		if server.maps[id].get("template", "") == map_template:
 			server.mj_set_active_map(id)
 	App.goto(App.SCENE_HOST)
 	server.mj_send_message(Protocol.TO_ALL, "Vous êtes téléportés au hasard sur l'île. Dix jours pour trouver le point de rendez-vous.")
@@ -48,6 +51,15 @@ func _host() -> void:
 	var map_id := server.active_map
 	server.mj_add_token(map_id, {"kind": "monster", "name": "Croc blanc", "x": 13, "y": 12, "color": "#d9dee4", "hp": 22, "hp_max": 22})
 	server.mj_add_token(map_id, {"kind": "npc", "name": "Candidat rival", "x": 16, "y": 9, "color": "#6f9fc9", "hp": 15, "hp_max": 15})
+	for p in server.players.values():
+		server.mj_request_roll(p.id, "d20", "Perception", 12, true)
+	var packs := NpcLibrary.packs("legenders")
+	server.mj_import_npcs(packs[0].npcs.slice(0, 3))
+	for id in server.characters.keys():
+		if not server.players.has(id):
+			var t := server.mj_place_character(id)
+			server.mj_update_token(map_id, t.id, {"hidden": false})
+	server.mj_music("poing_de_braise", true)
 	server.mj_combat_start(false)
 	await get_tree().create_timer(1.0).timeout
 	var screen := get_tree().current_scene
@@ -82,6 +94,14 @@ func _player() -> void:
 	c.send_chat(Protocol.TO_MJ, "Je garde une flamme allumée dans ma main, discrètement.")
 	await get_tree().create_timer(2.5).timeout
 	var screen := get_tree().current_scene
+	if tab == "dice":
+		screen._roll(Protocol.TO_ALL, "2d6+3", "Escalade")
+		await get_tree().create_timer(0.5).timeout
+		return
+	if tab == "request":
+		screen._tabs.show_page("adventure")
+		await get_tree().create_timer(1.0).timeout
+		return
 	if tab == "editor":
 		screen._tabs.show_page("sheet")
 		screen._open_editor()

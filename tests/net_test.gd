@@ -229,7 +229,18 @@ func _run_server3() -> void:
 		server.mj_combat_end())
 	server.message_added.connect(func(m):
 		if m.get("kind", "") == Protocol.KIND_ACTION:
-			server.mj_resolve_action(m.id, Protocol.ACTION_RESOLVED, "La porte cède.", "d20+2"))
+			# Le MJ demande à Dana de lancer elle-même son dé.
+			server.mj_request_action_roll(m.id, "d20+2", 12))
+	server.message_updated.connect(func(m):
+		if m.get("kind", "") == Protocol.KIND_ACTION and m.status == Protocol.ACTION_ROLLED:
+			server.mj_resolve_action(m.id, Protocol.ACTION_RESOLVED, "La porte cède.", ""))
+	server.players_changed.connect(func():
+		var eli := _find(server, "Eli")
+		if not _state.get("asked_eli", false) and eli.get("online", false) and eli.status == Protocol.STATUS_ACCEPTED:
+			_state.asked_eli = true
+			server.mj_request_roll(eli.id, "d20", "Perception secrète", 10, false)
+			server.mj_music("taverne", true)
+			_state.imported = server.mj_import_npcs(NpcLibrary.packs("legenders")[0].npcs))
 
 
 func _check_server3() -> void:
@@ -242,14 +253,18 @@ func _check_server3() -> void:
 	_expect(not pawn.is_empty(), "pion de Dana créé sur la carte")
 	_expect(int(pawn.get("x", -1)) == int(_state.get("dana_target_x", -2)) or pawn.get("x", 0) is int, "pion de Dana présent")
 	_expect(server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION and m.status == Protocol.ACTION_RESOLVED).size() == 1, "action de Dana résolue par le MJ")
+	_expect(int(_state.get("imported", 0)) >= 10, "pack de PNJ importé (%d fiches)" % int(_state.get("imported", 0)))
+	var eli_req := server.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ROLL_REQUEST)
+	_expect(eli_req.size() == 1 and eli_req[0].status == "done" and eli_req[0].roll.has("success"), "Eli a lancé lui-même le jet demandé")
 	var save_err := server.save()
 	_expect(save_err == "", "campagne sauvegardée (%s)" % save_err)
 	var reloaded := CampaignStore.load_campaign(server.session.id)
-	_expect((reloaded.get("characters", {}) as Dictionary).size() == 2, "sauvegarde relue avec les 2 fiches")
-	var restored := SessionServer.new({"port": port}, func(_a, _b, _c): pass, func(_a, _b): pass, reloaded)
+	_expect((reloaded.get("characters", {}) as Dictionary).size() == server.characters.size(), "sauvegarde relue avec toutes les fiches (joueurs et PNJ)")
+	var restored := SessionServer.new({"port": port}, Callable(), Callable(), reloaded)
 	_expect(restored.maps.size() == server.maps.size() and restored.active_map == server.active_map, "reprise : cartes et carte affichée restaurées")
 	_expect(not MapData.token(restored.maps[restored.active_map], "pawn_" + String(dana.get("id", ""))).is_empty(), "reprise : pion de Dana restauré")
 	_expect(restored.session.code == server.session.code and restored.players.size() == 2, "reprise : même code et mêmes joueurs (reconnexion possible)")
+	_expect(restored.music.track == "taverne", "reprise : dernière musique mémorisée")
 	CampaignStore.delete(server.session.id)
 
 
@@ -271,6 +286,9 @@ func _run_dana() -> void:
 		Net.client.move_pawn(pawn.id, p.x, p.y)
 		Net.client.declare_action(Protocol.TO_ALL, "Je force la porte.")
 		Net.client.roll("2d6+3", Protocol.TO_ALL, "Escalade"))
+	Net.client.message_updated.connect(func(m):
+		if m.get("kind", "") == Protocol.KIND_ACTION and m.status == Protocol.ACTION_ROLL and m.from == Net.client.me.id:
+			Net.client.answer_roll(m.id))
 
 
 func _check_dana() -> void:
@@ -292,6 +310,10 @@ func _check_dana() -> void:
 	_expect(rolls.size() == 1 and int(rolls[0].roll.total) >= 5 and int(rolls[0].roll.total) <= 15, "jet 2d6+3 calculé par l'hôte")
 	var actions := c.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ACTION)
 	_expect(actions.size() == 1 and actions[0].status == Protocol.ACTION_RESOLVED and actions[0].result == "La porte cède.", "Dana reçoit la résolution de son action")
+	_expect(actions.size() == 1 and actions[0].roll.get("difficulty", 0) == 12 and actions[0].roll.has("success"), "Dana a lancé elle-même le dé demandé (difficulté 12)")
+	_expect(not labels.has("Perception secrète"), "Dana ne voit pas le jet secret demandé à Eli")
+	_expect(c.music.get("track", "") == "taverne" and c.music.get("playing", false), "musique de l'hôte reçue (taverne)")
+	_expect(c.characters.size() == 2, "les fiches de PNJ du MJ ne sont pas envoyées aux joueurs")
 
 
 func _run_eli() -> void:
@@ -300,6 +322,13 @@ func _run_eli() -> void:
 	Net.client.welcomed.connect(func():
 		Net.client.save_character({"name": "Eli", "secret": "secret d'Eli"}))
 	Net.client.command_failed.connect(func(_r, error): _state.failed = error)
+	Net.client.message_received.connect(func(m):
+		if m.get("kind", "") == Protocol.KIND_ROLL_REQUEST:
+			Net.client.answer_roll(m.id))
+	Net.client.map_changed.connect(func():
+		for t in Net.client.map.get("tokens", []):
+			if String(t.name) == "Dana la Brave":
+				_state.dana_pos = Vector2i(int(t.x), int(t.y)))
 	Net.client.characters_changed.connect(func():
 		if _state.get("tried", false):
 			return
@@ -322,6 +351,13 @@ func _check_eli() -> void:
 	var labels := c.messages.map(func(m): return m.get("text", ""))
 	_expect(not labels.has("jet pour Dana"), "Eli ne voit pas le jet montré à Dana")
 	_expect(labels.has("Je force la porte."), "Eli voit l'action publique de Dana")
+	var req := c.messages.filter(func(m): return m.get("kind", "") == Protocol.KIND_ROLL_REQUEST)
+	_expect(req.size() == 1 and req[0].status == "done" and int(req[0].roll.total) >= 1, "Eli reçoit le résultat de son propre jet")
+	var dana_pawn := {}
+	for t in c.map.get("tokens", []):
+		if String(t.name) == "Dana la Brave":
+			dana_pawn = t
+	_expect(not dana_pawn.is_empty() and _state.get("dana_pos", Vector2i(-1, -1)) == Vector2i(int(dana_pawn.x), int(dana_pawn.y)) and int(dana_pawn.x) != 0, "Eli voit le pion de Dana bouger (mise à jour légère des pions)")
 
 
 # --- Outils --------------------------------------------------------------------

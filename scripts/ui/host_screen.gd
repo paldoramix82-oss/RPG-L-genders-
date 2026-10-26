@@ -48,6 +48,12 @@ var _char_detail: VBoxContainer
 var _char_selected := ""
 var _char_editing := false
 
+# Musique et dés
+var _music_select: OptionButton
+var _music_status: Label
+var _tray: DiceTray
+var _tray_waiting := false
+
 
 func _ready() -> void:
 	add_child(Backdrop.new())
@@ -291,6 +297,13 @@ func _build_dashboard() -> void:
 	_refresh_timer.timeout.connect(_refresh_live)
 	add_child(_refresh_timer)
 	_refresh_live()
+	if _tray:
+		_tray.queue_free()
+	_tray = DiceTray.new()
+	add_child(_tray)
+	if not Music.changed.is_connected(_refresh_music_status):
+		Music.changed.connect(_refresh_music_status)
+	_refresh_music_status()
 
 
 func _build_top_bar() -> Control:
@@ -417,6 +430,7 @@ func _player_row(p: Dictionary) -> Control:
 				_tabs.show_page("story")
 				_composer.select_target(pid)
 				_composer.focus_text()))
+			actions.add_child(_small_button("Jet", "", func(): _dialog_request_roll(pid, pname)))
 			if not sheet.is_empty():
 				actions.add_child(_small_button("Fiche", "", func():
 					_tabs.show_page("chars")
@@ -503,6 +517,52 @@ func _build_table() -> Control:
 	side.add_theme_constant_override("separation", 12)
 	scroll.add_child(side)
 
+	# --- Musique ---
+	var music := UIKit.card(side, "Ambiance musicale")
+	_music_select = OptionButton.new()
+	_music_select.custom_minimum_size.y = UIKit.TOUCH_HEIGHT
+	_music_select.fit_to_longest_item = false
+	for t in MusicLibrary.tracks():
+		_music_select.add_item("%s — %s" % [t.mood, t.title])
+		_music_select.set_item_metadata(_music_select.item_count - 1, t.id)
+		if t.id == Net.server.music.track:
+			_music_select.select(_music_select.item_count - 1)
+	_music_select.item_selected.connect(func(i):
+		if Net.server.music.playing:
+			Net.server.mj_music(String(_music_select.get_item_metadata(i)), true))
+	music.add_child(_music_select)
+	var mrow := HBoxContainer.new()
+	music.add_child(mrow)
+	var play := UIKit.button("Lecture", "PrimaryButton", func():
+		Net.server.mj_music(String(_music_select.get_item_metadata(_music_select.selected)), true))
+	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mrow.add_child(play)
+	mrow.add_child(UIKit.button("Suivant", "", _music_next))
+	mrow.add_child(UIKit.button("Stop", "", func(): Net.server.mj_music(Net.server.music.track, false)))
+	var volume := HSlider.new()
+	volume.min_value = 0.0
+	volume.max_value = 1.0
+	volume.step = 0.05
+	volume.value = Music.volume()
+	volume.custom_minimum_size.y = 32
+	volume.value_changed.connect(Music.set_volume)
+	volume.drag_ended.connect(func(_c): App.save_settings())
+	UIKit.field(music, "Volume sur cet appareil", volume)
+	var broadcast := CheckBox.new()
+	broadcast.text = "Jouer aussi sur les téléphones des joueurs"
+	broadcast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	broadcast.button_pressed = Net.server.music.broadcast
+	music.add_child(broadcast)
+	var auto := CheckBox.new()
+	auto.text = "Musique de combat automatique"
+	auto.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	auto.button_pressed = Net.server.music.auto_combat
+	music.add_child(auto)
+	broadcast.toggled.connect(func(on): Net.server.mj_music_settings(on, auto.button_pressed))
+	auto.toggled.connect(func(on): Net.server.mj_music_settings(broadcast.button_pressed, on))
+	_music_status = UIKit.label("", "MutedLabel", true)
+	music.add_child(_music_status)
+
 	# --- Cartes ---
 	var mc := UIKit.card(side, "Cartes")
 	_map_select = OptionButton.new()
@@ -560,6 +620,31 @@ func _build_table() -> Control:
 	_combat_box = UIKit.card(side, "")
 	_set_tool(_tool)
 	return page
+
+
+## Morceau suivant de la même ambiance (au hasard).
+func _music_next() -> void:
+	var current := MusicLibrary.track(Net.server.music.track)
+	var pool := MusicLibrary.by_mood(String(current.get("mood", ""))) if not current.is_empty() else MusicLibrary.tracks()
+	pool = pool.filter(func(t): return t.id != Net.server.music.track)
+	if pool.is_empty():
+		pool = MusicLibrary.tracks()
+	var pick: Dictionary = pool[randi() % pool.size()]
+	Net.server.mj_music(pick.id, true)
+	for i in _music_select.item_count:
+		if _music_select.get_item_metadata(i) == pick.id:
+			_music_select.select(i)
+
+
+func _refresh_music_status() -> void:
+	if _music_status == null or Net.server == null:
+		return
+	var m: Dictionary = Net.server.music
+	var title := String(MusicLibrary.track(m.track).get("title", ""))
+	_music_status.text = ("En cours : %s" % title) if m.playing else "Aucune musique."
+	for i in _music_select.item_count:
+		if _music_select.get_item_metadata(i) == m.track:
+			_music_select.select(i)
 
 
 func _refresh_map_select() -> void:
@@ -967,6 +1052,7 @@ func _build_characters() -> Control:
 		_char_editing = true
 		_refresh_characters()
 		_open_character_editor()))
+	top.add_child(UIKit.button("Packs de PNJ…", "", _dialog_npc_packs))
 	var lock := CheckBox.new()
 	lock.text = "Les joueurs peuvent modifier leur fiche"
 	lock.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1092,12 +1178,17 @@ func _build_story() -> Control:
 	main.add_theme_constant_override("separation", 8)
 	_feed = FeedView.new(Protocol.MJ_ID, true)
 	_feed.resolve_requested.connect(_on_resolve)
+	_feed.roll_request_requested.connect(_on_request_action_roll)
 	main.add_child(_feed)
 	_composer = Composer.new([], [], false)
 	_composer.send_message.connect(func(to, text): Net.server.mj_send_message(to, text))
 	_composer.send_roll.connect(func(to, expr, label):
+		_tray_waiting = true
+		_tray.start(expr, label)
 		var err := Net.server.mj_roll(expr, to, label)
 		if err != "":
+			_tray_waiting = false
+			_tray.visible = false
 			_feed.add_notice(err, Palette.DANGER))
 	main.add_child(_composer)
 	var pending := UIKit.card(null, "")
@@ -1131,6 +1222,9 @@ func _refresh_composer_targets() -> void:
 
 func _on_message_added(m: Dictionary) -> void:
 	_feed.add_message(m)
+	if _tray_waiting and m.get("kind", "") == Protocol.KIND_ROLL and m.get("from", "") == Protocol.MJ_ID:
+		_tray_waiting = false
+		_tray.finish(m.get("roll", {}), String(m.get("text", "")))
 	if m.get("from", "") != Protocol.MJ_ID:
 		_tabs.set_badge("story", true)
 	if m.get("kind", "") == Protocol.KIND_ACTION:
@@ -1140,6 +1234,69 @@ func _on_message_added(m: Dictionary) -> void:
 func _on_message_updated(m: Dictionary) -> void:
 	_feed.update_message(m)
 	_refresh_pending()
+
+
+func _on_request_action_roll(message_id: String, expr: String, difficulty: int) -> void:
+	var err := Net.server.mj_request_action_roll(message_id, expr, difficulty)
+	if err != "":
+		_feed.add_notice(err, Palette.DANGER)
+
+
+func _dialog_request_roll(player_id: String, player_name: String) -> void:
+	var box := VBoxContainer.new()
+	box.custom_minimum_size.x = 340
+	var label := UIKit.line_edit("", "Ex. : Perception, Escalade…")
+	UIKit.field(box, "Pour quoi ?", label)
+	var row := HBoxContainer.new()
+	box.add_child(row)
+	var expr := UIKit.field(row, "Dé", UIKit.line_edit("d20", "d20, 2d6+1…")) as LineEdit
+	var diff := UIKit.field(row, "Difficulté (0 = aucune)", UIKit.spin(0, 0, 100)) as SpinBox
+	var public := CheckBox.new()
+	public.text = "Résultat visible par tout le groupe"
+	public.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	public.button_pressed = true
+	box.add_child(public)
+	_dialog("Demander un jet à %s" % player_name, box, func():
+		var err := Net.server.mj_request_roll(player_id, expr.text, label.text, int(diff.value), public.button_pressed)
+		if err != "":
+			_feed.add_notice(err, Palette.DANGER))
+
+
+func _dialog_npc_packs() -> void:
+	var server := Net.server
+	var box := VBoxContainer.new()
+	box.custom_minimum_size = Vector2(380, 420)
+	box.add_child(UIKit.label("Cochez les personnages à ajouter à la campagne. Vous pourrez ensuite les modifier et les placer sur la carte.", "MutedLabel", true))
+	var list := UIKit.vscroll(box)
+	var checks: Array = []
+	for pack in NpcLibrary.packs(server.session.universe):
+		var h := UIKit.label(String(pack.name), "HeadingLabel", true)
+		h.add_theme_font_size_override("font_size", 17)
+		list.add_child(h)
+		list.add_child(UIKit.label(String(pack.get("description", "")), "MutedLabel", true))
+		var all := CheckBox.new()
+		all.text = "Tout le pack (%d)" % pack.npcs.size()
+		list.add_child(all)
+		var pack_checks: Array = []
+		for entry in pack.npcs:
+			var c := CheckBox.new()
+			c.text = "%s — %s" % [entry.get("name", "?"), entry.get("concept", "")]
+			c.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			c.set_meta("entry", entry)
+			list.add_child(c)
+			checks.append(c)
+			pack_checks.append(c)
+		all.toggled.connect(func(on):
+			for c in pack_checks:
+				c.button_pressed = on)
+	_dialog("Packs de PNJ", box, func():
+		var chosen: Array = []
+		for c in checks:
+			if c.button_pressed:
+				chosen.append(c.get_meta("entry"))
+		var n := server.mj_import_npcs(chosen)
+		if n > 0:
+			_feed.add_notice("%d PNJ ajoutés à la campagne." % n, Palette.OK))
 
 
 func _on_resolve(message_id: String, status: String, result: String, roll_expr: String) -> void:

@@ -101,6 +101,7 @@ func host(settings: Dictionary, saved_data: Dictionary = {}) -> String:
 	server = SessionServer.new(settings, _server_send, _server_kick, saved_data)
 	_autosave_left = AUTOSAVE_INTERVAL
 	server.players_changed.connect(func(): discovery.update_payload(server.discovery_payload()))
+	server.music_changed.connect(Music.apply_state)
 	_setup_multiplayer()
 	discovery.start_announcing(server.discovery_payload())
 	_set_state(State.HOSTING)
@@ -175,6 +176,7 @@ func join(ip: String, port: int, code: String, player_name: String) -> String:
 	role = Role.CLIENT
 	client = SessionClient.new(_client_send)
 	client.session_closed.connect(_on_session_closed_by_server)
+	client.music_changed.connect(func(): Music.apply_state(client.music))
 	_ever_connected = false
 	_reconnect_attempt = 0
 	return _attempt_connection()
@@ -378,6 +380,7 @@ func leave(reason: String = "Le MJ a terminé la partie.") -> void:
 
 
 func _reset() -> void:
+	Music.stop()
 	_closing = true
 	_attempt_serial += 1
 	discovery.stop()

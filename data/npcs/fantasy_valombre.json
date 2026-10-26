@@ -1,0 +1,478 @@
+{
+ "id": "fantasy_valombre",
+ "name": "Les Cendres de Valombre",
+ "universe": "fantasy",
+ "description": "Les habitants de Valombre et le Cercle de la Braise.",
+ "npcs": [
+  {
+   "name": "Bertrand",
+   "concept": "Tavernier du Corbeau Rieur",
+   "species": "Humain",
+   "origin": "Valombre",
+   "kind": "npc",
+   "hp": 12,
+   "hp_max": 12,
+   "res": 10,
+   "res_max": 10,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Marchandage",
+     "value": 4
+    },
+    {
+     "name": "Négociation",
+     "value": 3
+    }
+   ],
+   "appearance": "",
+   "personality": "Bonhomme et bavard, mais évite certains sujets.",
+   "goals": "",
+   "secret": "Membre à contrecœur du Cercle de la Braise ; spirale brûlée sur la main.",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#a77d4c",
+    "symbol": "BE"
+   }
+  },
+  {
+   "name": "Sœur Aveline",
+   "concept": "Prêtresse du temple aux cloches",
+   "species": "Humaine",
+   "origin": "Valombre",
+   "kind": "npc",
+   "hp": 14,
+   "hp_max": 14,
+   "res": 15,
+   "res_max": 15,
+   "rank": "",
+   "magic": {
+    "category": "Divine",
+    "name": "Lumière apaisante",
+    "origin": "Personnalité et environnement",
+    "description": "Soigne et calme les esprits.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Médecine",
+     "value": 5
+    }
+   ],
+   "appearance": "",
+   "personality": "Douce, inquiète depuis que les cloches se sont tues.",
+   "goals": "Comprendre pourquoi les cloches ne sonnent plus.",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#e0e0d0",
+    "symbol": "AV"
+   }
+  },
+  {
+   "name": "Dorn",
+   "concept": "Maître-forgeron",
+   "species": "Nain",
+   "origin": "Montagnes du nord",
+   "kind": "npc",
+   "hp": 22,
+   "hp_max": 22,
+   "res": 10,
+   "res_max": 10,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 15
+    },
+    {
+     "name": "Agilité",
+     "value": 9
+    },
+    {
+     "name": "Endurance",
+     "value": 15
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 11
+    },
+    {
+     "name": "Charisme",
+     "value": 8
+    }
+   ],
+   "skills": [
+    {
+     "name": "Artisanat",
+     "value": 7
+    }
+   ],
+   "appearance": "",
+   "personality": "Bourru et honnête.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Épée bien équilibrée",
+     "qty": 2,
+     "description": ""
+    },
+    {
+     "name": "Bouclier cerclé",
+     "qty": 1,
+     "description": ""
+    }
+   ],
+   "pawn": {
+    "color": "#6e655b",
+    "symbol": "DN"
+   }
+  },
+  {
+   "name": "Bourgmestre Hallis",
+   "concept": "Dirigeant de Valombre",
+   "species": "Humain",
+   "origin": "Valombre",
+   "kind": "npc",
+   "hp": 10,
+   "hp_max": 10,
+   "res": 10,
+   "res_max": 10,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Négociation",
+     "value": 5
+    }
+   ],
+   "appearance": "",
+   "personality": "Soucieux des apparences.",
+   "goals": "",
+   "secret": "Sait que le Cercle de la Braise existe et le laisse faire.",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#5b4637",
+    "symbol": "HA"
+   }
+  },
+  {
+   "name": "Mirelle",
+   "concept": "Herboriste de la lisière",
+   "species": "Demi-elfe",
+   "origin": "Forêts profondes",
+   "kind": "npc",
+   "hp": 12,
+   "hp_max": 12,
+   "res": 10,
+   "res_max": 10,
+   "rank": "",
+   "magic": {
+    "category": "Nature",
+    "name": "Murmure des plantes",
+    "origin": "Personnalité et environnement",
+    "description": "Parle aux plantes et en connaît les secrets.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Alchimie",
+     "value": 6
+    },
+    {
+     "name": "Survie",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Potion de soin",
+     "qty": 3,
+     "description": ""
+    },
+    {
+     "name": "Herbes de sommeil",
+     "qty": 2,
+     "description": ""
+    }
+   ],
+   "pawn": {
+    "color": "#8fb28a",
+    "symbol": "MR"
+   }
+  },
+  {
+   "name": "Capitaine Roderic",
+   "concept": "Capitaine de la garde",
+   "species": "Humain",
+   "origin": "Valombre",
+   "kind": "npc",
+   "hp": 24,
+   "hp_max": 24,
+   "res": 10,
+   "res_max": 10,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 14
+    },
+    {
+     "name": "Agilité",
+     "value": 12
+    },
+    {
+     "name": "Endurance",
+     "value": 13
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 12
+    },
+    {
+     "name": "Charisme",
+     "value": 11
+    }
+   ],
+   "skills": [
+    {
+     "name": "Combat",
+     "value": 5
+    },
+    {
+     "name": "Intimidation",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#6f7f9a",
+    "symbol": "RO"
+   }
+  },
+  {
+   "name": "Le Voyageur encapuchonné",
+   "concept": "Émissaire du Cercle de la Braise",
+   "species": "Humain ?",
+   "origin": "Inconnue",
+   "kind": "npc",
+   "hp": 26,
+   "hp_max": 26,
+   "res": 20,
+   "res_max": 20,
+   "rank": "",
+   "magic": {
+    "category": "Ombre",
+    "name": "Braise noire",
+    "origin": "Personnalité et environnement",
+    "description": "Des flammes sans lumière qui brûlent sans fumée.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "Parle peu, observe beaucoup.",
+   "goals": "",
+   "secret": "Prépare le réveil de ce qui dort sous les ruines.",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#55506a",
+    "symbol": "VE"
+   }
+  }
+ ]
+}

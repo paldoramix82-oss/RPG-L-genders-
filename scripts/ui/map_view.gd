@@ -46,6 +46,10 @@ var _pan_button := false
 var _hover := Vector2i(-1, -1)
 var _time := 0.0
 var _font: Font
+var _terrain_vp: SubViewport
+var _painter: TerrainPainter
+var _baked_cells := ""
+var _baked_size := Vector2i.ZERO
 
 
 func _ready() -> void:
@@ -53,6 +57,14 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	focus_mode = Control.FOCUS_NONE
 	_font = get_theme_font("font", "StrongLabel")
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_terrain_vp = SubViewport.new()
+	_terrain_vp.transparent_bg = true
+	_terrain_vp.disable_3d = true
+	_terrain_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	_painter = TerrainPainter.new()
+	_terrain_vp.add_child(_painter)
+	add_child(_terrain_vp)
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 6)
 	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 8)
@@ -88,7 +100,7 @@ func fit() -> void:
 		return
 	var w := float(map.w) * CELL
 	var h := float(map.h) * CELL
-	zoom = clampf(minf((size.x - 16) / w, (size.y - 16) / h), 0.2, 4.0)
+	zoom = clampf(minf((size.x - 32) / w, (size.y - 32) / h), 0.04, 4.0)
 	offset = (size - Vector2(w, h) * zoom) * 0.5
 	queue_redraw()
 
@@ -109,7 +121,7 @@ func recenter() -> void:
 
 func zoom_at(pos: Vector2, factor: float) -> void:
 	var old := zoom
-	zoom = clampf(zoom * factor, 0.2, 4.0)
+	zoom = clampf(zoom * factor, 0.04, 4.0)
 	offset = pos - (pos - offset) * (zoom / old)
 	queue_redraw()
 
@@ -173,36 +185,38 @@ func _draw() -> void:
 		var msg := "Aucune carte affichée pour l'instant."
 		draw_string(_font, Vector2(16, size.y * 0.5), msg, HORIZONTAL_ALIGNMENT_CENTER, size.x - 32, 18, Palette.MUTED)
 		return
+	if String(map.cells) != _baked_cells or int(map.w) != _baked_size.x or int(map.h) != _baked_size.y:
+		_bake()
 	var cs := CELL * zoom
 	var w := int(map.w)
 	var h := int(map.h)
+	var board := Rect2(offset, Vector2(w, h) * cs)
+	# Cadre du plateau : ombre, bordure en bois sombre et liseré doré.
+	draw_rect(board.grow(10).grow_individual(0, 0, 4, 6), Color(0, 0, 0, 0.45))
+	draw_rect(board.grow(9), Color("2a2118"))
+	draw_rect(board.grow(9), Palette.GOLD_DIM, false, 2.0)
+	draw_rect(board.grow(3), Palette.GOLD_DEEP, false, 2.0)
+	draw_texture_rect(_terrain_vp.get_texture(), board, false)
 	var x0 := clampi(floori(-offset.x / cs), 0, w)
 	var y0 := clampi(floori(-offset.y / cs), 0, h)
 	var x1 := clampi(ceili((size.x - offset.x) / cs), 0, w)
 	var y1 := clampi(ceili((size.y - offset.y) / cs), 0, h)
-	var cells: String = map.cells
-	# Ombre portée du plateau.
-	draw_rect(Rect2(offset + Vector2(4, 6), Vector2(w, h) * cs), Color(0, 0, 0, 0.35))
-	for y in range(y0, y1):
-		for x in range(x0, x1):
-			var code := cells[y * w + x]
-			_draw_cell(Rect2(offset + Vector2(x, y) * cs, Vector2(cs, cs)), code, x, y)
-	if show_grid and cs >= 14:
-		var gc := Color(0, 0, 0, 0.18)
+	if show_grid and cs >= 18:
+		var gc := Color(0, 0, 0, 0.12)
 		for x in range(x0, x1 + 1):
 			draw_line(offset + Vector2(x * cs, y0 * cs), offset + Vector2(x * cs, y1 * cs), gc, 1.0)
 		for y in range(y0, y1 + 1):
 			draw_line(offset + Vector2(x0 * cs, y * cs), offset + Vector2(x1 * cs, y * cs), gc, 1.0)
-	draw_rect(Rect2(offset, Vector2(w, h) * cs), Palette.GOLD_DIM, false, 2.0)
 	if is_mj and map.has("spawn"):
 		var sp := cell_center(Vector2(float(map.spawn.x), float(map.spawn.y)))
 		draw_arc(sp, cs * 0.42, 0, TAU, 24, Palette.OK, 2.0, true)
 		_text(sp + Vector2(0, cs * 0.12), "départ", maxi(9, int(cs * 0.26)), Palette.OK)
 	if _hover.x >= 0 and tool != "move" and MapData.in_bounds(map, _hover.x, _hover.y):
-		draw_rect(Rect2(offset + Vector2(_hover) * cs, Vector2(cs, cs)), Color(1, 1, 1, 0.25), false, 2.0)
+		draw_rect(Rect2(offset + Vector2(_hover) * cs, Vector2(cs, cs)), Color(1, 1, 1, 0.3), false, 2.0)
 	for l in map.get("labels", []):
 		_draw_label(l, cs)
-	var tokens: Array = map.get("tokens", [])
+	var tokens: Array = map.get("tokens", []).duplicate()
+	tokens.sort_custom(func(a, b): return float(_display.get(a.id, Vector2(0, a.y)).y) < float(_display.get(b.id, Vector2(0, b.y)).y))
 	for t in tokens:
 		if t.id != _dragging:
 			_draw_token(t, _display.get(t.id, Vector2(float(t.x), float(t.y))), cs, 1.0)
@@ -215,59 +229,15 @@ func _draw() -> void:
 			_draw_token(t, (_drag_pos - offset) / cs - Vector2(0.5, 0.5), cs, 0.85)
 
 
-func _draw_cell(r: Rect2, code: String, x: int, y: int) -> void:
-	var base := MapData.terrain_color(code)
-	var n := _noise(x, y)
-	draw_rect(r, base.lightened((n - 0.5) * 0.08))
-	var s := r.size.x
-	if s < 10:
-		return
-	var c := r.get_center()
-	match code:
-		"f", "F":
-			var count := 2 if code == "f" else 3
-			for i in count:
-				var p := r.position + Vector2(_noise(x + i * 7, y) * 0.6 + 0.2, _noise(x, y + i * 5) * 0.6 + 0.2) * s
-				draw_circle(p + Vector2(0, s * 0.05), s * 0.2, base.darkened(0.35))
-				draw_circle(p, s * 0.19, base.lightened(0.12))
-		"w", "W":
-			var wc := base.lightened(0.18)
-			var yy := r.position.y + s * (0.35 + n * 0.3)
-			draw_line(Vector2(r.position.x + s * 0.2, yy), Vector2(r.position.x + s * 0.45, yy - s * 0.06), wc, 1.0, true)
-			draw_line(Vector2(r.position.x + s * 0.45, yy - s * 0.06), Vector2(r.position.x + s * 0.7, yy), wc, 1.0, true)
-		"m":
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.38, s * 0.3), c + Vector2(0, -s * 0.35), c + Vector2(s * 0.38, s * 0.3)]), base.darkened(0.2))
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.1, -s * 0.12), c + Vector2(0, -s * 0.35), c + Vector2(s * 0.1, -s * 0.12)]), Color("e6e2da"))
-		"h":
-			draw_arc(c + Vector2(0, s * 0.25), s * 0.32, PI, TAU, 10, base.lightened(0.15), 2.0, true)
-		"b":
-			draw_rect(r.grow(-s * 0.08), base.lightened(0.1))
-			draw_line(Vector2(r.position.x + s * 0.08, c.y), Vector2(r.end.x - s * 0.08, c.y), base.darkened(0.3), 1.0)
-		"#":
-			draw_rect(Rect2(r.position, Vector2(s, s * 0.22)), base.lightened(0.18))
-		"t":
-			draw_rect(r.grow(-s * 0.18), Color("7a5a3a"))
-		"a":
-			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -s * 0.32), c + Vector2(s * 0.2, 0), c + Vector2(0, s * 0.32), c + Vector2(-s * 0.2, 0)]), Color("b8a8f0"))
-		"l":
-			draw_circle(r.position + Vector2(n, _noise(y, x)) * s, s * 0.12, Color("f0a040"))
-		"c", "s", "x":
-			for i in 3:
-				var p := r.position + Vector2(_noise(x * 3 + i, y), _noise(x, y * 3 + i)) * s
-				draw_circle(p, s * 0.04, base.lightened(0.25) if code != "x" else base.darkened(0.3))
-		"p", "o":
-			draw_line(Vector2(r.position.x, c.y), Vector2(r.end.x, c.y), base.darkened(0.15), 1.0)
-			var xx := r.position.x + s * (0.5 if y % 2 == 0 else 0.25)
-			draw_line(Vector2(xx, r.position.y), Vector2(xx, c.y), base.darkened(0.15), 1.0)
-		"B", "d":
-			for i in range(1, 3):
-				var yy := r.position.y + s * i / 3.0
-				draw_line(Vector2(r.position.x, yy), Vector2(r.end.x, yy), base.darkened(0.2), 1.0)
-		"n", "g":
-			draw_circle(r.position + Vector2(n, _noise(y, x)) * s, s * 0.05, Color(1, 1, 1, 0.8))
-		"k":
-			draw_line(c + Vector2(-s * 0.2, s * 0.1), c + Vector2(-s * 0.2, -s * 0.2), Color("6b7d52"), 1.0)
-			draw_line(c + Vector2(s * 0.1, s * 0.15), c + Vector2(s * 0.12, -s * 0.15), Color("6b7d52"), 1.0)
+## Recalcule la texture du terrain (au chargement et quand le MJ peint).
+func _bake() -> void:
+	_baked_cells = String(map.cells)
+	_baked_size = Vector2i(int(map.w), int(map.h))
+	_painter.setup(map)
+	_terrain_vp.size = Vector2i(_painter.size)
+	_terrain_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	await RenderingServer.frame_post_draw
+	queue_redraw()
 
 
 func _draw_label(l: Dictionary, cs: float) -> void:
@@ -276,77 +246,113 @@ func _draw_label(l: Dictionary, cs: float) -> void:
 	var text := ("◇ " if hidden else "") + String(l.text)
 	var ts := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	var center := cell_center(Vector2(float(l.x), float(l.y))) - Vector2(0, cs * 0.55)
-	var rect := Rect2(center - Vector2(ts.x * 0.5 + 6, ts.y * 0.5 + 2), Vector2(ts.x + 12, ts.y + 4))
-	var bg := Color(0.08, 0.07, 0.1, 0.78)
-	draw_rect(rect, bg)
+	var rect := Rect2(center - Vector2(ts.x * 0.5 + 8, ts.y * 0.5 + 3), Vector2(ts.x + 16, ts.y + 6))
+	# Petit parchemin : fond clair, bord doré.
+	draw_rect(rect.grow(1), Color(0, 0, 0, 0.35))
+	draw_rect(rect, Color("2a2330", 0.88) if hidden else Color("e9dfc6", 0.92))
 	draw_rect(rect, Palette.PRIVATE if hidden else Palette.GOLD_DIM, false, 1.0)
-	draw_string(_font, Vector2(rect.position.x + 6, rect.position.y + 2 + _font.get_ascent(font_size)), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Palette.PRIVATE if hidden else Palette.TEXT)
+	var col := Palette.PRIVATE if hidden else Color("2a2118")
+	draw_string(_font, Vector2(rect.position.x + 8, rect.position.y + 3 + _font.get_ascent(font_size)), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
 
 
+## Pions façon jeu de plateau : silhouette de pion (personnages, PNJ), créature
+## à cornes (monstres) ou coffre (objets), avec ombre, reflet et jauge de PV.
 func _draw_token(t: Dictionary, cell_pos: Vector2, cs: float, alpha: float) -> void:
 	var center := offset + (cell_pos + Vector2(0.5, 0.5)) * cs
-	var r := cs * 0.4
+	var r := cs * 0.42
 	var hidden: bool = t.get("hidden", false)
 	if hidden:
 		alpha *= 0.5
 	var color := Color(String(t.get("color", "#999999")))
 	color.a = alpha
 	var kind := String(t.get("kind", "npc"))
-	var ring := Color("e8e2d6")
+	var ring := Color("1c1a20")
 	if kind == "monster":
-		ring = Palette.DANGER
-	elif kind == "npc":
-		ring = Palette.VIOLET.lightened(0.2)
-	elif kind == "object":
-		ring = Palette.GOLD_DIM
+		ring = Palette.DANGER.darkened(0.2)
 	if t.get("owner", "") == my_id and my_id != "":
 		ring = Palette.GOLD
 	ring.a = alpha
+	var base := center + Vector2(0, r * 0.62)
 	if t.id == current_turn:
 		var pulse := 0.5 + 0.5 * sin(_time * 5.0)
-		draw_circle(center, r * (1.35 + pulse * 0.15), Color(Palette.GOLD, 0.25 * alpha))
-	# Socle et pion.
-	draw_circle(center + Vector2(0, r * 0.18), r, Color(0, 0, 0, 0.45 * alpha))
-	if kind == "object":
-		var sq := Rect2(center - Vector2(r, r) * 0.8, Vector2(r, r) * 1.6)
-		draw_rect(sq, color)
-		draw_rect(sq, ring, false, maxf(1.5, cs * 0.06))
-	else:
-		draw_circle(center, r, color)
-		draw_arc(center, r, 0, TAU, 32, ring, maxf(1.5, cs * 0.07), true)
-		draw_circle(center - Vector2(r * 0.3, r * 0.35), r * 0.25, Color(1, 1, 1, 0.12 * alpha))
+		_ellipse(base, Vector2(r * (1.25 + pulse * 0.2), r * 0.5), Color(Palette.GOLD, 0.35 * alpha))
 	if t.id == selected:
-		draw_arc(center, r * 1.22, 0, TAU, 32, Color(Palette.GOLD, alpha), 2.0, true)
+		_ellipse(base, Vector2(r * 1.15, r * 0.45), Color(Palette.GOLD, 0.55 * alpha), false)
+	_ellipse(base + Vector2(r * 0.12, r * 0.08), Vector2(r * 0.85, r * 0.3), Color(0, 0, 0, 0.45 * alpha))
+	var light := color.lightened(0.35)
+	var dark := color.darkened(0.35)
+	match kind:
+		"object":
+			var box := Rect2(center - Vector2(r * 0.75, r * 0.35), Vector2(r * 1.5, r * 0.95))
+			draw_rect(box, color)
+			draw_rect(Rect2(box.position, Vector2(box.size.x, box.size.y * 0.35)), light)
+			draw_rect(box, ring, false, maxf(1.0, cs * 0.04))
+			draw_rect(Rect2(box.get_center() - Vector2(r * 0.12, r * 0.05), Vector2(r * 0.24, r * 0.26)), Palette.GOLD)
+		"monster":
+			var body := center + Vector2(0, r * 0.05)
+			for side in [-1, 1]:
+				var horn := PackedVector2Array([body + Vector2(side * r * 0.35, -r * 0.45), body + Vector2(side * r * 0.75, -r * 1.05), body + Vector2(side * r * 0.08, -r * 0.6)])
+				draw_colored_polygon(horn, Color("e8e0cc", alpha))
+			draw_circle(body, r * 0.72, ring)
+			draw_circle(body, r * 0.64, color)
+			draw_circle(body + Vector2(-r * 0.22, -r * 0.25), r * 0.28, Color(light, 0.5 * alpha))
+			for side in [-1, 1]:
+				draw_circle(body + Vector2(side * r * 0.24, -r * 0.05), r * 0.11, Color("ffdf6a", alpha))
+				draw_circle(body + Vector2(side * r * 0.24, -r * 0.05), r * 0.05, Color("1c1a20", alpha))
+		_:
+			# Pion : socle, corps évasé, tête ronde.
+			_ellipse(base, Vector2(r * 0.72, r * 0.26), dark)
+			_ellipse(base - Vector2(0, r * 0.06), Vector2(r * 0.68, r * 0.23), color)
+			var body := PackedVector2Array([
+				base + Vector2(-r * 0.55, -r * 0.08), base + Vector2(r * 0.55, -r * 0.08),
+				center + Vector2(r * 0.2, -r * 0.18), center + Vector2(-r * 0.2, -r * 0.18)])
+			draw_colored_polygon(body, color)
+			draw_colored_polygon(PackedVector2Array([body[0], body[3], center + Vector2(-r * 0.05, -r * 0.18), base + Vector2(-r * 0.2, -r * 0.08)]), Color(light, 0.55 * alpha))
+			draw_colored_polygon(PackedVector2Array([body[1], body[2], center + Vector2(r * 0.1, -r * 0.18), base + Vector2(r * 0.25, -r * 0.08)]), Color(dark, 0.5 * alpha))
+			var head := center + Vector2(0, -r * 0.48)
+			draw_circle(head, r * 0.36, ring)
+			draw_circle(head, r * 0.31, color)
+			draw_circle(head + Vector2(-r * 0.1, -r * 0.1), r * 0.12, Color(1, 1, 1, 0.35 * alpha))
+			draw_polyline(PackedVector2Array([body[0], body[3], body[2], body[1]]), ring, maxf(1.0, cs * 0.035), true)
+	# Initiales sur une petite plaque
 	var initials := CharacterData.initials_of(String(t.get("name", "?")))
-	var fs := maxi(8, int(r * 0.85))
-	var text_color := Color("15141a") if color.get_luminance() > 0.55 else Color("f4efe6")
-	text_color.a = alpha
-	_text(center + Vector2(0, fs * 0.35), initials, fs, text_color)
+	var fs := maxi(7, int(r * 0.5))
+	if cs >= 16:
+		var tw := _font.get_string_size(initials, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var plate := Rect2(base + Vector2(-tw * 0.5 - 3, -fs * 0.55), Vector2(tw + 6, fs + 2))
+		draw_rect(plate, Color(0.08, 0.07, 0.1, 0.75 * alpha))
+		draw_string(_font, Vector2(plate.position.x + 3, plate.position.y + _font.get_ascent(fs)), initials, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Palette.TEXT, alpha))
 	var hp_max := int(t.get("hp_max", 0))
 	if hp_max > 0 and cs >= 18:
 		var ratio := clampf(float(t.get("hp", 0)) / hp_max, 0.0, 1.0)
-		var bar := Rect2(center + Vector2(-r, -r - cs * 0.16), Vector2(r * 2, maxf(3, cs * 0.08)))
-		draw_rect(bar, Color(0, 0, 0, 0.6 * alpha))
+		var bar := Rect2(center + Vector2(-r * 0.8, -r * 1.1), Vector2(r * 1.6, maxf(3, cs * 0.08)))
+		draw_rect(bar.grow(1), Color(0, 0, 0, 0.65 * alpha))
 		var hc := Palette.OK if ratio > 0.5 else (Palette.WARN if ratio > 0.25 else Palette.DANGER)
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * ratio, bar.size.y)), Color(hc, alpha))
-	if cs >= 26:
+	if cs >= 30:
 		var name_text := String(t.get("name", ""))
-		var nfs := clampi(int(cs * 0.3), 9, 16)
+		var nfs := clampi(int(cs * 0.28), 9, 15)
 		var ts := _font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs)
-		var pos := center + Vector2(-ts.x * 0.5, r + nfs + 1)
-		draw_rect(Rect2(pos - Vector2(3, nfs), Vector2(ts.x + 6, nfs + 4)), Color(0, 0, 0, 0.55 * alpha))
+		var pos := base + Vector2(-ts.x * 0.5, r * 0.3 + nfs)
+		draw_rect(Rect2(pos - Vector2(4, nfs), Vector2(ts.x + 8, nfs + 4)), Color(0, 0, 0, 0.6 * alpha))
 		draw_string(_font, pos, name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs, Color(Palette.TEXT, alpha))
+
+
+func _ellipse(center: Vector2, radii: Vector2, color: Color, filled: bool = true) -> void:
+	var pts := PackedVector2Array()
+	for i in 24:
+		var a := TAU * i / 24.0
+		pts.append(center + Vector2(cos(a) * radii.x, sin(a) * radii.y))
+	if filled:
+		draw_colored_polygon(pts, color)
+	else:
+		pts.append(pts[0])
+		draw_polyline(pts, color, 2.0, true)
 
 
 func _text(center_baseline: Vector2, text: String, font_size: int, color: Color) -> void:
 	var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	draw_string(_font, center_baseline - Vector2(w * 0.5, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
-
-
-static func _noise(x: int, y: int) -> float:
-	var h := (x * 374761393 + y * 668265263) & 0x7fffffff
-	h = ((h ^ (h >> 13)) * 1274126177) & 0x7fffffff
-	return float(h % 1000) / 1000.0
 
 
 # ---------------------------------------------------------------------------

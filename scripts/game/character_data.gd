@@ -12,7 +12,7 @@ const PAWN_COLORS := ["#c9a96e", "#b0605a", "#6f9fc9", "#8fb28a", "#a07cc9", "#d
 const TEXT_FIELDS := {
 	"name": SHORT, "age": 20, "species": SHORT, "origin": SHORT, "concept": SHORT,
 	"appearance": LONG, "background": LONG, "personality": LONG, "goals": LONG,
-	"relations": LONG, "notes": LONG, "secret": LONG, "status": SHORT, "rank": 10,
+	"relations": LONG, "notes": LONG, "secret": LONG, "status": SHORT, "rank": 10, "kind": 10,
 }
 ## Champs visibles par les autres joueurs (le reste : propriétaire + MJ).
 const PUBLIC_FIELDS := ["id", "owner", "name", "species", "origin", "concept", "appearance", "rank", "level", "hp", "hp_max", "pawn", "status", "magic_public"]
@@ -28,7 +28,7 @@ static func create(universe: Dictionary, id: String, owner: String, char_name: S
 	return {
 		"id": id, "owner": owner, "name": char_name, "age": "", "species": "", "origin": "", "concept": "",
 		"appearance": "", "background": "", "personality": "", "goals": "", "relations": "",
-		"notes": "", "secret": "", "status": "", "rank": "",
+		"notes": "", "secret": "", "status": "", "rank": "", "kind": "npc",
 		"level": 1, "xp": 0, "hp": hp, "hp_max": hp, "res": res, "res_max": res,
 		"stats": stats, "skills": [],
 		"magic": {"category": "", "name": "", "origin": "", "description": "", "limits": "", "public": true},

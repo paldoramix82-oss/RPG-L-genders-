@@ -4,6 +4,10 @@ extends VBoxContainer
 ## Côté MJ, les actions en attente peuvent être résolues directement depuis le fil.
 
 signal resolve_requested(message_id: String, status: String, result: String, roll_expr: String)
+## Le MJ demande au joueur de lancer lui-même un dé pour cette action.
+signal roll_request_requested(message_id: String, expr: String, difficulty: int)
+## Le joueur touche « Lancer le dé ».
+signal roll_answer_requested(message_id: String, expr: String, label: String)
 
 var viewer_id := ""
 var is_mj := false
@@ -69,6 +73,8 @@ func build(m: Dictionary) -> Control:
 			return _roll(m)
 		Protocol.KIND_ACTION:
 			return _action(m)
+		Protocol.KIND_ROLL_REQUEST:
+			return _roll_request(m)
 	return UIKit.message_bubble(m, viewer_id)
 
 
@@ -137,6 +143,8 @@ func _roll(m: Dictionary) -> Control:
 	var label := String(m.get("text", ""))
 	info.add_child(UIKit.label(label if label != "" else "Jet de dés", "StrongLabel", true))
 	info.add_child(UIKit.label("%s  :  %s" % [roll.get("expr", ""), roll.get("detail", "")], "MutedLabel", true))
+	if roll.has("difficulty"):
+		info.add_child(_success_chip(roll))
 	return col.get_parent()
 
 
@@ -147,19 +155,66 @@ func _action(m: Dictionary) -> Control:
 	col.add_child(UIKit.label(String(m.get("text", "")), "", true))
 	var chip: Array = {
 		Protocol.ACTION_PENDING: ["En attente du MJ", Palette.WARN],
+		Protocol.ACTION_ROLL: ["Jet demandé", Palette.GOLD],
+		Protocol.ACTION_ROLLED: ["Dé lancé, le MJ conclut", Palette.WARN],
 		Protocol.ACTION_RESOLVED: ["Résolue", Palette.OK],
 		Protocol.ACTION_REFUSED: ["Refusée", Palette.DANGER],
 	}.get(status, ["?", Palette.MUTED])
 	col.add_child(UIKit.chip(chip[0], chip[1]))
+	if status == Protocol.ACTION_ROLL:
+		col.add_child(_roll_prompt(m, String(m.get("text", "")).substr(0, 40)))
 	var roll: Dictionary = m.get("roll", {})
 	var result := String(m.get("result", ""))
 	if not roll.is_empty() or result != "":
 		var res := UIKit.card(col, "", "BubbleMJ")
 		if not roll.is_empty():
 			res.add_child(UIKit.label("Jet %s → %s  (%s)" % [roll.get("expr", ""), roll.get("total", ""), roll.get("detail", "")], "StrongLabel", true))
+			if roll.has("difficulty"):
+				res.add_child(_success_chip(roll))
 		if result != "":
 			res.add_child(UIKit.label(result, "", true))
 	return col.get_parent()
+
+
+func _roll_request(m: Dictionary) -> Control:
+	var col := _bubble_base(m, "BubbleMJ")
+	col.add_child(_header(m, "JET DEMANDÉ", Palette.GOLD))
+	var label := String(m.get("text", ""))
+	if label != "":
+		col.add_child(UIKit.label(label, "StrongLabel", true))
+	var roll: Dictionary = m.get("roll", {})
+	if m.get("status", "") == "open":
+		col.add_child(_roll_prompt(m, label))
+	elif not roll.is_empty():
+		col.add_child(UIKit.label("Résultat : %s  (%s : %s)" % [roll.get("total", ""), roll.get("expr", ""), roll.get("detail", "")], "", true))
+		if roll.has("difficulty"):
+			col.add_child(_success_chip(roll))
+	return col.get_parent()
+
+
+## Consigne du jet ; pour le joueur concerné, un grand bouton pour lancer lui-même.
+func _roll_prompt(m: Dictionary, label: String) -> Control:
+	var request: Dictionary = m.get("request", {})
+	var box := VBoxContainer.new()
+	var text := "Lancez %s" % request.get("expr", "d20")
+	if int(request.get("difficulty", 0)) > 0:
+		text += "  ·  difficulté %d" % int(request.difficulty)
+	box.add_child(UIKit.label(text, "", true))
+	var mine: bool = (m.get("kind", "") == Protocol.KIND_ACTION and m.get("from", "") == viewer_id) \
+			or (m.get("kind", "") == Protocol.KIND_ROLL_REQUEST and m.get("to", "") == viewer_id)
+	if mine and not is_mj:
+		var b := UIKit.button("Lancer le dé", "PrimaryButton", func():
+			roll_answer_requested.emit(String(m.id), String(request.get("expr", "d20")), label))
+		b.custom_minimum_size.y = 56
+		box.add_child(b)
+	elif is_mj:
+		box.add_child(UIKit.label("En attente du jet du joueur…", "MutedLabel", true))
+	return box
+
+
+func _success_chip(roll: Dictionary) -> Control:
+	var ok: bool = roll.get("success", false)
+	return UIKit.chip(("Réussite" if ok else "Échec") + "  (difficulté %d)" % int(roll.get("difficulty", 0)), Palette.OK if ok else Palette.DANGER)
 
 
 ## Formulaire de résolution d'une action (MJ).
@@ -180,4 +235,17 @@ func resolve_form(message_id: String) -> Control:
 	var no := UIKit.button("Refuser", "DangerButton", func():
 		resolve_requested.emit(message_id, Protocol.ACTION_REFUSED, result.text, ""))
 	row.add_child(no)
+	# Faire lancer le dé par le joueur lui-même.
+	var ask := HBoxContainer.new()
+	box.add_child(ask)
+	var expr := UIKit.line_edit("d20", "Dé à lancer")
+	expr.custom_minimum_size.x = 90
+	expr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ask.add_child(expr)
+	var diff := UIKit.spin(0, 0, 100)
+	diff.prefix = "diff."
+	diff.custom_minimum_size.x = 110
+	ask.add_child(diff)
+	ask.add_child(UIKit.button("Le joueur lance", "", func():
+		roll_request_requested.emit(message_id, expr.text, int(diff.value))))
 	return box

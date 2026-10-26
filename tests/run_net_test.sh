@@ -42,7 +42,9 @@ wait
 
 status=0
 for role in server alice bob wrongcode mallory server2 yann server3 dana eli; do
-	grep -E "^\[$role\]|SCRIPT ERROR|ERROR:" "$LOGDIR/$role.log" | sed "s/^/  /"
+	# « resources still in use at exit » : références circulaires propres aux
+	# fonctions anonymes du script de test, sans effet sur le jeu.
+	grep -E "^\[$role\]|SCRIPT ERROR|ERROR:" "$LOGDIR/$role.log" | grep -v "resources still in use" | sed "s/^/  /"
 	if [ "$(cat "$LOGDIR/$role.code")" != "0" ]; then
 		status=1
 	fi

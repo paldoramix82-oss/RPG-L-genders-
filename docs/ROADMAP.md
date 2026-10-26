@@ -14,6 +14,10 @@
 - Cartes interactives : 9 cartes prêtes, éditeur (terrain, pions, étiquettes, point de départ, taille), pions animés, carte affichée choisie par le MJ, pions et étiquettes cachés.
 - Combat au tour par tour sur la carte (initiative, ordre modifiable, PV, tour en surbrillance, déplacement réservé au combattant actif).
 - Interface responsive : colonnes sur PC, onglets sur téléphone.
+- Cartes illustrées (rendu précalculé), 4 grandes cartes pour les longues campagnes, 29 terrains, pions façon jeu de plateau, mises à jour légères des pions.
+- Packs de PNJ (47 fiches) importables.
+- Dés lancés par les joueurs eux-mêmes (plateau animé, jets demandés par le MJ avec difficulté, réussite/échec).
+- Bande originale de 14 morceaux composés pour le jeu, synchronisée sur les téléphones, musique de combat automatique.
 
 ## À valider par vous
 
@@ -26,5 +30,6 @@ L'application n'a été exécutée que sous Linux (tests réseau entre processus
 - Événements programmés (déclenchement différé), notes du MJ dans le journal, marquage « important ».
 - Brouillard de guerre / zones révélées progressivement sur la carte.
 - Images de fond pour les cartes (photos ou dessins importés).
-- Bestiaire réutilisable (modèles de monstres du MJ).
+- Enregistrer ses propres PNJ dans un pack réutilisable d'une campagne à l'autre.
+- Importer ses propres musiques (MP3/OGG) depuis l'appareil de l'hôte.
 - Mode « écran partagé » : un affichage TV/projecteur de la carte pour la table.

@@ -21,6 +21,10 @@ var _group_list: VBoxContainer
 var _ping_label: Label
 var _codex_holder: VBoxContainer
 var _keyboard_pad: Control
+var _tray: DiceTray
+## Jet en cours d'animation : {"kind": "free"} ou {"message_id": …}.
+var _tray_wait := {}
+var _music_label: Label
 
 
 func _ready() -> void:
@@ -90,12 +94,14 @@ func _ready() -> void:
 
 	_keyboard_pad = Control.new()
 	outer.add_child(_keyboard_pad)
+	_tray = DiceTray.new()
+	add_child(_tray)
 
 	_client.status_changed.connect(func(_s): _refresh_all())
 	_client.welcomed.connect(_on_welcomed)
 	_client.players_changed.connect(_refresh_group)
 	_client.message_received.connect(_on_message)
-	_client.message_updated.connect(func(m): _feed.update_message(m))
+	_client.message_updated.connect(_on_message_updated)
 	_client.characters_changed.connect(_on_characters)
 	_client.map_changed.connect(_refresh_map)
 	_client.combat_changed.connect(_refresh_combat)
@@ -148,11 +154,29 @@ func _build_adventure() -> Control:
 	_composer.send_action.connect(func(to, text):
 		_client.declare_action(to, text)
 		_refresh_outbox())
-	_composer.send_roll.connect(func(to, expr, label):
-		_client.roll(expr, to, label)
-		_refresh_outbox())
+	_composer.send_roll.connect(_roll)
+	_feed.roll_answer_requested.connect(func(id, expr, label):
+		_tray_wait = {"message_id": id, "label": label}
+		_tray.start(expr, label)
+		_client.answer_roll(id))
 	page.add_child(_composer)
 	return page
+
+
+func _roll(to: String, expr: String, label: String) -> void:
+	_tray_wait = {"kind": "free", "label": label}
+	_tray.start(expr, label)
+	_client.roll(expr, to, label)
+	_refresh_outbox()
+
+
+func _on_message_updated(m: Dictionary) -> void:
+	_feed.update_message(m)
+	if _tray_wait.get("message_id", "") == m.get("id", "") and not m.get("roll", {}).is_empty():
+		_tray.finish(m.roll, String(_tray_wait.get("label", "")))
+		_tray_wait = {}
+	elif m.get("kind", "") == Protocol.KIND_ACTION and m.get("from", "") == _map_view.my_id:
+		_tabs.set_badge("adventure", true)
 
 
 func _build_map() -> Control:
@@ -172,6 +196,14 @@ func _build_map() -> Control:
 	page.add_child(_map_view)
 	_map_info = UIKit.label("", "MutedLabel", true)
 	page.add_child(_map_info)
+	var dice := HBoxContainer.new()
+	dice.add_theme_constant_override("separation", 6)
+	page.add_child(dice)
+	for expr in ["d20", "d12", "d10", "d8", "d6", "d4"]:
+		var b := UIKit.button(expr, "", _roll.bind(Protocol.TO_ALL, expr, ""))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size.y = 44
+		dice.add_child(b)
 	return page
 
 
@@ -194,6 +226,28 @@ func _build_group() -> Control:
 	var conn := UIKit.card(page, "Connexion")
 	_ping_label = UIKit.label("", "MutedLabel", true)
 	conn.add_child(_ping_label)
+	var sound := UIKit.card(page, "Musique")
+	var enabled := CheckBox.new()
+	enabled.text = "Jouer la musique de la partie sur cet appareil"
+	enabled.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	enabled.button_pressed = Music.enabled()
+	enabled.toggled.connect(Music.set_enabled)
+	sound.add_child(enabled)
+	var volume := HSlider.new()
+	volume.min_value = 0.0
+	volume.max_value = 1.0
+	volume.step = 0.05
+	volume.value = Music.volume()
+	volume.custom_minimum_size.y = 36
+	volume.value_changed.connect(Music.set_volume)
+	volume.drag_ended.connect(func(_c): App.save_settings())
+	UIKit.field(sound, "Volume", volume)
+	_music_label = UIKit.label("", "MutedLabel", true)
+	sound.add_child(_music_label)
+	var show_music := func():
+		_music_label.text = ("En cours : " + Music.title()) if Music.playing else "Pas de musique pour l'instant (c'est le MJ qui choisit)."
+	Music.changed.connect(show_music)
+	show_music.call()
 	var members := UIKit.card(page, "Le groupe")
 	members.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_group_list = UIKit.vscroll(members)
@@ -235,6 +289,11 @@ func _on_welcomed() -> void:
 
 func _on_message(m: Dictionary) -> void:
 	_feed.add_message(m)
+	if _tray_wait.get("kind", "") == "free" and m.get("kind", "") == Protocol.KIND_ROLL and m.get("from", "") == _map_view.my_id:
+		_tray.finish(m.get("roll", {}), String(_tray_wait.get("label", "")))
+		_tray_wait = {}
+	if m.get("kind", "") == Protocol.KIND_ROLL_REQUEST and m.get("to", "") == _map_view.my_id:
+		_tabs.show_page("adventure")
 	_tabs.set_badge("adventure", true)
 	_refresh_outbox()
 

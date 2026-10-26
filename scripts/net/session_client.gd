@@ -15,6 +15,7 @@ signal characters_changed
 signal map_changed
 signal combat_changed
 signal settings_changed
+signal music_changed
 signal command_failed(req_id: String, error: String)
 signal session_closed(reason: String)
 signal notice(text: String)
@@ -28,6 +29,7 @@ var messages: Array = []
 var characters: Array = []
 var map := {}
 var combat := {}
+var music := {}
 
 var _send: Callable  # func(cmd: String, payload: Dictionary)
 var _outbox := {}  # req_id -> {cmd, payload}
@@ -69,6 +71,11 @@ func roll(expr: String, to: String, label: String = "") -> String:
 
 func save_character(sheet: Dictionary) -> String:
 	return send_command(Protocol.CMD_CHAR_SAVE, {"character": sheet})
+
+
+## Lance soi-même le dé demandé par le MJ (pour une action ou une demande de jet).
+func answer_roll(message_id: String) -> String:
+	return send_command(Protocol.CMD_ROLL_ANSWER, {"message_id": message_id})
 
 
 func move_pawn(token_id: String, x: int, y: int) -> String:
@@ -127,6 +134,7 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 			characters = payload.get("characters", [])
 			map = payload.get("map", {})
 			combat = payload.get("combat", {})
+			music = payload.get("music", {})
 			messages.clear()
 			_message_index.clear()
 			for m in payload.get("messages", []):
@@ -139,6 +147,7 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 			characters_changed.emit()
 			map_changed.emit()
 			combat_changed.emit()
+			music_changed.emit()
 			resend_pending()
 		Protocol.EVT_PLAYERS:
 			players = payload.get("players", [])
@@ -160,6 +169,13 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 		Protocol.EVT_MAP:
 			map = payload.get("map", {})
 			map_changed.emit()
+		Protocol.EVT_TOKENS:
+			if String(payload.get("map_id", "")) == String(map.get("id", "")) and payload.get("tokens") is Array:
+				map["tokens"] = payload.tokens
+				map_changed.emit()
+		Protocol.EVT_MUSIC:
+			music = payload.get("music", {})
+			music_changed.emit()
 		Protocol.EVT_COMBAT:
 			combat = payload.get("combat", {})
 			combat_changed.emit()

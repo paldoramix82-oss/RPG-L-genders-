@@ -11,7 +11,10 @@ Moteur : **Godot 4.4** (GDScript), rendu *Compatibility* (OpenGL) pour fonctionn
 
 - **Univers au choix** : *Légenders* (codex complet tiré des documents de l'univers : Légenders, AEC, 10 catégories de magie, Gardiens, rangs, Kurtzuma, nations, créatures), *Fantasy classique* (Les Cendres de Valombre) ou *Univers libre*.
 - **Personnages entièrement libres** : identité, pion (couleur, initiales), magie et pouvoirs, capacités, caractéristiques et compétences à volonté, PV / énergie / niveau / rang, inventaire, histoire, secret réservé au MJ.
-- **Cartes interactives façon plateau** : 9 cartes prêtes (Valombre, taverne, forêt, ruines, arène, carte vierge, Shima, île du test de survie, Grande Caldeira), éditeur de cartes pour le MJ (terrain au pinceau, pions, étiquettes visibles ou secrètes), **pions qui se déplacent** en direct sur tous les écrans.
+- **Cartes interactives façon plateau** : 13 cartes prêtes dont **4 grandes cartes pour les longues campagnes** (Kurtzuma — carte du monde 120×80, Région de Valombre, Shima la capitale, Forêt-Monde), rendu illustré (transitions entre terrains, rivages, arbres, montagnes, toits, murs, cristaux, lave…), éditeur pour le MJ (29 terrains au pinceau, pions, étiquettes visibles ou secrètes, cartes jusqu'à 128×128), **pions 3D façon jeu de plateau** qui se déplacent en direct sur tous les écrans.
+- **Packs de PNJ** : 47 fiches prêtes (mages de Shima d'après les documents de l'univers, gens et créatures de Kurtzuma, habitants de Valombre, bestiaire générique) à importer d'un clic.
+- **Les joueurs lancent eux-mêmes leurs dés** : plateau de dés animé, dés rapides sous la carte, et le MJ peut demander un jet (avec difficulté → réussite / échec).
+- **Bande originale** : 14 morceaux composés pour le jeu (rock de combat, épique, taverne, exploration, mystère, ville, repos…), choisis par le MJ, synchronisés sur les téléphones, musique de combat automatique.
 - **Combat au tour par tour** sur la carte : initiative automatique, ordre des tours, PV sur les pions, tour en surbrillance.
 - **Actions libres** déclarées par les joueurs et résolues par le MJ, **dés** (d4 à d100, formules libres, jets publics ou secrets, calculés par l'hôte), messages publics et privés.
 - **Secrets protégés** : pions cachés, étiquettes secrètes, codex MJ, jets secrets, secrets des fiches ne sont jamais envoyés aux joueurs non autorisés.
@@ -26,7 +29,7 @@ Mode d'emploi : [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md).
 |---|---|
 | Réseau local (hôte autoritaire, code, validation, reconnexion, confidentialité) | ✅ testé automatiquement |
 | Fiches, cartes et pions, combat, dés, actions, codex, sauvegarde | ✅ testé automatiquement |
-| Test automatisé multi-processus | ✅ 63 vérifications |
+| Test automatisé multi-processus | ✅ 72 vérifications |
 | **Essai sur vrais appareils (Windows + Android)** | ⏳ à faire : [docs/TEST_PHASE1.md](docs/TEST_PHASE1.md) |
 
 ## Démarrage rapide (développement)
@@ -41,7 +44,12 @@ Mode d'emploi : [docs/GUIDE_DE_JEU.md](docs/GUIDE_DE_JEU.md).
    ```
    Les joueurs se connectent à `127.0.0.1`, port `7777`, avec le code affiché par le MJ.
 
-Les cartes prêtes à l'emploi sont générées par `python3 tools/generate_maps.py` (fichiers `data/maps/*.json`) ; les univers sont dans `data/universes/*.json`.
+Contenu généré par des scripts (les fichiers produits sont versionnés, les scripts ne servent qu'à les recréer) :
+- cartes : `tools/generate_maps.py` → `data/maps/*.json` (numpy + scipy) ;
+- PNJ : `tools/make_npc_packs.py` → `data/npcs/*.json` ;
+- musique : `tools/compose_music.py` → `assets/music/*.ogg` + `data/music.json` (numpy + scipy + ffmpeg ; tout est synthétisé, aucun échantillon externe).
+
+Les univers sont dans `data/universes/*.json`.
 
 ## Documentation
 
@@ -63,3 +71,4 @@ Lance des hôtes et des joueurs dans des processus Godot séparés qui communiqu
 ## Licences
 
 Polices : Cinzel et Alegreya Sans, sous licence SIL Open Font License (voir `assets/fonts/`).
+Musiques : composées et synthétisées pour ce projet par `tools/compose_music.py`.

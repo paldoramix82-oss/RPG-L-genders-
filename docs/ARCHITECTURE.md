@@ -13,12 +13,15 @@ scripts/
     app.gd               App   : réglages locaux, profil, identifiant d'appareil, navigation
     style.gd             Style : thème visuel commun, mise à l'échelle sur téléphone
     net.gd               Net   : transport ENet, authentification, reconnexion, 2 RPC
+    music.gd             Music : lecture avec fondu enchaîné, volume local
   game/
     character_data.gd    Fiche de personnage : valeurs par défaut, validation, vue publique
     map_data.gd          Cartes en cases : terrains, pions, étiquettes, modèles, vue joueur filtrée
     dice.gd              Lancers de dés (formules), toujours exécutés par l'hôte
     universe.gd          Univers (codex, suggestions) ; filtrage des entrées « MJ »
     campaign_store.gd    Sauvegarde JSON atomique avec copie de secours
+    music_library.gd     Liste des morceaux (data/music.json)
+    npc_library.gd       Packs de PNJ (data/npcs/*.json)
   net/
     protocol.gd          Constantes, noms des commandes/événements, nettoyage des entrées
     session_server.gd    État officiel de la session (PC du MJ) + règles de visibilité
@@ -72,13 +75,16 @@ Ce bus de messages permet d'ajouter des fonctions (actions libres, dés, inventa
 | `dice_roll` | formule analysée, dés tirés par l'hôte |
 | `char_save` | uniquement sa propre fiche, champs validés, refusé si le MJ a verrouillé les fiches |
 | `pawn_move` | uniquement son propre pion, sur la carte affichée, case franchissable, autorisé par le MJ, à son tour en combat |
+| `roll_answer` | uniquement un jet que le MJ a demandé à ce joueur, une seule fois ; le dé est tiré par l'hôte |
 
 | Événement (hôte → joueur) | Filtrage |
 |---|---|
 | `welcome` | historique visible, univers sans entrées MJ, fiches (la sienne complète, les autres en vue publique), carte filtrée |
 | `chat`, `msg_update` | seulement si le message est public, adressé au joueur ou écrit par lui |
 | `characters` | idem `welcome` |
-| `map` | sans pions, étiquettes ni notes cachés |
+| `map` | sans pions, étiquettes ni notes cachés (envoyée quand le terrain ou les étiquettes changent) |
+| `tokens` | seulement les pions visibles (envoi léger à chaque déplacement) |
+| `music` | morceau, lecture, heure de départ (si le MJ diffuse la musique) |
 | `combat` | ordre limité aux pions visibles |
 
 Les changements de carte, de fiches et de combat sont regroupés et envoyés au plus une fois par image (`SessionServer.flush()`).
@@ -93,3 +99,5 @@ L'état de l'hôte est fait de dictionnaires simples, sérialisés en JSON dans 
 - PC : tableau de bord en trois colonnes (connexion & joueurs / messages / réseau & journal).
 - Android : portrait, ~400 unités de large quelle que soit la résolution (mise à l'échelle selon la densité de l'écran), barre de navigation basse, boutons ≥ 48 unités, espace réservé au clavier virtuel.
 - Les textes des joueurs sont affichés dans des `Label` (aucun balisage interprété).
+- Carte : le terrain est dessiné une seule fois dans une texture (`TerrainPainter` dans un `SubViewport`, 2048 px maximum pour rester compatible avec tous les téléphones) ; seuls les pions, étiquettes et sélections sont redessinés.
+- Dés : `DiceTray` anime le lancer pendant que l'hôte tire le résultat, puis affiche les vraies valeurs.
