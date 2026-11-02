@@ -437,13 +437,13 @@ func _cmd_char_create(player: Dictionary, payload: Dictionary) -> String:
 
 ## Déplacement au tour par tour : dans les cases restantes ; en combat, un point
 ## d'action rachète un déplacement complet (vitesse).
-func _spend_move(t: Dictionary, x: int, y: int) -> String:
+func _spend_move(t: Dictionary, x: int, y: int, steps: int = -1) -> String:
 	var rules := Phases.def(phase.type)
 	if rules.move != "limit":
 		return ""
 	if combat.has_flag(t, "root"):
 		return "Vous êtes immobilisé : impossible de bouger."
-	var dist := Rules.distance(Vector2i(int(t.x), int(t.y)), Vector2i(x, y))
+	var dist := steps if steps >= 0 else Rules.distance(Vector2i(int(t.x), int(t.y)), Vector2i(x, y))
 	var speed := int(combat.stats_of(t).speed)
 	if int(t.get("speed", 0)) > 0 and not combat.has_sheet(t):
 		speed = int(t.speed)
@@ -480,7 +480,9 @@ func _cmd_pawn_move(player: Dictionary, payload: Dictionary) -> String:
 	if current != String(t.id):
 		return "Ce n'est pas votre tour."
 	if not MapData.passable(map, x, y):
-		return "Case infranchissable."
+		return "Case infranchissable (mur, meuble ou décor)."
+	if not MapData.walkable(map, x, y, can_swim(t)):
+		return "Vous ne savez pas nager assez bien pour traverser l'eau (Dextérité %d requise)." % int(Content.rule(content, "swim_dex"))
 	var other := MapData.token_at(map, x, y)
 	if not other.is_empty() and other.id != t.id:
 		return "Case occupée."
@@ -498,11 +500,13 @@ func _cmd_pawn_move(player: Dictionary, payload: Dictionary) -> String:
 	# Déplacement libre : limité par la vitesse, et interrompu si un monstre
 	# repère le personnage en chemin.
 	var mult := int(Content.rule(content, "free_move_mult"))
-	var dist := Rules.distance(Vector2i(int(t.x), int(t.y)), Vector2i(x, y))
-	var limit := int(combat.stats_of(t).speed) * mult
-	if mult > 0 and dist > limit:
-		return "Trop loin : %d cases au plus par déplacement." % limit
-	var dest := _first_spotted_cell(map, t, Vector2i(x, y))
+	var limit := int(combat.stats_of(t).speed) * mult if mult > 0 else 400
+	var route := MapData.path(map, Vector2i(int(t.x), int(t.y)), Vector2i(x, y), limit, can_swim(t), _move_blockers(map, t))
+	if route.is_empty():
+		if MapData.path(map, Vector2i(int(t.x), int(t.y)), Vector2i(x, y), 400, can_swim(t), _move_blockers(map, t)).is_empty():
+			return "Pas de chemin jusque-là (murs, eau, obstacles)."
+		return "Trop loin : %d cases de chemin au plus par déplacement." % limit
+	var dest := _first_spotted_cell(map, t, route)
 	t.x = dest.x
 	t.y = dest.y
 	_mark("tokens")
@@ -516,7 +520,11 @@ func _cmd_pawn_move(player: Dictionary, payload: Dictionary) -> String:
 func _move_in_turn(t: Dictionary, x: int, y: int) -> String:
 	if _current_token() != t.id:
 		return "Ce n'est pas votre tour."
-	var error := _spend_move(t, x, y)
+	var map: Dictionary = maps.get(active_map, {})
+	var steps: int = MapData.reach(map, Vector2i(int(t.x), int(t.y)), 60, can_swim(t), _move_blockers(map, t)).get(Vector2i(x, y), -1)
+	if steps < 0:
+		return "Pas de chemin jusque-là (murs, eau, obstacles)."
+	var error := _spend_move(t, x, y, steps)
 	if error != "":
 		return error
 	t.x = x
@@ -994,22 +1002,42 @@ func _can_aggro(m: Dictionary) -> bool:
 		and combat.side(m) != "players" and float(m.get("calm_until", 0.0)) <= _clock() and encounter_of(String(m.id)).is_empty()
 
 
-## Case où s'arrête un déplacement libre : la première où l'on est repéré.
-func _first_spotted_cell(map: Dictionary, t: Dictionary, dest: Vector2i) -> Vector2i:
-	var a := Vector2i(int(t.x), int(t.y))
-	if a == dest or not bool(Content.rule(content, "auto_aggro")):
+## Case où s'arrête un déplacement libre (en suivant le chemin) : la première
+## où l'on est repéré par un monstre.
+func _first_spotted_cell(map: Dictionary, t: Dictionary, route: Array) -> Vector2i:
+	var dest: Vector2i = route[-1]
+	if not bool(Content.rule(content, "auto_aggro")):
 		return dest
-	var n := maxi(absi(dest.x - a.x), absi(dest.y - a.y))
-	for i in range(1, n + 1):
-		var p := Vector2i(roundi(lerpf(a.x, dest.x, float(i) / n)), roundi(lerpf(a.y, dest.y, float(i) / n)))
+	for p: Vector2i in route:
 		if p == dest:
 			break
-		var other := MapData.token_at(map, p.x, p.y)
-		if not MapData.passable(map, p.x, p.y) or (not other.is_empty() and other.id != t.id):
+		if not MapData.token_at(map, p.x, p.y).is_empty():
 			continue
 		if not _spotters(map, p, t).is_empty():
 			return p
 	return dest
+
+
+## Sait nager : Dextérité suffisante (règle « swim_dex ») ou bonus « nage ».
+## Les monstres et pions sans fiche passent l'eau peu profonde.
+func can_swim(t: Dictionary) -> bool:
+	if String(t.get("kind", "")) != "pc":
+		return true
+	var sheet := _sheet_for_token(t)
+	var m := Rules.mods(sheet, content)
+	return int(m.get("nage", 0)) > 0 or Rules.stat(sheet, "Dextérité", content, m) >= int(Content.rule(content, "swim_dex"))
+
+
+## Cases qu'un pion ne peut pas traverser : celles des autres pions, sauf les
+## héros (on passe à côté d'un allié).
+func _move_blockers(map: Dictionary, t: Dictionary) -> Dictionary:
+	var out := {}
+	for o in map.get("tokens", []):
+		if o.id != t.id and String(o.get("kind", "")) != "pc" and not combat.is_ko(o) and String(o.get("kind", "")) != "object":
+			out[Vector2i(int(o.x), int(o.y))] = true
+		elif o.id != t.id and String(o.get("kind", "")) == "object":
+			out[Vector2i(int(o.x), int(o.y))] = true
+	return out
 
 
 ## Après un déplacement libre : repéré par un monstre ? à portée d'un combat en cours ?

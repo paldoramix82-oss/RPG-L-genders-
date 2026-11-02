@@ -1093,6 +1093,13 @@ func _refresh_map() -> void:
 	_refresh_timeline()
 
 
+## Même règle que l'hôte : Dextérité suffisante ou bonus « nage ».
+func _can_swim() -> bool:
+	var sheet := _client.my_character()
+	var m := Rules.mods(sheet, _client.content)
+	return int(m.get("nage", 0)) > 0 or Rules.stat(sheet, "Dextérité", _client.content, m) >= int(Content.rule(_client.content, "swim_dex"))
+
+
 func _was_in_combat() -> bool:
 	return String(_client.phase.get("type", "")) == "combat" or Time.get_ticks_msec() - _combat_seen_ms < 6000
 
@@ -1132,7 +1139,7 @@ func _refresh_reachable() -> void:
 		var moves := int(phase.get("moves_left", 0))
 		if phase.get("type", "") == "combat" and int(phase.get("ap", 0)) >= int(Content.rule(_client.content, "move_ap")):
 			moves += int(Rules.derived(_client.my_character(), _client.content).speed)
-		_map_view.reachable = _map_view.compute_reachable(Vector2i(int(me.x), int(me.y)), moves)
+		_map_view.reachable = _map_view.compute_reachable(Vector2i(int(me.x), int(me.y)), moves, _can_swim())
 	_map_view.queue_redraw()
 
 

@@ -987,19 +987,21 @@ func _step_toward(actor: Dictionary, foe: Dictionary, rng: int) -> void:
 		speed = int(s.phase.moves_left)
 	var best := pos(actor)
 	var best_d := dist(actor, foe)
-	for dy in range(-speed, speed + 1):
-		for dx in range(-speed, speed + 1):
-			var p := pos(actor) + Vector2i(dx, dy)
-			if Rules.distance(pos(actor), p) > speed or not MapData.passable(map(), p.x, p.y) or not MapData.token_at(map(), p.x, p.y).is_empty():
-				continue
-			var dd := Rules.distance(p, pos(foe))
-			if dd < best_d or (dd == best_d and Rules.distance(pos(actor), p) < Rules.distance(pos(actor), best)):
-				if dd >= mini(rng, 1):
-					best = p
-					best_d = dd
+	# Chemin réel : contourne murs, meubles et autres pions.
+	var blocked := {}
+	for o in map().get("tokens", []):
+		if o.id != actor.id and not is_ko(o):
+			blocked[pos(o)] = true
+	var steps := MapData.reach(map(), pos(actor), speed, s.can_swim(actor), blocked)
+	for p: Vector2i in steps:
+		var dd := Rules.distance(p, pos(foe))
+		if dd < best_d or (dd == best_d and int(steps[p]) < int(steps.get(best, 999))):
+			if dd >= mini(rng, 1):
+				best = p
+				best_d = dd
 	if best != pos(actor):
 		if Phases.def(String(s.phase.type)).turns:
-			s.phase.moves_left = int(s.phase.moves_left) - Rules.distance(pos(actor), best)
+			s.phase.moves_left = int(s.phase.moves_left) - int(steps[best])
 		actor.x = best.x
 		actor.y = best.y
 		s.map_changed(s.active_map, true)

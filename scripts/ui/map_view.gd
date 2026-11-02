@@ -164,18 +164,18 @@ func can_move(t: Dictionary) -> bool:
 
 ## Cases à portée de déplacement (même règle que l'hôte : distance en cases,
 ## diagonales comprises, case libre et franchissable).
-func compute_reachable(from: Vector2i, moves: int) -> Dictionary:
-	var out := {}
+func compute_reachable(from: Vector2i, moves: int, swim: bool = true) -> Dictionary:
 	if moves <= 0:
-		return out
-	var occupied := {}
+		return {}
+	var blocked := {}
 	for t in map.get("tokens", []):
-		occupied[Vector2i(int(t.x), int(t.y))] = true
-	for y in range(from.y - moves, from.y + moves + 1):
-		for x in range(from.x - moves, from.x + moves + 1):
-			var c := Vector2i(x, y)
-			if c != from and MapData.passable(map, x, y) and not occupied.has(c):
-				out[c] = true
+		if String(t.get("kind", "")) != "pc":
+			blocked[Vector2i(int(t.x), int(t.y))] = true
+	var out := MapData.reach(map, from, moves, swim, blocked)
+	out.erase(from)
+	# On ne s'arrête pas sur une case déjà occupée (un allié).
+	for t in map.get("tokens", []):
+		out.erase(Vector2i(int(t.x), int(t.y)))
 	return out
 
 

@@ -28,10 +28,10 @@ const EFFECT_NAMES := {"damage": "Dégâts", "heal": "Soin", "restore": "Restaur
 	"cleanse": "Retirer des effets négatifs", "push": "Repousser", "pull": "Attirer", "ap": "Points d'action", "stat": "Modifier une caractéristique",
 	"drain": "Vol de vie", "summon": "Invoquer", "if": "Si… alors…", "narrate": "Texte narratif"}
 const MOD_KEYS := ["Force", "Dextérité", "Constitution", "Intelligence", "Esprit", "Charisme", "hp_max", "res_max", "defense",
-	"to_hit", "damage", "resist_phys", "resist_mag", "speed", "heal_pct", "crit", "ap", "damage_taken", "vision"]
+	"to_hit", "damage", "resist_phys", "resist_mag", "speed", "heal_pct", "crit", "ap", "damage_taken", "vision", "nage"]
 const MOD_NAMES := {"hp_max": "PV max", "res_max": "Ressource max", "defense": "Défense", "to_hit": "Toucher", "damage": "Dégâts",
 	"resist_phys": "Résistance physique", "resist_mag": "Résistance magique", "speed": "Vitesse", "heal_pct": "Soins (%)",
-	"crit": "Critique", "ap": "PA", "damage_taken": "Dégâts subis", "vision": "Vision"}
+	"crit": "Critique", "ap": "PA", "damage_taken": "Dégâts subis", "vision": "Vision", "nage": "Nage (traverse l'eau)"}
 
 const DEFAULT_RULES := {
 	"stat_base": 5, "stat_pool": 15, "stat_min": 1, "stat_max": 10, "stat_cap": 14,
@@ -45,7 +45,7 @@ const DEFAULT_RULES := {
 	"loot_to_killer": true, "remove_dead": true,
 	"auto_aggro": true, "aggro_radius": 4, "encounter_radius": 6, "auto_monsters": true, "monster_delay": 2,
 	"turn_timeout": 0, "free_move_mult": 2,
-	"auto_checks": true, "check_ap": 1, "check_xp": 5, "check_cooldown": 6, "auto_npc_quests": true,
+	"swim_dex": 6, "auto_checks": true, "check_ap": 1, "check_xp": 5, "check_cooldown": 6, "auto_npc_quests": true,
 }
 ## Réglages des règles exposés au MJ : [clé, libellé, min, max].
 const RULE_FIELDS := [
@@ -80,6 +80,7 @@ const RULE_FIELDS := [
 	["monster_delay", "Délai avant qu'un monstre joue seul (secondes)", 0, 30],
 	["turn_timeout", "Tour d'un joueur passé après N secondes (0 : jamais)", 0, 600],
 	["check_xp", "XP gagnée pour une épreuve réussie", 0, 100],
+	["swim_dex", "Nage : Dextérité minimale pour traverser l'eau peu profonde (0 : tout le monde)", 0, 20],
 	["check_cooldown", "Délai avant de retenter la même épreuve (secondes)", 0, 120],
 	["check_ap", "Coût d'une épreuve en combat (PA)", 0, 3],
 	["free_move_mult", "Déplacement libre : N × vitesse par mouvement (0 : illimité)", 0, 10],

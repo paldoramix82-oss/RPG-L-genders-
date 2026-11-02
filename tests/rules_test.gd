@@ -24,6 +24,7 @@ func _ready() -> void:
 	_test_encounters()
 	_test_checks()
 	_test_town()
+	_test_collisions()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -822,3 +823,52 @@ func _reachable(map: Dictionary, start: Vector2i) -> Dictionary:
 					seen[n] = true
 					queue.append(n)
 	return seen
+
+
+func _test_collisions() -> void:
+	print("\n— Collisions : murs, meubles, eau")
+	var s := _server()
+	var a := _add_player(s, "Aria")
+	var alloc: Dictionary = Rules.get_class_def(s.content, "guerrier").recommended.duplicate()
+	s._cmd_char_create(a, {"class_id": "guerrier", "alloc": alloc, "choices": [0], "identity": {"name": "Aria"}})
+	var m := s.mj_create_map("Murs", 30, 20)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	var map: Dictionary = s.maps[s.active_map]
+	var pa := MapData.token(map, "pawn_" + a.id)
+	pa.x = 5
+	pa.y = 10
+	# Mur vertical de y = 0 à 18 en x = 8 : une seule ouverture tout en bas.
+	for y in 19:
+		MapData.set_cell(map, 8, y, "#")
+	_expect(s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 8, "y": 10}) != "", "on ne marche pas sur un mur")
+	var err := s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 10, "y": 10})
+	_expect(err != "" and int(pa.x) == 5, "le mur ne se traverse pas (chemin trop long) : %s" % err)
+	MapData.set_cell(map, 8, 11, ".")
+	_expect(s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 10, "y": 10}) == "" and int(pa.x) == 10, "par une ouverture, on passe")
+	_expect(MapData.path(map, Vector2i(7, 10), Vector2i(9, 12), 10).all(func(p): return MapData.walkable(map, p.x, p.y)), "le chemin ne passe que par des cases praticables")
+	# Coins de mur : pas de passage en diagonale entre deux murs.
+	var corner := MapData.blank("Coin", 5, 5)
+	MapData.set_cell(corner, 1, 0, "#")
+	MapData.set_cell(corner, 0, 1, "#")
+	_expect(not MapData.reach(corner, Vector2i(0, 0), 3).has(Vector2i(1, 1)), "on ne se glisse pas entre deux coins de mur")
+	# Meubles et décors bloquants.
+	MapData.set_cell(map, 12, 10, "t")
+	_expect(s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 12, "y": 10}) != "", "on ne marche pas sur une table")
+	MapData.set_decor(map, 13, 10, "barrel")
+	_expect(not MapData.passable(map, 13, 10), "un tonneau bloque le passage")
+	MapData.set_decor(map, 13, 10, "rug")
+	_expect(MapData.passable(map, 13, 10), "un tapis se traverse")
+	# Eau : peu profonde = nage selon la Dextérité ; profonde = jamais.
+	for y in 20:
+		MapData.set_cell(map, 15, y, "w")
+	MapData.set_cell(map, 16, 10, "W")
+	pa.x = 14
+	pa.y = 10
+	s.content.rules.swim_dex = 99
+	_expect(not s.can_swim(pa) and s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 15, "y": 10}) != "", "sans savoir nager, l'eau bloque")
+	_expect(s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 17, "y": 10}) != "" and int(pa.x) == 14, "pas de traversée de la rivière sans nager")
+	s.content.rules.swim_dex = 1
+	_expect(s.can_swim(pa) and s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 15, "y": 10}) == "", "avec assez de Dextérité, on nage dans l'eau peu profonde")
+	_expect(s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 16, "y": 10}) != "", "l'eau profonde reste infranchissable")
+	s.content.rules.swim_dex = 6

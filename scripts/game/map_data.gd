@@ -33,7 +33,7 @@ const TERRAINS := {
 	"B": ["Pont", "7e5f3c", true],
 	"b": ["Bâtiment", "5b4637", true],
 	"d": ["Plancher", "6b5139", true],
-	"t": ["Meuble", "45352a", true],
+	"t": ["Meuble", "45352a", false],
 	"o": ["Dalles", "4d4954", true],
 	"x": ["Gravats", "5f5850", true],
 	"#": ["Mur", "28252e", false],
@@ -137,8 +137,78 @@ static func decor_at(map: Dictionary, x: int, y: int) -> String:
 	return String(map.get("decor", {}).get("%d,%d" % [x, y], "")) if map.get("decor") is Dictionary else ""
 
 
+## Décors qui bloquent le passage (les tapis, chaises et fleurs non).
+const BLOCKING_DECOR := ["table", "barrel", "crate", "bed", "shelf", "anvil", "hearth", "altar", "well", "statue", "pillar",
+	"cauldron", "sacks", "hay", "grave", "grave_cross", "campfire", "crystal_cluster", "rock_big", "lamp"]
+
+
+static func decor_blocks(id: String) -> bool:
+	return id in BLOCKING_DECOR or id.begins_with("stall_") or id.begins_with("tent_") or id.begins_with("tree_") or id.begins_with("pine_")
+
+
+## Case praticable à pied : terrain franchissable, pas de meuble ni de décor
+## bloquant ; l'eau peu profonde seulement pour qui sait nager.
+static func walkable(map: Dictionary, x: int, y: int, swim: bool = true) -> bool:
+	if not in_bounds(map, x, y):
+		return false
+	var code := cell(map, x, y)
+	if not TERRAINS.get(code, ["", "", false])[2]:
+		return false
+	if code == "w" and not swim:
+		return false
+	var d := decor_at(map, x, y)
+	return d == "" or d == "-" or not decor_blocks(d)
+
+
+const STEPS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]
+
+
+## Cases atteignables en suivant un vrai chemin (8 directions, sans couper les
+## coins de mur), en au plus max_steps pas. blocked : cases interdites (pions).
+## Renvoie {case: nombre de pas}.
+static func reach(map: Dictionary, from: Vector2i, max_steps: int, swim: bool = true, blocked: Dictionary = {}) -> Dictionary:
+	var dist := {from: 0}
+	var queue: Array[Vector2i] = [from]
+	var head := 0
+	while head < queue.size():
+		var p: Vector2i = queue[head]
+		head += 1
+		var d: int = dist[p]
+		if d >= max_steps:
+			continue
+		for step: Vector2i in STEPS:
+			var n := p + step
+			if dist.has(n) or blocked.has(n) or not walkable(map, n.x, n.y, swim):
+				continue
+			if step.x != 0 and step.y != 0 and (not walkable(map, p.x + step.x, p.y, swim) or not walkable(map, p.x, p.y + step.y, swim)):
+				continue
+			dist[n] = d + 1
+			queue.append(n)
+	return dist
+
+
+## Chemin case par case (départ exclu) ; vide s'il n'existe pas en max_steps pas.
+static func path(map: Dictionary, from: Vector2i, to: Vector2i, max_steps: int, swim: bool = true, blocked: Dictionary = {}) -> Array:
+	var dist := reach(map, from, max_steps, swim, blocked)
+	if not dist.has(to) or to == from:
+		return []
+	var out: Array = [to]
+	var p := to
+	while dist[p] > 1:
+		for step: Vector2i in STEPS:
+			var q := p - step
+			if dist.has(q) and int(dist[q]) == int(dist[p]) - 1:
+				if step.x != 0 and step.y != 0 and (not walkable(map, q.x + step.x, q.y, swim) or not walkable(map, q.x, q.y + step.y, swim)):
+					continue
+				p = q
+				break
+		out.push_front(p)
+	return out
+
+
+## Case praticable (terrain et décor), eau peu profonde comprise.
 static func passable(map: Dictionary, x: int, y: int) -> bool:
-	return in_bounds(map, x, y) and TERRAINS.get(cell(map, x, y), ["", "", false])[2]
+	return walkable(map, x, y, true)
 
 
 ## Change la taille en conservant le contenu existant.

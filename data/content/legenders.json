@@ -4783,11 +4783,12 @@
    },
    "mods": {
     "resist_phys": 1,
-    "speed": 1
+    "speed": 1,
+    "nage": 1
    },
    "trait": {
     "name": "Écailles",
-    "description": "+1 résistance physique, +1 vitesse."
+    "description": "+1 résistance physique, +1 vitesse, nage."
    },
    "abilities": [],
    "synergies": {
@@ -4811,11 +4812,12 @@
     "Esprit": 1
    },
    "mods": {
-    "res_max": 2
+    "res_max": 2,
+    "nage": 1
    },
    "trait": {
     "name": "Chant des profondeurs",
-    "description": "+2 AEC et le Chant des profondeurs."
+    "description": "+2 AEC, nage, et le Chant des profondeurs."
    },
    "abilities": [
     "chant_profondeurs"
