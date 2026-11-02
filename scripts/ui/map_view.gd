@@ -62,11 +62,10 @@ var _pan_button := false
 var _hover := Vector2i(-1, -1)
 var _time := 0.0
 var _font: Font
-var _terrain_vp: SubViewport
 var _painter: TerrainPainter
 var _baked_cells := ""
 var _baked_size := Vector2i.ZERO
-var _baked_decor := 0
+var _baked_id := ""
 var _fog_tex: ImageTexture
 var _fog_key := ""
 var _dice_hud: DiceHud
@@ -79,13 +78,8 @@ func _ready() -> void:
 	_font = get_theme_font("font", "StrongLabel")
 	# Pixel art : le terrain et les sprites restent nets quand on zoome.
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_terrain_vp = SubViewport.new()
-	_terrain_vp.transparent_bg = true
-	_terrain_vp.disable_3d = true
-	_terrain_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_painter = TerrainPainter.new()
-	_terrain_vp.add_child(_painter)
-	add_child(_terrain_vp)
+	add_child(_painter)
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 6)
 	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 8)
@@ -285,7 +279,7 @@ func _draw() -> void:
 		var msg := "Aucune carte affichée pour l'instant."
 		draw_string(_font, Vector2(16, size.y * 0.5), msg, HORIZONTAL_ALIGNMENT_CENTER, size.x - 32, 18, Palette.MUTED)
 		return
-	if String(map.cells) != _baked_cells or int(map.w) != _baked_size.x or int(map.h) != _baked_size.y or hash(map.get("decor", {})) != _baked_decor:
+	if String(map.cells) != _baked_cells or int(map.w) != _baked_size.x or int(map.h) != _baked_size.y or map.get("decor", {}) != _painter._decor:
 		_bake()
 	var cs := CELL * zoom
 	var w := int(map.w)
@@ -296,7 +290,7 @@ func _draw() -> void:
 	draw_rect(board.grow(9), Color("2a2118"))
 	draw_rect(board.grow(9), Palette.GOLD_DIM, false, 2.0)
 	draw_rect(board.grow(3), Palette.GOLD_DEEP, false, 2.0)
-	draw_texture_rect(_terrain_vp.get_texture(), board, false)
+	_painter.draw_into(self, board)
 	var x0 := clampi(floori(-offset.x / cs), 0, w)
 	var y0 := clampi(floori(-offset.y / cs), 0, h)
 	var x1 := clampi(ceili((size.x - offset.x) / cs), 0, w)
@@ -411,12 +405,13 @@ func _draw_fog(board: Rect2) -> void:
 
 ## Recalcule la texture du terrain (au chargement et quand le MJ peint).
 func _bake() -> void:
+	var same_map := String(map.get("id", "")) == _baked_id and _baked_size == Vector2i(int(map.w), int(map.h))
 	_baked_cells = String(map.cells)
 	_baked_size = Vector2i(int(map.w), int(map.h))
-	_baked_decor = hash(map.get("decor", {}))
-	_painter.setup(map)
-	_terrain_vp.size = Vector2i(_painter.size)
-	_terrain_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	_baked_id = String(map.get("id", ""))
+	# Même carte retouchée : seuls les morceaux modifiés sont redessinés.
+	if not same_map or not _painter.refresh(map):
+		_painter.setup(map)
 	await RenderingServer.frame_post_draw
 	queue_redraw()
 

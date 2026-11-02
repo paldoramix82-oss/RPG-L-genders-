@@ -389,9 +389,11 @@ func _build_dashboard() -> void:
 	server.message_added.connect(_on_message_added)
 	server.message_updated.connect(_on_message_updated)
 	server.log_added.connect(_add_log)
-	server.characters_changed.connect(_refresh_characters)
-	server.characters_changed.connect(_refresh_players)
-	server.maps_changed.connect(_on_maps_changed)
+	# Rafraîchissements regroupés : une seule fois par image, même si l'hôte
+	# signale des dizaines de changements (déplacements, PV, combats…).
+	server.characters_changed.connect(_later.bind("chars", _refresh_characters))
+	server.characters_changed.connect(_later.bind("players", _refresh_players))
+	server.maps_changed.connect(_later.bind("maps", _on_maps_changed))
 	server.phase_changed.connect(_queue_phase_refresh)
 	server.saved.connect(_on_saved)
 
@@ -1373,6 +1375,18 @@ func _sync_inspector() -> void:
 ## Le serveur signale un changement de phase parfois au milieu d'une action de
 ## combat local (le combat lui est alors « prêté ») : on rafraîchit après coup,
 ## une seule fois par image.
+var _pending_refresh := {}
+
+
+func _later(key: String, f: Callable) -> void:
+	if _pending_refresh.has(key):
+		return
+	_pending_refresh[key] = true
+	(func():
+		_pending_refresh.erase(key)
+		f.call()).call_deferred()
+
+
 func _queue_phase_refresh() -> void:
 	if _phase_refresh_queued:
 		return

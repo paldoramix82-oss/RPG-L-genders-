@@ -1,20 +1,35 @@
 class_name TerrainPainter
-extends Control
-## Dessine tout le terrain d'une carte une seule fois, dans une texture (SubViewport) :
-## dégradés entre terrains, rivages, arbres, montagnes, toits, murs, détails.
-## Arbres, rochers, fleurs, mobilier et décors sont des sprites pixel art
-## (voir Sprites), dessinés à une échelle entière : la case fait 16 ou 32 px.
-## MapView affiche ensuite cette texture : rapide même pour les grandes cartes.
+extends Node
+## Dessine le terrain d'une carte dans des textures : dégradés entre terrains,
+## rivages, arbres, montagnes, toits, murs, détails. Arbres, rochers, fleurs,
+## mobilier et décors sont des sprites pixel art (voir Sprites), à une échelle
+## entière : la case fait 16 ou 32 px.
+##
+## Rapide même pour les grandes cartes et sur téléphone : le fond est une seule
+## petite image (2 × 2 pixels par case, agrandie) et le reste est découpé en
+## morceaux de 16 × 16 cases, chacun dans sa propre texture (avec une marge
+## pour les arbres qui dépassent). Quand le MJ peint, seuls les morceaux
+## touchés sont redessinés et rendus. MapView appelle draw_into().
 
-## Taille de la texture limitée à 2048 px : garanti sur tous les téléphones (OpenGL ES 3).
+## Taille de la carte en pixels limitée à 2048 : mémoire raisonnable sur téléphone.
 const MAX_TEXTURE := 2048.0
+const CHUNK := 16
+## Marge autour d'un morceau (en cases) : arbres hauts, étals sur deux cases.
+const PAD := Vector2i(1, 2)
 
 var S := 24.0  # pixels par case dans la texture
+var size := Vector2.ZERO
 
 var map := {}
 var _cells := ""
+var _decor := {}
 var _w := 0
 var _h := 0
+## Toile en cours de dessin (le morceau qui se dessine).
+var _ci: CanvasItem
+var _base_img: Image
+var _base_tex: ImageTexture
+var _chunks := {}  # Vector2i (indice de morceau) -> SubViewport
 
 const WATER := ["w", "W"]
 const BUILDINGS := ["b", "R"]
@@ -22,13 +37,99 @@ const BUILDINGS := ["b", "R"]
 
 func setup(new_map: Dictionary) -> void:
 	map = new_map
-	_cells = map.cells
+	_cells = String(map.cells)
+	_decor = (map.get("decor", {}) as Dictionary).duplicate()
 	_w = int(map.w)
 	_h = int(map.h)
 	S = 32.0 if maxi(_w, _h) * 32 <= MAX_TEXTURE else 16.0
-	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	size = Vector2(_w, _h) * S
-	queue_redraw()
+	for c in get_children():
+		c.queue_free()
+	_chunks.clear()
+	_base_img = Image.create(_w * 2, _h * 2, false, Image.FORMAT_RGBA8)
+	for y in _h:
+		for x in _w:
+			_base_pixels(x, y)
+	_base_tex = ImageTexture.create_from_image(_base_img)
+	for cy in ceili(float(_h) / CHUNK):
+		for cx in ceili(float(_w) / CHUNK):
+			var k := Vector2i(cx, cy)
+			var vp := SubViewport.new()
+			vp.transparent_bg = true
+			vp.disable_3d = true
+			vp.size = Vector2i((Vector2(CHUNK, CHUNK) + Vector2(PAD.x * 2, PAD.y)) * S)
+			vp.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+			vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+			var ch := Control.new()
+			ch.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ch.size = Vector2(vp.size)
+			ch.draw.connect(_draw_chunk.bind(ch, k))
+			vp.add_child(ch)
+			add_child(vp)
+			_chunks[k] = vp
+
+
+## Coin haut-gauche (en pixels de carte) de la texture d'un morceau.
+func _chunk_origin(k: Vector2i) -> Vector2:
+	return Vector2(k.x * CHUNK - PAD.x, k.y * CHUNK - PAD.y) * S
+
+
+## Dessine le terrain dans un rectangle de MapView (board = toute la carte).
+func draw_into(ci: CanvasItem, board: Rect2) -> void:
+	if _base_tex == null:
+		return
+	ci.draw_texture_rect(_base_tex, board, false)
+	var scale := board.size.x / size.x
+	var view := ci.get_viewport_rect() if ci is Control else Rect2(-1e9, -1e9, 2e9, 2e9)
+	if ci is Control:
+		view = Rect2(Vector2.ZERO, (ci as Control).size)
+	for k in _chunks:
+		var vp: SubViewport = _chunks[k]
+		var r := Rect2(board.position + _chunk_origin(k) * scale, Vector2(vp.size) * scale)
+		if r.intersects(view):
+			ci.draw_texture_rect(vp.get_texture(), r, false)
+
+
+## Mise à jour après une retouche : seuls les morceaux touchés sont redessinés.
+## Renvoie false si la carte doit être entièrement refaite (taille changée).
+func refresh(new_map: Dictionary) -> bool:
+	if int(new_map.w) != _w or int(new_map.h) != _h or _base_img == null:
+		setup(new_map)
+		return false
+	map = new_map
+	var cells := String(map.cells)
+	var dirty := {}
+	if cells != _cells:
+		for i in cells.length():
+			if cells.unicode_at(i) != _cells.unicode_at(i):
+				dirty[Vector2i(i % _w, i / _w)] = true
+		_cells = cells
+		for p in dirty:
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					var q: Vector2i = p + Vector2i(dx, dy)
+					if q.x >= 0 and q.y >= 0 and q.x < _w and q.y < _h:
+						_base_pixels(q.x, q.y)
+		_base_tex.update(_base_img)
+	var decor: Dictionary = map.get("decor", {})
+	if decor != _decor:
+		for k in decor.keys() + _decor.keys():
+			if decor.get(k, "") != _decor.get(k, ""):
+				dirty[Vector2i(int(String(k).get_slice(",", 0)), int(String(k).get_slice(",", 1)))] = true
+		_decor = decor.duplicate()
+	var redraw := {}
+	for p in dirty:
+		# Le morceau de la case, et ceux dont la marge la recouvre.
+		for dy in range(-1, PAD.y + 1):
+			for dx in range(-1, 2):
+				var q: Vector2i = p + Vector2i(dx, dy)
+				redraw[Vector2i(floori(float(q.x) / CHUNK), floori(float(q.y) / CHUNK))] = true
+	for k in redraw:
+		if _chunks.has(k):
+			var vp: SubViewport = _chunks[k]
+			vp.get_child(0).queue_redraw()
+			vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	return true
 
 
 func _code(x: int, y: int) -> String:
@@ -43,25 +144,33 @@ static func _n(x: int, y: int, k: int = 0) -> float:
 	return float(h % 10007) / 10007.0
 
 
-func _draw() -> void:
-	if _w == 0:
-		return
-	# 1. Fond texturé
-	for y in _h:
-		for x in _w:
-			_base(x, y, _code(x, y))
-	# 2. Transitions douces entre terrains voisins
-	for y in _h:
-		for x in _w:
+## Fond d'une case : 2 × 2 pixels de nuances voisines dans la petite image.
+func _base_pixels(x: int, y: int) -> void:
+	var c := MapData.terrain_color(_code(x, y))
+	for i in 4:
+		_base_img.set_pixel(x * 2 + i % 2, y * 2 + i / 2, c.lightened((_n(x, y, i) - 0.5) * 0.09))
+
+
+## Un morceau de 16 × 16 cases : transitions, rivages, puis détails ligne par
+## ligne (les éléments du bas recouvrent ceux du haut). Les cases de la marge
+## du dessous sont dessinées aussi : leurs arbres dépassent dans ce morceau.
+func _draw_chunk(ch: Control, k: Vector2i) -> void:
+	_ci = ch
+	ch.draw_set_transform(-_chunk_origin(k))
+	var x0 := k.x * CHUNK
+	var y0 := k.y * CHUNK
+	var x1 := mini(_w, x0 + CHUNK)
+	var y1 := mini(_h, y0 + CHUNK)
+	for y in range(y0, y1):
+		for x in range(x0, x1):
 			_blend(x, y)
-	# 3. Rivages
-	for y in _h:
-		for x in _w:
+	for y in range(y0, y1):
+		for x in range(x0, x1):
 			_shore(x, y)
-	# 4. Détails et reliefs, ligne par ligne (les éléments du bas recouvrent ceux du haut)
-	for y in _h:
-		for x in _w:
+	for y in range(y0, y1):
+		for x in range(x0, x1):
 			_detail(x, y, _code(x, y))
+	ch.draw_set_transform(Vector2.ZERO)
 
 
 func _base(x: int, y: int, code: String) -> void:
@@ -70,7 +179,7 @@ func _base(x: int, y: int, code: String) -> void:
 	var half := S * 0.5
 	for i in 4:
 		var q := Vector2(i % 2, i / 2) * half
-		draw_rect(Rect2(p + q, Vector2(half, half)), c.lightened((_n(x, y, i) - 0.5) * 0.09))
+		_ci.draw_rect(Rect2(p + q, Vector2(half, half)), c.lightened((_n(x, y, i) - 0.5) * 0.09))
 
 
 func _blend(x: int, y: int) -> void:
@@ -95,7 +204,7 @@ func _blend(x: int, y: int) -> void:
 			_:
 				pts = [p + Vector2(0, S), p + Vector2(0, S - depth), p + Vector2(S, S - depth), p + Vector2(S, S)]
 		var cols := PackedColorArray([a, z, z, a]) if d in [Vector2i.LEFT, Vector2i.UP] else PackedColorArray([a, a, z, z])
-		draw_polygon(pts, cols)
+		_ci.draw_polygon(pts, cols)
 
 
 func _shore(x: int, y: int) -> void:
@@ -110,10 +219,10 @@ func _shore(x: int, y: int) -> void:
 		var b := a + (Vector2(0, S) if d.x != 0 else Vector2(S, 0))
 		var inward := -Vector2(d) * (2.0 if water else 1.5)
 		if water:
-			draw_line(a + inward, b + inward, Color(1, 1, 1, 0.28), 2.0)
-			draw_line(a + inward * 2.5, b + inward * 2.5, Color(1, 1, 1, 0.1), 1.5)
+			_ci.draw_line(a + inward, b + inward, Color(1, 1, 1, 0.28), 2.0)
+			_ci.draw_line(a + inward * 2.5, b + inward * 2.5, Color(1, 1, 1, 0.1), 1.5)
 		elif other in WATER:
-			draw_line(a + inward, b + inward, Color(0, 0, 0, 0.18), 2.0)
+			_ci.draw_line(a + inward, b + inward, Color(0, 0, 0, 0.18), 2.0)
 
 
 func _detail(x: int, y: int, code: String) -> void:
@@ -138,66 +247,66 @@ func _detail(x: int, y: int, code: String) -> void:
 		"z":
 			for i in 4:
 				var yy := p.y + S * (0.15 + i * 0.25)
-				draw_line(Vector2(p.x, yy), Vector2(p.x + S, yy + S * 0.08), base.darkened(0.2), 1.0)
+				_ci.draw_line(Vector2(p.x, yy), Vector2(p.x + S, yy + S * 0.08), base.darkened(0.2), 1.0)
 			if n > 0.7:
-				draw_line(p + Vector2(S * 0.5, S * 0.2), p + Vector2(S * 0.5, S * 0.5), Color("c9b56a"), 1.0)
+				_ci.draw_line(p + Vector2(S * 0.5, S * 0.2), p + Vector2(S * 0.5, S * 0.5), Color("c9b56a"), 1.0)
 		"f", "F":
 			_forest_cell(x, y, code, n)
 		"m":
 			_mountain(c + Vector2(0, S * 0.1), S * (0.62 + n * 0.2), base)
 		"h":
-			draw_circle(c + Vector2(0, S * 0.22), S * 0.42, Color(base.darkened(0.12), 0.6))
-			draw_arc(c + Vector2(0, S * 0.3), S * 0.4, PI * 1.05, PI * 1.95, 12, base.lightened(0.18), 2.0, true)
+			_ci.draw_circle(c + Vector2(0, S * 0.22), S * 0.42, Color(base.darkened(0.12), 0.6))
+			_ci.draw_arc(c + Vector2(0, S * 0.3), S * 0.4, PI * 1.05, PI * 1.95, 12, base.lightened(0.18), 2.0, true)
 		"q":
 			_spr("nature", ["rock_0", "rock_1", "rock_big", "rock_moss"][int(n * 1000) % 4], x, y, true)
 		"b", "R":
 			_roof(x, y, p, base)
 		"#":
-			draw_rect(Rect2(p, Vector2(S, S)), base.lightened(0.12))
+			_ci.draw_rect(Rect2(p, Vector2(S, S)), base.lightened(0.12))
 			if _code(x, y + 1) != "#":
-				draw_rect(Rect2(p + Vector2(0, S * 0.55), Vector2(S, S * 0.45)), base.darkened(0.25))
+				_ci.draw_rect(Rect2(p + Vector2(0, S * 0.55), Vector2(S, S * 0.45)), base.darkened(0.25))
 				for i in 3:
-					draw_line(p + Vector2(i * S / 3.0 + (S / 6.0 if i % 2 else 0.0), S * 0.55), p + Vector2(i * S / 3.0 + (S / 6.0 if i % 2 else 0.0), S), base.darkened(0.45), 1.0)
-				draw_line(p + Vector2(0, S * 0.78), p + Vector2(S, S * 0.78), base.darkened(0.45), 1.0)
-			draw_line(p, p + Vector2(S, 0), base.lightened(0.3), 1.0)
+					_ci.draw_line(p + Vector2(i * S / 3.0 + (S / 6.0 if i % 2 else 0.0), S * 0.55), p + Vector2(i * S / 3.0 + (S / 6.0 if i % 2 else 0.0), S), base.darkened(0.45), 1.0)
+				_ci.draw_line(p + Vector2(0, S * 0.78), p + Vector2(S, S * 0.78), base.darkened(0.45), 1.0)
+			_ci.draw_line(p, p + Vector2(S, 0), base.lightened(0.3), 1.0)
 		"d":
 			for i in range(1, 4):
 				var yy := p.y + S * i / 4.0
-				draw_line(Vector2(p.x, yy), Vector2(p.x + S, yy), base.darkened(0.25), 1.0)
+				_ci.draw_line(Vector2(p.x, yy), Vector2(p.x + S, yy), base.darkened(0.25), 1.0)
 			var xx := p.x + S * (0.3 + 0.4 * _n(x, y, 1))
-			draw_line(Vector2(xx, p.y), Vector2(xx, p.y + S * 0.25), base.darkened(0.25), 1.0)
+			_ci.draw_line(Vector2(xx, p.y), Vector2(xx, p.y + S * 0.25), base.darkened(0.25), 1.0)
 		"o":
-			draw_rect(Rect2(p + Vector2(1, 1), Vector2(S - 2, S - 2)), base.darkened(0.18), false, 1.0)
+			_ci.draw_rect(Rect2(p + Vector2(1, 1), Vector2(S - 2, S - 2)), base.darkened(0.18), false, 1.0)
 			if n > 0.8:
-				draw_line(p + Vector2(S * 0.2, S * 0.3), p + Vector2(S * 0.6, S * 0.7), base.darkened(0.3), 1.0)
+				_ci.draw_line(p + Vector2(S * 0.2, S * 0.3), p + Vector2(S * 0.6, S * 0.7), base.darkened(0.3), 1.0)
 		"p":
 			for i in 4:
 				var q := p + Vector2(i % 2, i / 2) * S * 0.5 + Vector2(S * 0.06, S * 0.06)
-				draw_rect(Rect2(q, Vector2(S * 0.38, S * 0.38)), base.lightened(0.06 + (_n(x, y, i) - 0.5) * 0.12))
+				_ci.draw_rect(Rect2(q, Vector2(S * 0.38, S * 0.38)), base.lightened(0.06 + (_n(x, y, i) - 0.5) * 0.12))
 		"r":
-			draw_rect(Rect2(p + Vector2(0, S * 0.25), Vector2(S, S * 0.5)), base.lightened(0.06))
+			_ci.draw_rect(Rect2(p + Vector2(0, S * 0.25), Vector2(S, S * 0.5)), base.lightened(0.06))
 			for i in 2:
-				draw_circle(p + Vector2(_n(x, y, 90 + i), _n(x, y, 95 + i)) * S, 1.2, base.darkened(0.3))
+				_ci.draw_circle(p + Vector2(_n(x, y, 90 + i), _n(x, y, 95 + i)) * S, 1.2, base.darkened(0.3))
 		"B":
 			for i in range(0, 5):
 				var xx := p.x + S * i / 4.0
-				draw_line(Vector2(xx, p.y + 2), Vector2(xx, p.y + S - 2), base.darkened(0.3), 1.0)
-			draw_line(p + Vector2(0, 2), p + Vector2(S, 2), base.darkened(0.45), 2.0)
-			draw_line(p + Vector2(0, S - 2), p + Vector2(S, S - 2), base.darkened(0.45), 2.0)
+				_ci.draw_line(Vector2(xx, p.y + 2), Vector2(xx, p.y + S - 2), base.darkened(0.3), 1.0)
+			_ci.draw_line(p + Vector2(0, 2), p + Vector2(S, 2), base.darkened(0.45), 2.0)
+			_ci.draw_line(p + Vector2(0, S - 2), p + Vector2(S, S - 2), base.darkened(0.45), 2.0)
 		"w", "W":
 			var wc := Color(1, 1, 1, 0.12 if code == "w" else 0.07)
 			var yy := p.y + S * (0.3 + n * 0.4)
 			var xx := p.x + S * _n(x, y, 3) * 0.5
-			draw_arc(Vector2(xx + S * 0.15, yy), S * 0.15, PI * 1.15, PI * 1.85, 6, wc, 1.2, true)
+			_ci.draw_arc(Vector2(xx + S * 0.15, yy), S * 0.15, PI * 1.15, PI * 1.85, 6, wc, 1.2, true)
 			if n > 0.85:
-				draw_circle(p + Vector2(_n(x, y, 5), _n(x, y, 6)) * S, 1.0, Color(1, 1, 1, 0.35))
+				_ci.draw_circle(p + Vector2(_n(x, y, 5), _n(x, y, 6)) * S, 1.0, Color(1, 1, 1, 0.35))
 			if code == "w" and n < 0.04:
 				_spr("nature", "lily", x, y)
 		"g":
-			draw_line(p + Vector2(S * _n(x, y, 1), 0), p + Vector2(S * _n(x, y, 2), S), Color(1, 1, 1, 0.35), 1.0)
+			_ci.draw_line(p + Vector2(S * _n(x, y, 1), 0), p + Vector2(S * _n(x, y, 2), S), Color(1, 1, 1, 0.35), 1.0)
 		"n":
 			if n > 0.6:
-				draw_circle(p + Vector2(_n(x, y, 1), _n(x, y, 2)) * S, S * 0.12, Color(0.75, 0.8, 0.88, 0.5))
+				_ci.draw_circle(p + Vector2(_n(x, y, 1), _n(x, y, 2)) * S, S * 0.12, Color(0.75, 0.8, 0.88, 0.5))
 			if n < 0.1:
 				_spr("nature", "pine_snow", x, y, true)
 			elif n > 0.95:
@@ -205,26 +314,26 @@ func _detail(x: int, y: int, code: String) -> void:
 		"s":
 			if n > 0.96:
 				_spr("nature", "rock_sand", x, y, true)
-			draw_arc(c + Vector2(0, S * (n - 0.5) * 0.4), S * 0.35, PI * 1.2, PI * 1.8, 8, base.darkened(0.12), 1.0, true)
+			_ci.draw_arc(c + Vector2(0, S * (n - 0.5) * 0.4), S * 0.35, PI * 1.2, PI * 1.8, 8, base.darkened(0.12), 1.0, true)
 		"c":
 			for i in 3:
 				var e := p + Vector2(_n(x, y, 40 + i), _n(x, y, 50 + i)) * S
-				draw_circle(e, 1.1, Color("e07a3a") if _n(x, y, 60 + i) > 0.8 else base.lightened(0.2))
+				_ci.draw_circle(e, 1.1, Color("e07a3a") if _n(x, y, 60 + i) > 0.8 else base.lightened(0.2))
 		"l":
-			draw_circle(p + Vector2(_n(x, y, 1), _n(x, y, 2)) * S, S * 0.22, Color("f2a43c", 0.8))
-			draw_circle(p + Vector2(_n(x, y, 3), _n(x, y, 4)) * S, S * 0.12, Color("ffd76a", 0.9))
-			draw_line(p + Vector2(0, S * n), p + Vector2(S, S * _n(x, y, 9)), Color("5a1e12", 0.6), 1.5)
+			_ci.draw_circle(p + Vector2(_n(x, y, 1), _n(x, y, 2)) * S, S * 0.22, Color("f2a43c", 0.8))
+			_ci.draw_circle(p + Vector2(_n(x, y, 3), _n(x, y, 4)) * S, S * 0.12, Color("ffd76a", 0.9))
+			_ci.draw_line(p + Vector2(0, S * n), p + Vector2(S, S * _n(x, y, 9)), Color("5a1e12", 0.6), 1.5)
 		"k":
 			if n > 0.55:
 				_spr("nature", "reeds", x, y)
-			draw_circle(p + Vector2(_n(x, y, 1) * 0.6 + 0.2, _n(x, y, 2) * 0.6 + 0.2) * S, S * 0.16, Color("2f4a52", 0.7))
+			_ci.draw_circle(p + Vector2(_n(x, y, 1) * 0.6 + 0.2, _n(x, y, 2) * 0.6 + 0.2) * S, S * 0.16, Color("2f4a52", 0.7))
 			for i in 3:
 				var rx := p.x + S * (0.2 + i * 0.28)
-				draw_line(Vector2(rx, p.y + S * 0.85), Vector2(rx + S * 0.05, p.y + S * 0.45), Color("7a8a4e"), 1.0)
+				_ci.draw_line(Vector2(rx, p.y + S * 0.85), Vector2(rx + S * 0.05, p.y + S * 0.45), Color("7a8a4e"), 1.0)
 		"x", "u":
 			for i in 3:
 				var sp := p + Vector2(_n(x, y, 20 + i), _n(x, y, 30 + i)) * S
-				draw_rect(Rect2(sp, Vector2(3, 2)), base.darkened(0.35) if i % 2 else base.lightened(0.15))
+				_ci.draw_rect(Rect2(sp, Vector2(3, 2)), base.darkened(0.35) if i % 2 else base.lightened(0.15))
 			if n > 0.93:
 				_spr("nature", "rock_1" if code == "x" else "mushrooms", x, y, code == "x")
 		"a":
@@ -241,65 +350,65 @@ func _detail(x: int, y: int, code: String) -> void:
 
 func _tuft(at: Vector2, base: Color) -> void:
 	var col := base.lightened(0.22)
-	draw_line(at, at + Vector2(-2, -4), col, 1.0)
-	draw_line(at, at + Vector2(0, -5), col, 1.0)
-	draw_line(at, at + Vector2(2, -4), col, 1.0)
+	_ci.draw_line(at, at + Vector2(-2, -4), col, 1.0)
+	_ci.draw_line(at, at + Vector2(0, -5), col, 1.0)
+	_ci.draw_line(at, at + Vector2(2, -4), col, 1.0)
 
 
 func _tree(at: Vector2, r: float, base: Color, dense: bool) -> void:
-	draw_circle(at + Vector2(r * 0.25, r * 0.45), r, Color(0, 0, 0, 0.28))
-	draw_rect(Rect2(at + Vector2(-r * 0.12, r * 0.4), Vector2(r * 0.24, r * 0.5)), Color("4a3524"))
-	draw_circle(at, r, base.darkened(0.3 if dense else 0.2))
-	draw_circle(at + Vector2(-r * 0.15, -r * 0.15), r * 0.75, base.lightened(0.05))
-	draw_circle(at + Vector2(-r * 0.3, -r * 0.35), r * 0.38, base.lightened(0.22))
+	_ci.draw_circle(at + Vector2(r * 0.25, r * 0.45), r, Color(0, 0, 0, 0.28))
+	_ci.draw_rect(Rect2(at + Vector2(-r * 0.12, r * 0.4), Vector2(r * 0.24, r * 0.5)), Color("4a3524"))
+	_ci.draw_circle(at, r, base.darkened(0.3 if dense else 0.2))
+	_ci.draw_circle(at + Vector2(-r * 0.15, -r * 0.15), r * 0.75, base.lightened(0.05))
+	_ci.draw_circle(at + Vector2(-r * 0.3, -r * 0.35), r * 0.38, base.lightened(0.22))
 
 
 func _mountain(at: Vector2, w: float, base: Color) -> void:
 	var top := at + Vector2(0, -w * 0.8)
 	var left := at + Vector2(-w * 0.75, w * 0.35)
 	var right := at + Vector2(w * 0.75, w * 0.35)
-	draw_colored_polygon(PackedVector2Array([left + Vector2(4, 3), top + Vector2(4, 3), right + Vector2(4, 3)]), Color(0, 0, 0, 0.25))
-	draw_colored_polygon(PackedVector2Array([left, top, at + Vector2(0, w * 0.35)]), base.lightened(0.12))
-	draw_colored_polygon(PackedVector2Array([top, right, at + Vector2(0, w * 0.35)]), base.darkened(0.2))
+	_ci.draw_colored_polygon(PackedVector2Array([left + Vector2(4, 3), top + Vector2(4, 3), right + Vector2(4, 3)]), Color(0, 0, 0, 0.25))
+	_ci.draw_colored_polygon(PackedVector2Array([left, top, at + Vector2(0, w * 0.35)]), base.lightened(0.12))
+	_ci.draw_colored_polygon(PackedVector2Array([top, right, at + Vector2(0, w * 0.35)]), base.darkened(0.2))
 	var snow := 0.32
-	draw_colored_polygon(PackedVector2Array([top, top.lerp(left, snow), top.lerp(at + Vector2(0, w * 0.35), snow * 0.8), top.lerp(right, snow)]), Color("eceae4"))
+	_ci.draw_colored_polygon(PackedVector2Array([top, top.lerp(left, snow), top.lerp(at + Vector2(0, w * 0.35), snow * 0.8), top.lerp(right, snow)]), Color("eceae4"))
 
 
 func _roof(x: int, y: int, p: Vector2, base: Color) -> void:
 	var same := func(dx: int, dy: int) -> bool: return _code(x + dx, y + dy) in BUILDINGS
 	# Ombre portée sur le sol au sud et à l'est du bâtiment.
 	if not same.call(0, 1):
-		draw_rect(Rect2(p + Vector2(0, S), Vector2(S, S * 0.25)), Color(0, 0, 0, 0.25))
+		_ci.draw_rect(Rect2(p + Vector2(0, S), Vector2(S, S * 0.25)), Color(0, 0, 0, 0.25))
 	if not same.call(1, 0):
-		draw_rect(Rect2(p + Vector2(S, S * 0.2), Vector2(S * 0.2, S)), Color(0, 0, 0, 0.18))
-	draw_rect(Rect2(p, Vector2(S, S)), base)
+		_ci.draw_rect(Rect2(p + Vector2(S, S * 0.2), Vector2(S * 0.2, S)), Color(0, 0, 0, 0.18))
+	_ci.draw_rect(Rect2(p, Vector2(S, S)), base)
 	# Toit à deux pans : moitié haute claire, moitié basse sombre, faîtage au milieu.
-	draw_rect(Rect2(p, Vector2(S, S * 0.5)), base.lightened(0.12))
-	draw_rect(Rect2(p + Vector2(0, S * 0.5), Vector2(S, S * 0.5)), base.darkened(0.12))
-	draw_line(p + Vector2(0, S * 0.5), p + Vector2(S, S * 0.5), base.darkened(0.35), 1.5)
+	_ci.draw_rect(Rect2(p, Vector2(S, S * 0.5)), base.lightened(0.12))
+	_ci.draw_rect(Rect2(p + Vector2(0, S * 0.5), Vector2(S, S * 0.5)), base.darkened(0.12))
+	_ci.draw_line(p + Vector2(0, S * 0.5), p + Vector2(S, S * 0.5), base.darkened(0.35), 1.5)
 	for i in range(1, 3):
-		draw_line(p + Vector2(0, S * i / 6.0), p + Vector2(S, S * i / 6.0), base.darkened(0.05), 1.0)
-		draw_line(p + Vector2(0, S * 0.5 + S * i / 6.0), p + Vector2(S, S * 0.5 + S * i / 6.0), base.darkened(0.22), 1.0)
+		_ci.draw_line(p + Vector2(0, S * i / 6.0), p + Vector2(S, S * i / 6.0), base.darkened(0.05), 1.0)
+		_ci.draw_line(p + Vector2(0, S * 0.5 + S * i / 6.0), p + Vector2(S, S * 0.5 + S * i / 6.0), base.darkened(0.22), 1.0)
 	if not same.call(-1, 0):
-		draw_line(p, p + Vector2(0, S), base.darkened(0.4), 1.5)
+		_ci.draw_line(p, p + Vector2(0, S), base.darkened(0.4), 1.5)
 	if not same.call(1, 0):
-		draw_line(p + Vector2(S, 0), p + Vector2(S, S), base.darkened(0.4), 1.5)
+		_ci.draw_line(p + Vector2(S, 0), p + Vector2(S, S), base.darkened(0.4), 1.5)
 	if not same.call(0, -1):
-		draw_line(p, p + Vector2(S, 0), base.lightened(0.3), 1.5)
+		_ci.draw_line(p, p + Vector2(S, 0), base.lightened(0.3), 1.5)
 	if not same.call(0, 1):
-		draw_line(p + Vector2(0, S), p + Vector2(S, S), base.darkened(0.45), 1.5)
+		_ci.draw_line(p + Vector2(0, S), p + Vector2(S, S), base.darkened(0.45), 1.5)
 
 
 func _crystal(at: Vector2, base: Color) -> void:
-	draw_circle(at, S * 0.42, Color("b8a8f0", 0.18))
+	_ci.draw_circle(at, S * 0.42, Color("b8a8f0", 0.18))
 	for spec in [[-0.18, 0.5, 0.14], [0.05, 0.75, 0.16], [0.22, 0.45, 0.12]]:
 		var bx: float = at.x + S * spec[0]
 		var h: float = S * spec[1]
 		var w: float = S * spec[2]
 		var bottom := at.y + S * 0.3
 		var pts := PackedVector2Array([Vector2(bx - w, bottom), Vector2(bx - w * 0.8, bottom - h * 0.7), Vector2(bx, bottom - h), Vector2(bx + w * 0.8, bottom - h * 0.7), Vector2(bx + w, bottom)])
-		draw_colored_polygon(pts, Color("9d8cdc"))
-		draw_colored_polygon(PackedVector2Array([Vector2(bx - w * 0.8, bottom - h * 0.7), Vector2(bx, bottom - h), Vector2(bx, bottom)]), Color("cfc4fa"))
+		_ci.draw_colored_polygon(pts, Color("9d8cdc"))
+		_ci.draw_colored_polygon(PackedVector2Array([Vector2(bx - w * 0.8, bottom - h * 0.7), Vector2(bx, bottom - h), Vector2(bx, bottom)]), Color("cfc4fa"))
 
 
 ## Sprite posé sur une case : centré en bas de la case (débordant vers le haut s'il
@@ -319,8 +428,8 @@ func _spr(group: String, name: String, x: int, y: int, shadow: bool = false, wid
 		for i in 12:
 			var a := TAU * i / 12.0
 			pts.append(Vector2(cx + cos(a) * rw, bottom - S * 0.14 + sin(a) * rw * 0.32))
-		draw_colored_polygon(pts, Color(0, 0, 0, 0.22))
-	draw_texture_rect(t, Rect2(Vector2(left, bottom - sz.y), sz), false)
+		_ci.draw_colored_polygon(pts, Color(0, 0, 0, 0.22))
+	_ci.draw_texture_rect(t, Rect2(Vector2(left, bottom - sz.y), sz), false)
 
 
 ## Forêt : un arbre par case (plus ou moins dense), variantes selon la position.

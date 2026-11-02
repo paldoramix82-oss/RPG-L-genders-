@@ -157,9 +157,10 @@ func _ready() -> void:
 		_refresh_overlay("journal"))
 	_client.message_received.connect(_on_message)
 	_client.message_updated.connect(_on_message_updated)
-	_client.characters_changed.connect(_on_characters)
-	_client.map_changed.connect(_refresh_map)
-	_client.phase_changed.connect(_refresh_phase)
+	# Regroupés : une seule mise à jour par image (téléphone plus fluide).
+	_client.characters_changed.connect(_later.bind("chars", _on_characters))
+	_client.map_changed.connect(_later.bind("map", _refresh_map))
+	_client.phase_changed.connect(_later.bind("phase", _refresh_phase))
 	_client.settings_changed.connect(_refresh_all)
 	_client.command_failed.connect(_on_command_failed)
 	_client.quests_changed.connect(_on_quests)
@@ -972,6 +973,7 @@ func _show_loot(items: Array, gold: int) -> void:
 	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.z_index = 45
+	holder.add_to_group("loot_popup")
 	add_child(holder)
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = "HighlightPanel"
@@ -1062,6 +1064,18 @@ func _on_fx(list: Array) -> void:
 	for f in list:
 		if String(f.get("token", "")) == me and String(f.get("type", "")) == "dmg":
 			Input.vibrate_handheld(80)
+
+
+var _pending_refresh := {}
+
+
+func _later(key: String, f: Callable) -> void:
+	if _pending_refresh.has(key):
+		return
+	_pending_refresh[key] = true
+	(func():
+		_pending_refresh.erase(key)
+		f.call()).call_deferred()
 
 
 func _refresh_map() -> void:

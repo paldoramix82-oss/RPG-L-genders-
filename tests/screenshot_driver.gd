@@ -213,6 +213,9 @@ func _player() -> void:
 	c.roll("d20+2", Protocol.TO_ALL, "Escalade")
 	c.send_chat(Protocol.TO_MJ, "Je garde une flamme allumée dans ma main, discrètement.")
 	await get_tree().create_timer(4.5).timeout
+	# La fenêtre « Butin ! » des objets donnés au départ cache la capture.
+	for n in get_tree().get_nodes_in_group("loot_popup"):
+		n.queue_free()
 	match tab:
 		"story":
 			screen._show_view("story")
