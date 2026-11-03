@@ -1227,19 +1227,20 @@ func _refresh_turn_bar() -> void:
 			_turn_bar.add_child(GameUI.hint("Aucune cible à portée : rapprochez-vous ou annulez."))
 		_turn_bar.add_child(UIKit.button("Annuler", "", _cancel_target))
 		return
+	# Hors tour par tour : une ligne d'état et trois menus regroupés (l'écran du
+	# téléphone ne se remplit plus de boutons).
 	if not phase.get("turns", false):
-		var move: String = {"free": "Déplacement libre : touchez une case pour y aller.", "none": "Pas de déplacement pendant cette phase."}.get(String(phase.get("move", "free")), "")
-		_turn_bar.add_child(UIKit.label("%s — %s" % [phase.get("name", ""), move], "MutedLabel", true))
-		if phase.get("move", "free") == "free":
-			_turn_bar.add_child(GameUI.hint("Touchez un monstre pour l'attaquer, un PNJ pour lui parler. Attention : un monstre qui vous voit attaque."))
-		if not _client.my_token().is_empty():
-			_turn_bar.add_child(_quick_checks())
-		_turn_bar.add_child(_dice_row())
+		var move: String = {"free": "touchez une case pour vous déplacer", "none": "pas de déplacement"}.get(String(phase.get("move", "free")), "")
+		var st := UIKit.label("%s — %s" % [phase.get("name", ""), move], "MutedLabel")
+		st.clip_text = true
+		_turn_bar.add_child(st)
+		_turn_bar.add_child(_menu_row([["Agir", "hand", _open_actions_menu], ["Épreuves", "target", _open_checks.bind("")], ["Dés", "star", _open_dice_menu]]))
 		return
 	if not _client.is_my_turn():
 		var current := MapData.token(_client.map, String(phase.get("current", "")))
-		_turn_bar.add_child(UIKit.label("Au tour de %s. Vous pouvez discuter en attendant." % current.get("name", "?") if not current.is_empty() else "Un combattant hors de vue joue…", "MutedLabel", true))
-		_turn_bar.add_child(_dice_row())
+		var wl := UIKit.label("Au tour de %s. Vous pouvez discuter en attendant." % current.get("name", "?") if not current.is_empty() else "Un combattant hors de vue joue…", "MutedLabel", true)
+		_turn_bar.add_child(wl)
+		_turn_bar.add_child(_menu_row([["Dés", "star", _open_dice_menu]]))
 		return
 	var busy := _client.pending_count() > 0
 	var ap := int(phase.get("ap", 0))
@@ -1268,36 +1269,22 @@ func _refresh_turn_bar() -> void:
 		head.add_child(end)
 	var r := Content.rules(_client.content)
 	var actions := GridContainer.new()
-	actions.columns = 1 if _landscape else 2
+	actions.columns = 1 if _landscape else 3
 	actions.add_theme_constant_override("h_separation", 6)
 	actions.add_theme_constant_override("v_separation", 6)
 	_turn_bar.add_child(actions)
 	var buttons: Array = []
 	if phase.get("type", "") == "combat":
 		var reach := int(Rules.attack_profile(_client.my_character(), _client.content, Rules.weapons(_client.my_character())[0]).get("range", 1))
-		for spec in [["Attaque rapide", "quick", int(r.quick_attack_ap), "Une attaque avec votre arme."], ["Attaque puissante", "power", int(r.power_attack_ap), "−2 au toucher, +50 % de dégâts."]]:
+		for spec in [["Rapide", "quick", int(r.quick_attack_ap), "Une attaque avec votre arme."], ["Puissante", "power", int(r.power_attack_ap), "−2 au toucher, +50 % de dégâts."]]:
 			var b := UIKit.button("%s · %d PA" % [spec[0], spec[2]], "PrimaryButton" if spec[1] == "quick" and ap >= int(spec[2]) else "", _start_target.bind({"action": spec[1], "label": spec[0], "kind": "enemy", "range": reach}))
 			b.disabled = ap < int(spec[2]) or busy
 			b.tooltip_text = spec[3]
 			buttons.append(b)
-		var defend := UIKit.button("Se défendre · %d PA" % int(r.defend_ap), "", func(): _client.turn_action("defend"))
-		defend.disabled = ap < int(r.defend_ap) or busy
-		defend.tooltip_text = "+3 Défense jusqu'à votre prochain tour."
-		buttons.append(defend)
-		var item := UIKit.button("Objet · %d PA" % int(r.item_ap), "", _open_inventory.bind("bag"))
-		item.disabled = ap < int(r.item_ap) or busy
-		item.tooltip_text = "Ouvrir le sac pour boire une potion ou utiliser un objet."
-		buttons.append(item)
-		var test := UIKit.button("Épreuve · %d PA" % int(r.get("check_ap", 1)), "", _open_checks.bind(""))
-		test.disabled = ap < int(r.get("check_ap", 1)) or busy
-		test.tooltip_text = "Intimider, observer, soigner un allié… (jet automatique)."
-		buttons.append(test)
-		if phase.has("encounter"):
-			var flee_ap := int(r.move_ap)
-			var flee := UIKit.button("Fuir · %d PA" % flee_ap, "", func(): _client.turn_action("flee"))
-			flee.disabled = ap < flee_ap or busy
-			flee.tooltip_text = "Jet de Dextérité contre 10 (+3 par ennemi au contact). Réussi : vous quittez ce combat."
-			buttons.append(flee)
+		# Le reste est regroupé dans « Plus… » (se défendre, objet, épreuve, fuir).
+		var more := UIKit.button("Plus…", "", _open_combat_menu.bind(ap, busy))
+		more.tooltip_text = "Se défendre, utiliser un objet, tenter une épreuve, fuir."
+		buttons.append(more)
 	for b in buttons:
 		b.custom_minimum_size.y = 42 if not _landscape else 38
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2180,3 +2167,83 @@ func _idea(spec: String) -> void:
 				_refresh_outbox()
 			else:
 				_composer.start_action(spec)
+
+
+
+# ---------------------------------------------------------------------------
+# Menus regroupés (téléphone) : Agir, Dés, Plus… en combat
+# ---------------------------------------------------------------------------
+
+## Rangée de gros boutons de menu (icône + texte).
+func _menu_row(specs: Array) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	for spec in specs:
+		var b := UIKit.button(String(spec[0]) + "  ›", "", spec[2])
+		b.icon = null
+		b.custom_minimum_size.y = 44
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 16)
+		row.add_child(b)
+	return row
+
+
+func _menu_section(panel: OverlayPanel, title: String) -> HFlowContainer:
+	panel.body.add_child(GameUI.section_title(title))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 6)
+	panel.body.add_child(flow)
+	return flow
+
+
+func _menu_button(flow: Control, text: String, f: Callable, primary: bool = false) -> Button:
+	var b := UIKit.button(text, "PrimaryButton" if primary else "", func():
+		_close_overlay()
+		f.call())
+	b.custom_minimum_size = Vector2(150, 46)
+	flow.add_child(b)
+	return b
+
+
+func _open_actions_menu() -> void:
+	var panel := _open_overlay("actions", "Agir", "hand")
+	panel.body.add_child(GameUI.hint("Sur la carte : touchez un monstre pour l'attaquer, un PNJ pour lui parler, un coffre ou un passage pour l'ouvrir. Un monstre qui vous voit attaque."))
+	if not _client.my_token().is_empty():
+		var ex := _menu_section(panel, "Explorer (jet automatique)")
+		for skill in Checks.QUICK:
+			var b := _check_button(skill, String(Checks.QUICK_LABELS[skill]))
+			b.custom_minimum_size = Vector2(150, 46)
+			ex.add_child(b)
+	var talk := _menu_section(panel, "Parler et agir")
+	_menu_button(talk, "Décrire une action…", func():
+		_show_view("story")
+		_composer.start_action(""), true)
+	_menu_button(talk, "Parler au groupe", _open_chat)
+	_menu_button(talk, "Utiliser un objet", _open_inventory.bind("bag"))
+	_menu_button(talk, "Journal des quêtes", _open_journal.bind("quests"))
+
+
+func _open_dice_menu() -> void:
+	var panel := _open_overlay("dice", "Lancer des dés", "star")
+	panel.body.add_child(GameUI.hint("Le résultat est visible par tout le groupe. Pour un jet secret ou une formule (2d6+3…), utilisez « Dés » dans le Récit."))
+	var flow := _menu_section(panel, "Un dé")
+	for expr in ["d20", "d12", "d10", "d8", "d6", "d4", "d100", "2d6"]:
+		_menu_button(flow, expr, _roll.bind(Protocol.TO_ALL, expr, ""), expr == "d20")
+
+
+func _open_combat_menu(ap: int, busy: bool) -> void:
+	var r := Content.rules(_client.content)
+	var phase := _client.phase
+	var panel := _open_overlay("combat_more", "Autres actions", "shield")
+	var flow := _menu_section(panel, "Points d'action : %d" % ap)
+	var specs := [["Se défendre · %d PA" % int(r.defend_ap), int(r.defend_ap), func(): _client.turn_action("defend"), "+3 Défense jusqu'à votre prochain tour."],
+		["Objet · %d PA" % int(r.item_ap), int(r.item_ap), _open_inventory.bind("bag"), "Boire une potion, utiliser un objet."],
+		["Épreuve · %d PA" % int(r.get("check_ap", 1)), int(r.get("check_ap", 1)), _open_checks.bind(""), "Intimider, observer, soigner un allié…"]]
+	if phase.has("encounter"):
+		specs.append(["Fuir · %d PA" % int(r.move_ap), int(r.move_ap), func(): _client.turn_action("flee"), "d20 + Dextérité contre 10 (+3 par ennemi au contact)."])
+	for spec in specs:
+		var b := _menu_button(flow, String(spec[0]), spec[2])
+		b.disabled = ap < int(spec[1]) or busy
+		b.tooltip_text = String(spec[3])
+	panel.body.add_child(UIKit.label("Se défendre : +3 Défense jusqu'à votre prochain tour. Fuir : d20 + Dextérité contre 10 (+3 par ennemi au contact) ; réussi, vous quittez ce combat.", "MutedLabel", true))

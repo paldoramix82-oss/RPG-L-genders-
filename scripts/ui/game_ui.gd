@@ -206,6 +206,12 @@ static func stat_tile(stat_name: String, value: int, content: Dictionary, bonus:
 	panel.theme_type_variation = "InsetPanel"
 	panel.custom_minimum_size.x = 92
 	panel.tooltip_text = String(info.get("description", ""))
+	# Toucher la case : ce que fait cette caractéristique (téléphone : pas d'infobulle).
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.gui_input.connect(func(ev: InputEvent):
+		if (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT) or (ev is InputEventScreenTouch and ev.pressed):
+			var txt := String(info.get("description", "")) + ("\n\nValeur %d (%+d grâce à l'équipement, au peuple ou aux effets)." % [value, bonus] if bonus != 0 else "\n\nValeur %d." % value)
+			ConfirmBox.show_content(panel.get_tree().current_scene, stat_name, UIKit.label(txt, "", true)))
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 0)
 	panel.add_child(col)

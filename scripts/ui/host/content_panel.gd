@@ -118,6 +118,7 @@ func _row(e: Dictionary) -> Control:
 	actions.add_theme_constant_override("v_separation", 4)
 	card.add_child(actions)
 	var id := String(e.id)
+	actions.add_child(_small("Infos", "", func(): show_requested.emit(String(e.get("name", id)), _info(e))))
 	actions.add_child(_small("Modifier", "", func(): edit_requested.emit(_kind, e)))
 	actions.add_child(_small("Dupliquer", "", func():
 		var copy: Dictionary = e.duplicate(true)
@@ -275,3 +276,39 @@ func _small(text: String, variation: String, cb: Callable) -> Button:
 	b.custom_minimum_size.y = 36
 	b.add_theme_font_size_override("font_size", 14)
 	return b
+
+
+## Fiche d'information (ce que fait l'entrée), comme la verraient les joueurs.
+func _info(e: Dictionary) -> Control:
+	var content := Net.server.content
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	match _kind:
+		"abilities":
+			box.add_child(GameUI.ability_card(e, content))
+		"monsters":
+			var st: Dictionary = e.get("stats", {})
+			box.add_child(UIKit.label(String(e.get("description", "")), "", true))
+			box.add_child(UIKit.label("%d PV · attaque %s (%s, portée %d) · Défense +%d · vitesse %d · %d XP · attitude : %s" % [int(e.get("hp", 0)),
+				e.get("weapon", {}).get("damage", "1d6"), e.get("weapon", {}).get("element", "physique"), int(e.get("weapon", {}).get("range", 1)),
+				int(e.get("defense_bonus", 0)), int(e.get("speed", 5)), int(e.get("xp", 0)), String(e.get("attitude", "hostile"))], "StrongLabel", true))
+			box.add_child(UIKit.label("  ".join(PackedStringArray(st.keys().map(func(k): return "%s %d" % [k, int(st[k])]))), "MutedLabel", true))
+			for aid in e.get("abilities", []):
+				var a := Content.get_entry(content, "abilities", String(aid))
+				if not a.is_empty():
+					box.add_child(GameUI.ability_card(a, content))
+		"classes":
+			box.add_child(UIKit.label(String(e.get("description", "")), "", true))
+			var p: Dictionary = e.get("passive", {})
+			if not p.is_empty():
+				box.add_child(UIKit.label("Passif — %s : %s" % [p.get("name", ""), p.get("description", "")], "StrongLabel", true))
+			for aid in e.get("abilities", []) + [e.get("ultimate", "")]:
+				var a := Content.get_entry(content, "abilities", String(aid))
+				if not a.is_empty():
+					box.add_child(GameUI.ability_card(a, content))
+		_:
+			box.add_child(UIKit.label(String(e.get("description", "")), "", true))
+			box.add_child(UIKit.label(_summary(e), "MutedLabel", true))
+			if _kind == "items":
+				box.add_child(UIKit.label(Inventory.describe(e, content), "", true))
+	return box
