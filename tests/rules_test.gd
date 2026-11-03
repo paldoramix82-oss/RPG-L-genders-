@@ -876,6 +876,12 @@ func _test_collisions() -> void:
 	_expect(s.can_swim(pa) and s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 15, "y": 10}) == "", "avec assez de Dextérité, on nage dans l'eau peu profonde")
 	_expect(s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 16, "y": 10}) != "", "l'eau profonde reste infranchissable")
 	s.content.rules.swim_dex = 6
+	# Pinceau de décor.
+	_expect(s.mj_set_decor(m.id, 20, 5, "tree_autumn") and not MapData.passable(map, 20, 5), "pinceau de décor : un arbre posé bloque le passage")
+	_expect(s.mj_set_decor(m.id, 21, 5, "flowers_1") and MapData.passable(map, 21, 5), "des fleurs se traversent")
+	_expect(s.mj_set_decor(m.id, 20, 5, "") and MapData.passable(map, 20, 5), "gomme de décor")
+	_expect(not s.mj_set_decor(m.id, 22, 5, "n_existe_pas"), "un décor inconnu est refusé")
+	_expect(Sprites.names("props").has("weapon_rack") and Sprites.names("nature").has("pine_snow"), "nouveaux décors disponibles dans la palette")
 
 
 func _test_monk_necro() -> void:

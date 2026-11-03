@@ -663,7 +663,7 @@ func _begin(pos: Vector2) -> void:
 		var t := MapData.token_at(map, c.x, c.y)
 		if can_move(t):
 			_drag_candidate = t.id
-	elif tool == "paint" and MapData.in_bounds(map, c.x, c.y):
+	elif tool in ["paint", "decor"] and MapData.in_bounds(map, c.x, c.y):
 		_painting = true
 		_last_paint = c
 		paint_requested.emit(c.x, c.y)

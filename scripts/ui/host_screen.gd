@@ -41,6 +41,8 @@ var _stroke := false
 var _rect_start := Vector2i(-1, -1)
 ## Bâtiment prêt / habitant à poser au prochain toucher.
 var _prefab_id := ""
+## Décor posé par le pinceau de décor ("" = gomme de décor).
+var _decor_id := "tree_0"
 var _prefab_npc := true
 var _role_id := ""
 var _token_tpl := {"kind": "monster", "name": "Monstre", "color": "#b0605a", "hp": 10, "hidden": true}
@@ -748,7 +750,10 @@ func _build_map_center() -> Control:
 			# Début d'un coup de pinceau : on mémorise pour pouvoir annuler.
 			_stroke = true
 			Net.server.mj_snapshot(_edit_map)
-		Net.server.mj_paint(_edit_map, x, y, _paint_code, _brush))
+		if _tool == "decor":
+			Net.server.mj_set_decor(_edit_map, x, y, _decor_id)
+		else:
+			Net.server.mj_paint(_edit_map, x, y, _paint_code, _brush))
 	_map_view.paint_finished.connect(func(): _stroke = false)
 	_map_view.cell_tapped.connect(_on_cell_tapped)
 	_map_view.target_picked.connect(_on_mj_target)
@@ -887,7 +892,7 @@ func _build_world_tools() -> Control:
 	tools.add_theme_constant_override("v_separation", 6)
 	tc.add_child(tools)
 	var group := ButtonGroup.new()
-	for spec in [["move", "Déplacer"], ["paint", "Peindre"], ["fill", "Remplir"], ["rect", "Rectangle"], ["room", "Pièce"], ["token", "Pion"], ["label", "Étiquette"], ["erase", "Gomme"], ["spawn", "Départ"]]:
+	for spec in [["move", "Déplacer"], ["paint", "Peindre"], ["decor", "Décor"], ["fill", "Remplir"], ["rect", "Rectangle"], ["room", "Pièce"], ["token", "Pion"], ["label", "Étiquette"], ["erase", "Gomme"], ["spawn", "Départ"]]:
 		var b := _small_button(spec[1], "", _set_tool.bind(spec[0]))
 		b.toggle_mode = true
 		b.button_group = group
@@ -1087,8 +1092,46 @@ func _set_tool(tool: String) -> void:
 			_tool_options.add_child(UIKit.label("Touchez une case pour poser l'étiquette. Toucher une étiquette existante la rend secrète ou visible.", "MutedLabel", true))
 		"erase":
 			_tool_options.add_child(UIKit.label("Touchez un pion (hors pions de joueurs) ou une étiquette pour la supprimer.", "MutedLabel", true))
+		"decor":
+			_tool_options.add_child(GameUI.hint("Touchez ou glissez sur la carte pour poser le décor choisi (arbres, rochers, meubles…). Arbres, meubles et gros rochers bloquent le passage. « Gomme » retire le décor."))
+			_tool_options.add_child(_decor_palette())
 		"spawn":
 			_tool_options.add_child(UIKit.label("Touchez la case où apparaissent les pions des joueurs.", "MutedLabel", true))
+
+
+## Palette du pinceau de décor : nature puis mobilier, avec leur dessin.
+func _decor_palette() -> Control:
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	var group := ButtonGroup.new()
+	var add := func(id: String, tex: Texture2D, tip: String):
+		var b := Button.new()
+		b.toggle_mode = true
+		b.button_group = group
+		b.tooltip_text = tip
+		b.custom_minimum_size = Vector2(52, 52)
+		b.button_pressed = id == _decor_id
+		b.pressed.connect(func(): _decor_id = id)
+		if tex != null:
+			var ic := TextureRect.new()
+			ic.texture = tex
+			ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 4)
+			b.add_child(ic)
+		else:
+			b.text = tip
+		grid.add_child(b)
+	add.call("", null, "Gomme")
+	for group_name in ["nature", "props"]:
+		for n in Sprites.names(group_name):
+			if n != "door":
+				add.call(n, Sprites.tex(group_name, n), n.replace("_", " ").capitalize())
+	return grid
 
 
 ## Bouton de bâtiment avec son plan en miniature.

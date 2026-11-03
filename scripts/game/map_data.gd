@@ -139,11 +139,15 @@ static func decor_at(map: Dictionary, x: int, y: int) -> String:
 
 ## Décors qui bloquent le passage (les tapis, chaises et fleurs non).
 const BLOCKING_DECOR := ["table", "barrel", "crate", "bed", "shelf", "anvil", "hearth", "altar", "well", "statue", "pillar",
-	"cauldron", "sacks", "hay", "grave", "grave_cross", "campfire", "crystal_cluster", "rock_big", "lamp"]
+	"cauldron", "sacks", "hay", "grave", "grave_cross", "campfire", "crystal_cluster", "lamp", "fence", "signpost", "bench",
+	"cart", "throne", "candles", "cage", "weapon_rack", "dummy", "firewood", "jars", "flowerpot", "banner", "stump", "log", "door"]
 
 
 static func decor_blocks(id: String) -> bool:
-	return id in BLOCKING_DECOR or id.begins_with("stall_") or id.begins_with("tent_") or id.begins_with("tree_") or id.begins_with("pine_")
+	for prefix in ["stall_", "tent_", "tree_", "pine_", "bush_", "rock_"]:
+		if id.begins_with(prefix):
+			return true
+	return id in BLOCKING_DECOR
 
 
 ## Case praticable à pied : terrain franchissable, pas de meuble ni de décor

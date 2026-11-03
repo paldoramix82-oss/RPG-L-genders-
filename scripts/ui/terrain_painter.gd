@@ -345,7 +345,7 @@ func _detail(x: int, y: int, code: String) -> void:
 	var decor := MapData.decor_at(map, x, y)
 	if decor != "" and decor != "-":
 		var wide := decor.begins_with("stall_")
-		_spr("props", decor, x, y, true, wide)
+		_spr("props" if Sprites.tex("props", decor) != null else "nature", decor, x, y, true, wide)
 
 
 func _tuft(at: Vector2, base: Color) -> void:

@@ -153,7 +153,17 @@ func _host() -> void:
 				screen._load_edit_map()
 				screen._show("table")
 				screen._show_tools("world")
-				if spec.size() > 2:
+				if spec.size() > 2 and spec[2] == "decor":
+					screen._set_tool("decor")
+					await get_tree().process_frame
+					await get_tree().process_frame
+					var opts: Control = screen._tool_options
+					var sc: Node = opts.get_parent()
+					while sc != null and not sc is ScrollContainer:
+						sc = sc.get_parent()
+					if sc != null:
+						sc.scroll_vertical = int(opts.global_position.y - sc.global_position.y) + sc.scroll_vertical - 60
+				elif spec.size() > 2:
 					screen._prefab_id = spec[2]
 					screen._set_tool("prefab")
 					await get_tree().process_frame

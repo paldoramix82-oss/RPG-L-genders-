@@ -24,6 +24,18 @@ static func tex(group: String, name: String) -> Texture2D:
 	return t
 
 
+## Noms des sprites d'un groupe (fonctionne aussi dans le jeu exporté, où il
+## ne reste que les fichiers « .import »).
+static func names(group: String) -> Array:
+	var out: Array = []
+	for f in DirAccess.get_files_at(DIR + group):
+		var n := String(f).trim_suffix(".import").trim_suffix(".remap").trim_suffix(".png")
+		if not out.has(n) and n != "":
+			out.append(n)
+	out.sort()
+	return out
+
+
 static func item(name: String) -> Texture2D:
 	return tex("items", String(ITEM_ALIASES.get(name, name)))
 

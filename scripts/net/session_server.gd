@@ -949,6 +949,20 @@ func mj_paint(map_id: String, x: int, y: int, code: String, radius: int = 0) -> 
 	return changed
 
 
+## Pinceau de décor : pose (ou retire, id "") un arbre, un rocher, un meuble…
+func mj_set_decor(map_id: String, x: int, y: int, id: String) -> bool:
+	var map: Dictionary = maps.get(map_id, {})
+	if map.is_empty() or not MapData.in_bounds(map, x, y):
+		return false
+	if id != "" and Sprites.tex("props", id) == null and Sprites.tex("nature", id) == null:
+		return false
+	if MapData.decor_at(map, x, y) == id:
+		return false
+	MapData.set_decor(map, x, y, id)
+	map_changed(map_id)
+	return true
+
+
 # --- Combats locaux : agressivité, rencontres, monstres automatiques ---
 
 ## Rencontre qui contient ce pion ({} s'il n'est dans aucun combat local).

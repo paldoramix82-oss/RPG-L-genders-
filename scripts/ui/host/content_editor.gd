@@ -444,13 +444,7 @@ func _rebuild() -> void:
 
 ## Liste des apparences (sprites de personnages et de monstres).
 static func unit_sprites() -> Array:
-	var out: Array = []
-	for f in DirAccess.get_files_at("res://assets/sprites/units"):
-		var n := String(f).trim_suffix(".import").trim_suffix(".png")
-		if not out.has(n):
-			out.append(n)
-	out.sort()
-	return out
+	return Sprites.names("units")
 
 
 func _sprite_pick(parent: Node, path: String, caption: String) -> void:
