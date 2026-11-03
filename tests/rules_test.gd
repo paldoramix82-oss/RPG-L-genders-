@@ -27,6 +27,7 @@ func _ready() -> void:
 	_test_collisions()
 	_test_monk_necro()
 	_test_alliances()
+	_test_keys()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -963,3 +964,42 @@ func _test_alliances() -> void:
 	var tame := s.mj_content_save("monsters", {"id": "loup_apprivoise", "name": "Loup apprivoisé", "attitude": "allie", "hp": 15})
 	var t3 := s.mj_spawn_monster("loup_apprivoise", 20, 10, false)
 	_expect(s.combat.side(t3) == "players", "l'attitude du modèle de monstre s'applique à tous ses pions")
+
+
+func _test_keys() -> void:
+	print("\n— Clés, portes et énigmes")
+	var s := _server()
+	var a := _add_player(s, "Aria")
+	s._cmd_char_create(a, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Aria"}})
+	var m := s.mj_create_map("Crypte", 30, 12)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	var map: Dictionary = s.maps[s.active_map]
+	var pa := MapData.token(map, "pawn_" + a.id)
+	pa.x = 5
+	pa.y = 5
+	var key := s.mj_create_key("Clé de la crypte")
+	_expect(not key.is_empty() and String(key.icon) == "key", "le MJ crée une clé")
+	var chest := s.mj_add_token(m.id, {"kind": "object", "name": "Coffre scellé", "x": 6, "y": 5})
+	chest.loot = "coffre"
+	s.mj_update_token(m.id, chest.id, {"key": key.id, "consume_key": true})
+	_expect(s._cmd_open(a, {"token": chest.id}).contains("Clé de la crypte") and chest.has("loot"), "sans la clé, le coffre reste fermé (et dit laquelle il faut)")
+	# La clé est confiée à un monstre : on la récupère en le battant.
+	var guard := s.mj_spawn_monster("squelette", 9, 5, false)
+	s.mj_update_token(m.id, guard.id, {"carries": [key.id], "attitude": "neutre"})
+	_expect(not MapData.view_for_player(map).tokens.any(func(t): return t.has("carries")), "les joueurs ne voient pas ce que garde un monstre")
+	s.combat._on_defeated(guard, pa)
+	var has_key := func(): return (s.characters[a.id].inventory as Array).any(func(it): return String(it.get("item_id", "")) == String(key.id))
+	_expect(has_key.call(), "le monstre vaincu lâche la clé dans le sac du vainqueur")
+	_expect(s._cmd_open(a, {"token": chest.id}) == "" and not chest.has("loot"), "avec la clé, le coffre s'ouvre")
+	_expect(not has_key.call(), "la serrure a gardé la clé")
+	# Porte à énigme.
+	var door := s.mj_add_token(m.id, {"kind": "object", "name": "Porte du sphinx", "x": 4, "y": 5})
+	s.mj_update_token(m.id, door.id, {"door": true, "riddle_q": "Qu'est-ce qui a des clés mais n'ouvre aucune porte ?", "riddle_a": "Le piano"})
+	s._refresh_sprites(map)
+	_expect(String(door.sprite) == "props/door" and not MapData.view_for_player(map).tokens.any(func(t): return t.has("riddle_a")), "porte dessinée ; la réponse reste secrète")
+	_expect(not MapData.reach(map, Vector2i(5, 5), 1, true, s._move_blockers(map, pa)).has(Vector2i(4, 5)), "une porte fermée bloque le passage")
+	_expect(s._cmd_open(a, {"token": door.id, "answer": "une harpe"}) != "", "mauvaise réponse : la porte reste fermée")
+	_expect(s._cmd_open(a, {"token": door.id, "answer": "  PIANO "}) == "" and MapData.token(map, door.id).is_empty(), "bonne réponse (majuscules, article et espaces ignorés) : la porte s'ouvre")
+	var hint := s.mj_place_item(m.id, String(key.id), 20, 5)
+	_expect(not hint.is_empty() and hint.get("pickup", false), "le MJ peut aussi poser la clé par terre, à ramasser")

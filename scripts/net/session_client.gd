@@ -130,7 +130,9 @@ func engage(token_id: String) -> String:
 	return turn_action("engage", token_id)
 
 
-func open_chest(token_id: String) -> String:
+func open_chest(token_id: String, answer: String = "") -> String:
+	if answer != "":
+		return send_command(Protocol.CMD_OPEN, {"token": token_id, "answer": answer})
 	return send_command(Protocol.CMD_OPEN, {"token": token_id})
 
 

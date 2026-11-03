@@ -1139,6 +1139,101 @@ func _prefab_button(id: String) -> Control:
 	return b
 
 
+## Liste d'objets du catalogue (les clés d'abord) pour un choix.
+func _item_option(selected_id: String, empty_label: String) -> OptionButton:
+	var o := OptionButton.new()
+	o.fit_to_longest_item = false
+	o.add_item(empty_label)
+	o.set_item_metadata(0, "")
+	var items := Content.list(Net.server.content, "items")
+	items.sort_custom(func(a, b): return (String(a.get("icon", "")) == "key") and String(b.get("icon", "")) != "key")
+	for it in items:
+		o.add_item(String(it.name) + ("  (clé)" if String(it.get("icon", "")) == "key" else ""))
+		o.set_item_metadata(o.item_count - 1, String(it.id))
+		if String(it.id) == selected_id:
+			o.select(o.item_count - 1)
+	return o
+
+
+## Coffre ou porte : clé requise, énigme.
+func _lock_box(t: Dictionary, upd: Callable) -> Control:
+	var box := UIKit.fold(null, "Serrure, clé et énigme", String(t.get("key", "")) != "" or String(t.get("riddle_q", "")) != "" or t.get("door", false), "InsetPanel")
+	var door := CheckBox.new()
+	door.text = "C'est une porte (bloque le passage ; disparaît une fois ouverte)"
+	door.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	door.button_pressed = t.get("door", false)
+	door.toggled.connect(func(on): upd.call({"door": on}))
+	box.add_child(door)
+	var key := _item_option(String(t.get("key", "")), "Aucune clé requise")
+	key.item_selected.connect(func(i): upd.call({"key": String(key.get_item_metadata(i))}))
+	UIKit.field(box, "Clé requise pour ouvrir", key)
+	var consume := CheckBox.new()
+	consume.text = "La clé est gardée par la serrure (retirée du sac)"
+	consume.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	consume.button_pressed = t.get("consume_key", false)
+	consume.toggled.connect(func(on): upd.call({"consume_key": on}))
+	box.add_child(consume)
+	box.add_child(_small_button("Créer une nouvelle clé…", "", func():
+		_dialog_new_key(func(item):
+			upd.call({"key": String(item.id)})
+			_refresh_inspector())))
+	var q := UIKit.line_edit(String(t.get("riddle_q", "")), "Ex. : Plus j'ai de gardiens, moins je suis gardé…")
+	q.focus_exited.connect(func(): upd.call({"riddle_q": q.text}))
+	q.text_submitted.connect(func(v): upd.call({"riddle_q": v}))
+	UIKit.field(box, "Énigme (facultatif)", q)
+	var a := UIKit.line_edit(String(t.get("riddle_a", "")), "Réponse attendue (secrète)")
+	a.focus_exited.connect(func(): upd.call({"riddle_a": a.text}))
+	a.text_submitted.connect(func(v): upd.call({"riddle_a": v}))
+	UIKit.field(box, "Réponse (majuscules et accents ignorés)", a)
+	return box.get_parent().get_parent()
+
+
+## Monstre ou PNJ : objets qu'il garde et lâche à sa défaite (clés, indices…).
+func _carries_box(t: Dictionary, upd: Callable) -> Control:
+	var carried: Array = (t.get("carries", []) as Array).duplicate()
+	var box := UIKit.fold(null, "Objets qu'il garde (%d)" % carried.size(), not carried.is_empty(), "InsetPanel")
+	box.add_child(UIKit.label("Lâchés à sa défaite, dans le sac de celui qui l'a vaincu.", "MutedLabel", true))
+	for item_id in carried:
+		var row := HBoxContainer.new()
+		box.add_child(row)
+		var l := UIKit.label(String(Content.get_entry(Net.server.content, "items", String(item_id)).get("name", item_id)), "", true)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		var iid := String(item_id)
+		row.add_child(_small_button("×", "DangerButton", func():
+			var rest := carried.duplicate()
+			rest.erase(iid)
+			upd.call({"carries": rest})
+			_refresh_inspector()))
+	var pick := _item_option("", "Choisir un objet…")
+	box.add_child(pick)
+	var row2 := HFlowContainer.new()
+	row2.add_theme_constant_override("h_separation", 6)
+	box.add_child(row2)
+	row2.add_child(_small_button("Lui confier", "PrimaryButton", func():
+		var id := String(pick.get_item_metadata(pick.selected))
+		if id != "":
+			upd.call({"carries": carried + [id]})
+			_refresh_inspector()))
+	row2.add_child(_small_button("Créer une clé et la lui confier…", "", func():
+		_dialog_new_key(func(item):
+			upd.call({"carries": carried + [String(item.id)]})
+			_refresh_inspector())))
+	return box.get_parent().get_parent()
+
+
+func _dialog_new_key(done: Callable) -> void:
+	var box := VBoxContainer.new()
+	box.custom_minimum_size.x = 320
+	var n := UIKit.line_edit("", "Ex. : Clé de la crypte")
+	UIKit.field(box, "Nom de la clé", n)
+	_dialog("Nouvelle clé", box, func():
+		var item := Net.server.mj_create_key(n.text)
+		if not item.is_empty():
+			done.call(item)
+			_notifier.push("Clé « %s » créée." % item.name, "success"))
+
+
 func _terrain_button(code: String, group: ButtonGroup) -> Button:
 	var info: Array = MapData.TERRAINS[code]
 	var b := Button.new()
@@ -1326,6 +1421,10 @@ func _refresh_inspector() -> void:
 			look.select(look.item_count - 1)
 	look.item_selected.connect(func(i): upd.call({"sprite_custom": String(look.get_item_metadata(i))}))
 	UIKit.field(_inspector, "Apparence", look)
+	if t.kind == "object":
+		_inspector.add_child(_lock_box(t, upd))
+	if t.kind in ["monster", "npc"]:
+		_inspector.add_child(_carries_box(t, upd))
 	if t.kind in ["monster", "npc"]:
 		var att := OptionButton.new()
 		var att_specs := [["", "Attitude du modèle"], ["hostile", "Hostile"], ["neutre", "Neutre"], ["allie", "Allié des héros"]]

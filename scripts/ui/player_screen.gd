@@ -1554,7 +1554,7 @@ func _on_token_selected(token_id: String) -> void:
 	var dist := Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y)))
 	match String(t.get("kind", "")):
 		"object":
-			if String(t.get("loot", "")) != "":
+			if String(t.get("loot", "")) != "" or t.get("door", false) or String(t.get("key", "")) != "" or String(t.get("riddle_q", "")) != "":
 				_open_chest_panel(t, dist <= 1)
 		"npc":
 			_open_npc_panel(t, dist)
@@ -1575,11 +1575,41 @@ func _open_chest_panel(t: Dictionary, near: bool) -> void:
 		else:
 			pp.body.add_child(GameUI.hint("Approchez-vous (case voisine) pour le ramasser."))
 		return
-	var panel := _open_overlay("chest", String(t.get("name", "Coffre")), "chest")
+	var door: bool = t.get("door", false)
+	var panel := _open_overlay("chest", String(t.get("name", "Porte" if door else "Coffre")), "key" if door else "chest")
 	var lock := int(t.get("lock", 0))
-	panel.body.add_child(UIKit.label("Un coffre verrouillé (difficulté %d, %s)." % [lock, Checks.dc_name(lock)] if lock > 0 else "Un coffre fermé. Qui sait ce qu'il contient ?", "", true))
+	var key_id := String(t.get("key", ""))
+	var what := "cette porte" if door else "ce coffre"
+	if key_id != "":
+		var key_name := String(Content.get_entry(_client.content, "items", key_id).get("name", "une clé"))
+		var has_key := (_client.my_character().get("inventory", []) as Array).any(func(it): return String(it.get("item_id", "")) == key_id)
+		var kl := UIKit.label("Fermé à clé : il faut « %s »%s." % [key_name, " (vous l'avez !)" if has_key else ""], "StrongLabel", true)
+		kl.add_theme_color_override("font_color", Palette.OK if has_key else Palette.WARN)
+		panel.body.add_child(kl)
+	elif lock > 0:
+		panel.body.add_child(UIKit.label("Verrouillé (difficulté %d, %s)." % [lock, Checks.dc_name(lock)], "", true))
+	else:
+		panel.body.add_child(UIKit.label("Une porte fermée." if door else "Un coffre fermé. Qui sait ce qu'il contient ?", "", true))
 	if not near:
-		panel.body.add_child(GameUI.hint("Approchez-vous (case voisine) pour l'ouvrir."))
+		panel.body.add_child(GameUI.hint("Approchez-vous (case voisine) pour ouvrir %s." % what))
+		return
+	# Énigme : la réponse ouvre (le MJ l'a fixée).
+	if String(t.get("riddle_q", "")) != "":
+		var q := UIKit.label("Énigme : « %s »" % t.riddle_q, "StrongLabel", true)
+		q.add_theme_color_override("font_color", Palette.GOLD)
+		panel.body.add_child(q)
+		var answer := UIKit.line_edit("", "Votre réponse")
+		panel.body.add_child(answer)
+		panel.body.add_child(UIKit.button("Répondre et ouvrir", "PrimaryButton", func():
+			if answer.text.strip_edges() == "":
+				return
+			_close_overlay()
+			_client.open_chest(token_id, answer.text)))
+		return
+	if key_id != "" or door:
+		panel.body.add_child(UIKit.button("Ouvrir", "PrimaryButton", func():
+			_close_overlay()
+			_client.open_chest(token_id)))
 	elif lock > 0:
 		panel.body.add_child(_check_button("crochetage", "Crocheter la serrure", token_id, lock))
 		panel.body.add_child(_check_button("athletisme", "Forcer le coffre", token_id, lock + 2))

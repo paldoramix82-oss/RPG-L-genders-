@@ -1502,7 +1502,74 @@ func _cmd_open(player: Dictionary, payload: Dictionary) -> String:
 		return "Coffre introuvable."
 	if me.is_empty() or Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))) > 1:
 		return "Approchez-vous d'abord (case voisine)."
+	var c: Dictionary = characters.get(player.id, {})
+	# Énigme : il faut la bonne réponse.
+	if String(t.get("riddle_a", "")) != "":
+		if _answer_key(String(payload.get("answer", ""))) != _answer_key(String(t.riddle_a)):
+			return "Ce n'est pas la bonne réponse." if String(payload.get("answer", "")) != "" else "Répondez d'abord à l'énigme."
+	# Clé : il faut l'avoir dans son sac.
+	if String(t.get("key", "")) != "":
+		var key_id := String(t.key)
+		var have := (c.get("inventory", []) as Array).filter(func(it): return String(it.get("item_id", "")) == key_id)
+		if have.is_empty():
+			return "C'est fermé à clé : il faut %s." % String(Content.get_entry(content, "items", key_id).get("name", "la bonne clé"))
+		if t.get("consume_key", false):
+			var it: Dictionary = have[0]
+			it.qty = int(it.get("qty", 1)) - 1
+			if int(it.qty) <= 0:
+				(c.inventory as Array).erase(it)
+			_mark("characters")
+	if t.get("door", false):
+		(map.tokens as Array).erase(t)
+		_add_message({"kind": Protocol.KIND_SYSTEM, "from": Protocol.MJ_ID, "from_name": "Récit", "to": Protocol.TO_ALL,
+			"text": "%s ouvre %s." % [c.get("name", player.name), t.name]})
+		map_changed(active_map, true)
+		characters_changed.emit()
+		return ""
+	if String(t.get("loot", "")) == "":
+		if (t.get("chest_items", []) as Array).is_empty():
+			return "%s est vide." % t.name
+		t.loot = "-"
 	return open_chest(String(t.id), String(player.id))
+
+
+## Réponse d'énigme comparée sans majuscules, accents ni espaces superflus.
+static func _answer_key(text: String) -> String:
+	var out := text.strip_edges().to_lower()
+	for pair in [["é", "e"], ["è", "e"], ["ê", "e"], ["ë", "e"], ["à", "a"], ["â", "a"], ["ä", "a"], ["î", "i"], ["ï", "i"],
+			["ô", "o"], ["ö", "o"], ["ù", "u"], ["û", "u"], ["ü", "u"], ["ç", "c"], ["œ", "oe"], ["’", "'"]]:
+		out = out.replace(pair[0], pair[1])
+	while out.contains("  "):
+		out = out.replace("  ", " ")
+	for article in ["le ", "la ", "les ", "l'", "un ", "une ", "des "]:
+		if out.begins_with(article):
+			out = out.substr(article.length())
+	return out
+
+
+## Nouvelle clé (objet unique « quête ») à confier à un monstre, à poser ou à donner.
+func mj_create_key(key_name: String) -> Dictionary:
+	var n := Protocol.sanitize_name(key_name)
+	if n == "":
+		n = "Clé"
+	return mj_content_save("items", {"id": "cle_" + Protocol.random_hex(3), "name": n, "icon": "key", "category": "quete",
+		"rarity": "peu_commun", "description": "Elle doit bien ouvrir quelque chose…", "value": 0})
+
+
+## Pose un objet à ramasser sur la carte (clé, indice…).
+func mj_place_item(map_id: String, item_id: String, x: int, y: int) -> Dictionary:
+	var map: Dictionary = maps.get(map_id, {})
+	var def := Content.get_entry(content, "items", item_id)
+	if map.is_empty() or def.is_empty():
+		return {}
+	var p := MapData.free_cell_near(map, x, y)
+	var t := MapData.add_token(map, {"kind": "object", "name": String(def.name), "x": p.x, "y": p.y, "color": "#d8c070"})
+	if not t.is_empty():
+		t.loot = "-"
+		t.pickup = true
+		t.chest_items = [{"item": item_id, "qty": 1}]
+		map_changed(map_id, true)
+	return t
 
 
 ## Mémorise le terrain avant une modification (pour « Annuler »), 20 étapes.
@@ -1688,7 +1755,7 @@ func _refresh_sprites(map: Dictionary) -> void:
 				elif String(sheet.get("class_id", "")) != "":
 					sprite = "units/" + String(sheet.class_id)
 			"object":
-				sprite = "items/chest"
+				sprite = "props/door" if t.get("door", false) else "items/chest"
 				if t.get("pickup", false) and not (t.get("chest_items", []) as Array).is_empty():
 					var def := Content.get_entry(content, "items", String(t.chest_items[0].get("item", "")))
 					sprite = "items/" + String(def.get("icon", "bag"))

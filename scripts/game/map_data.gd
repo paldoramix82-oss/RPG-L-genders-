@@ -290,6 +290,30 @@ static func update_token(t: Dictionary, data: Dictionary, map: Dictionary) -> vo
 			t.erase("sprite_custom")
 		else:
 			t["sprite_custom"] = sc
+	# Clés, portes et énigmes.
+	if data.has("key"):
+		var k := String(data.key).substr(0, 60)
+		if k == "":
+			t.erase("key")
+		else:
+			t["key"] = k
+	if data.has("consume_key"):
+		t["consume_key"] = bool(data.consume_key)
+	if data.has("door"):
+		t["door"] = bool(data.door)
+	for key in ["riddle_q", "riddle_a"]:
+		if data.has(key):
+			var txt := Protocol.sanitize_text(data[key], 200)
+			if txt == "":
+				t.erase(key)
+			else:
+				t[key] = txt
+	if data.has("carries") and data.carries is Array:
+		var list: Array = []
+		for it in data.carries:
+			if list.size() < 10 and String(it) != "":
+				list.append(String(it).substr(0, 60))
+		t["carries"] = list
 	if data.has("attitude") and String(data.attitude) in ["hostile", "neutre", "allie", ""]:
 		if String(data.attitude) == "":
 			t.erase("attitude")
@@ -340,7 +364,9 @@ static func view_for_player(map: Dictionary) -> Dictionary:
 	for t in map.tokens:
 		if not t.get("hidden", false):
 			var copy: Dictionary = t.duplicate()
-			copy.erase("note")
+			# Secrets du MJ : note, réponse d'énigme, objets portés, contenu des coffres.
+			for k in ["note", "riddle_a", "carries", "chest_items"]:
+				copy.erase(k)
 			view.tokens.append(copy)
 	return view
 

@@ -701,9 +701,14 @@ func _on_defeated(victim: Dictionary, killer: Dictionary) -> void:
 	s.phase["xp_pool"] = int(s.phase.get("xp_pool", 0)) + int(sh.get("xp_reward", 10 if sh.is_empty() else 0))
 	s.phase["defeated"] = int(s.phase.get("defeated", 0)) + 1
 	var table := String(sh.get("loot", ""))
-	if table == "":
+	if table == "" and (victim.get("carries", []) as Array).is_empty():
 		return
 	var drop := Inventory.roll_loot(content(), table, _rng)
+	# Objets confiés par le MJ (clés…) : toujours lâchés.
+	for item_id in victim.get("carries", []):
+		var inst := Content.item_instance(content(), String(item_id), 1)
+		if not inst.is_empty():
+			drop.items.append(inst)
 	_lines.append_array(s.give_drop(_owner_player(killer), drop, String(victim.get("name", ""))))
 
 
