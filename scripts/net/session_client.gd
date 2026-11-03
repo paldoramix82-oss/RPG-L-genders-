@@ -130,6 +130,11 @@ func engage(token_id: String) -> String:
 	return turn_action("engage", token_id)
 
 
+## Passer par un passage vers une autre carte (entrer dans une ville…).
+func enter(token_id: String) -> String:
+	return send_command(Protocol.CMD_ENTER, {"token": token_id})
+
+
 func open_chest(token_id: String, answer: String = "") -> String:
 	if answer != "":
 		return send_command(Protocol.CMD_OPEN, {"token": token_id, "answer": answer})

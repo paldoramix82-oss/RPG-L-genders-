@@ -1554,13 +1554,28 @@ func _on_token_selected(token_id: String) -> void:
 	var dist := Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y)))
 	match String(t.get("kind", "")):
 		"object":
-			if String(t.get("loot", "")) != "" or t.get("door", false) or String(t.get("key", "")) != "" or String(t.get("riddle_q", "")) != "":
+			if String(t.get("link", "")) != "":
+				_open_passage_panel(t, dist <= 1)
+			elif String(t.get("loot", "")) != "" or t.get("door", false) or String(t.get("key", "")) != "" or String(t.get("riddle_q", "")) != "":
 				_open_chest_panel(t, dist <= 1)
 		"npc":
 			_open_npc_panel(t, dist)
 		"monster":
 			_open_monster_panel(t, dist)
 	_map_view.selected = String(me.get("id", ""))
+
+
+## Passage vers une autre carte : seul celui qui entre change de carte.
+func _open_passage_panel(t: Dictionary, near: bool) -> void:
+	var token_id := String(t.id)
+	var panel := _open_overlay("passage", String(t.get("name", "Passage")), "castle")
+	panel.body.add_child(UIKit.label("Mène à : %s. Vous seul y entrez ; les autres joueurs restent où ils sont (ils peuvent vous suivre)." % t.get("link_name", "une autre carte"), "", true))
+	if not near:
+		panel.body.add_child(GameUI.hint("Approchez-vous (case voisine) pour entrer."))
+		return
+	panel.body.add_child(UIKit.button("Entrer", "PrimaryButton", func():
+		_close_overlay()
+		_client.enter(token_id)))
 
 
 func _open_chest_panel(t: Dictionary, near: bool) -> void:

@@ -59,6 +59,8 @@ var _rng := RandomNumberGenerator.new()
 ## plus « local », « players », « map_id », « timer », « manual »). Seuls les
 ## participants y sont ; les autres joueurs restent libres.
 var encounters := {}
+## Carte où se trouve chaque joueur (absent : la carte affichée à tous).
+var player_map := {}
 var _aggro_left := 0.5
 ## Aventure prête chargée : {id, name, tagline, description, length, music, scenes, map_id, quest_ids}.
 var adventure := {}
@@ -240,42 +242,8 @@ func handle_command(peer_id: int, cmd: Variant, payload: Variant) -> void:
 		_ack(peer_id, req_id, false, "Le MJ n'a pas encore validé votre participation.")
 		return
 
-	var error := ""
-	match cmd:
-		Protocol.CMD_CHAT_SEND:
-			error = _cmd_chat_send(player, payload)
-		Protocol.CMD_ACTION:
-			error = _cmd_action(player, payload)
-		Protocol.CMD_ROLL:
-			error = _cmd_roll(player, payload)
-		Protocol.CMD_CHAR_SAVE:
-			error = _cmd_char_save(player, payload)
-		Protocol.CMD_PAWN_MOVE:
-			error = _cmd_pawn_move(player, payload)
-		Protocol.CMD_ROLL_ANSWER:
-			error = _cmd_roll_answer(player, payload)
-		Protocol.CMD_TURN:
-			error = _cmd_turn(player, payload)
-		Protocol.CMD_CHAR_CREATE:
-			error = _cmd_char_create(player, payload)
-		Protocol.CMD_ITEM:
-			error = _cmd_item(player, payload)
-		Protocol.CMD_LOOT_TAKE:
-			error = _cmd_loot_take(player, payload)
-		Protocol.CMD_LEVEL:
-			error = _cmd_level(player, payload)
-		Protocol.CMD_ABILITY_EQUIP:
-			error = _cmd_ability_equip(player, payload)
-		Protocol.CMD_OPEN:
-			error = _cmd_open(player, payload)
-		Protocol.CMD_TALK:
-			error = _cmd_talk(player, payload)
-		Protocol.CMD_QUEST_ACCEPT:
-			error = _cmd_quest_accept(player, payload)
-		Protocol.CMD_CHECK:
-			error = _cmd_check(player, payload)
-		_:
-			error = "Commande inconnue."
+	# Chaque joueur agit sur la carte où se trouve son pion (cartes imbriquées).
+	var error: String = _on_map(map_of_player(player.id), func(): return _dispatch(player, cmd, payload))
 
 	if error == "":
 		seen.append(req_id)
@@ -283,6 +251,47 @@ func handle_command(peer_id: int, cmd: Variant, payload: Variant) -> void:
 			seen = seen.slice(seen.size() - 200)
 		_seen_requests[player.id] = seen
 	_ack(peer_id, req_id, error == "", error)
+
+
+func _dispatch(player: Dictionary, cmd: String, payload: Dictionary) -> String:
+	match cmd:
+		Protocol.CMD_CHAT_SEND:
+			return _cmd_chat_send(player, payload)
+		Protocol.CMD_ACTION:
+			return _cmd_action(player, payload)
+		Protocol.CMD_ROLL:
+			return _cmd_roll(player, payload)
+		Protocol.CMD_CHAR_SAVE:
+			return _cmd_char_save(player, payload)
+		Protocol.CMD_PAWN_MOVE:
+			return _cmd_pawn_move(player, payload)
+		Protocol.CMD_ROLL_ANSWER:
+			return _cmd_roll_answer(player, payload)
+		Protocol.CMD_TURN:
+			return _cmd_turn(player, payload)
+		Protocol.CMD_CHAR_CREATE:
+			return _cmd_char_create(player, payload)
+		Protocol.CMD_ITEM:
+			return _cmd_item(player, payload)
+		Protocol.CMD_LOOT_TAKE:
+			return _cmd_loot_take(player, payload)
+		Protocol.CMD_LEVEL:
+			return _cmd_level(player, payload)
+		Protocol.CMD_ABILITY_EQUIP:
+			return _cmd_ability_equip(player, payload)
+		Protocol.CMD_OPEN:
+			return _cmd_open(player, payload)
+		Protocol.CMD_TALK:
+			return _cmd_talk(player, payload)
+		Protocol.CMD_QUEST_ACCEPT:
+			return _cmd_quest_accept(player, payload)
+		Protocol.CMD_CHECK:
+			return _cmd_check(player, payload)
+		Protocol.CMD_ENTER:
+			return _cmd_enter(player, payload)
+		_:
+			return "Commande inconnue."
+	return ""
 
 
 func _target_from(payload: Dictionary) -> String:
@@ -876,6 +885,8 @@ func mj_set_active_map(map_id: String) -> void:
 	for enc in encounters.values():
 		_end_encounter(enc)
 	active_map = map_id
+	# « Montrer cette carte aux joueurs » : tout le monde y revient.
+	player_map.clear()
 	_ensure_player_pawns(maps[map_id])
 	if Phases.def(phase.type).turns:
 		mj_set_phase(phase.type)
@@ -979,10 +990,136 @@ func encounter_of(token_id: String) -> Dictionary:
 ## moteur existant (tours, PA, déplacements, IA, victoire) s'applique tel quel.
 func _with(enc: Dictionary, f: Callable) -> Variant:
 	var saved := phase
+	var saved_map := active_map
 	phase = enc
+	if maps.has(String(enc.get("map_id", ""))):
+		active_map = String(enc.map_id)
 	var result: Variant = f.call()
 	phase = saved
+	active_map = saved_map
 	return result
+
+
+# --- Cartes imbriquées : chaque joueur est sur la carte de son pion ---
+
+func map_of_player(player_id: String) -> String:
+	var m := String(player_map.get(player_id, ""))
+	return m if maps.has(m) else active_map
+
+
+## Cartes où se trouve au moins un joueur (dont la carte affichée).
+func occupied_maps() -> Array:
+	var out: Array = [active_map]
+	for m in player_map.values():
+		if maps.has(String(m)) and not out.has(String(m)):
+			out.append(String(m))
+	return out
+
+
+## Exécute f comme si la carte « active » était map_id (actions d'un joueur
+## sur sa propre carte : déplacements, combats, épreuves…).
+func _on_map(map_id: String, f: Callable) -> Variant:
+	if map_id == active_map or not maps.has(map_id):
+		return f.call()
+	var saved := active_map
+	active_map = map_id
+	var result: Variant = f.call()
+	active_map = saved
+	return result
+
+
+## Un joueur passe sur une autre carte (entrer dans une ville, sortir…) ;
+## les autres restent où ils sont.
+func travel(player_id: String, target_map: String, at: Vector2i = Vector2i(-1, -1)) -> String:
+	if not maps.has(target_map):
+		return "Cette carte n'existe plus."
+	var from_id := map_of_player(player_id)
+	var from: Dictionary = maps.get(from_id, {})
+	var pawn := MapData.token(from, _pawn_id(player_id))
+	if not pawn.is_empty() and not encounter_of(String(pawn.id)).is_empty():
+		return "Impossible de partir en plein combat."
+	var dest: Dictionary = maps[target_map]
+	var old := MapData.token(dest, _pawn_id(player_id))
+	if not old.is_empty():
+		(dest.tokens as Array).erase(old)
+	if at.x < 0:
+		at = Vector2i(int(dest.spawn.x), int(dest.spawn.y))
+	var p := MapData.free_cell_near(dest, at.x, at.y)
+	if not pawn.is_empty():
+		(from.tokens as Array).erase(pawn)
+		pawn.x = p.x
+		pawn.y = p.y
+		pawn.erase("safe_until")
+		dest.tokens.append(pawn)
+	if target_map == active_map:
+		player_map.erase(player_id)
+	else:
+		player_map[player_id] = target_map
+	_ensure_player_pawns_for(player_id, dest)
+	var who := String(characters.get(player_id, {}).get("name", players.get(player_id, {}).get("name", "?")))
+	_system_message("%s entre : %s." % [who, dest.name])
+	_mark("map")
+	_mark("phase")
+	_unsaved = true
+	maps_changed.emit()
+	return ""
+
+
+func _ensure_player_pawns_for(player_id: String, map: Dictionary) -> void:
+	if not MapData.token(map, _pawn_id(player_id)).is_empty() or not characters.has(player_id):
+		return
+	var sheet: Dictionary = characters[player_id]
+	var p := MapData.free_cell_near(map, int(map.spawn.x), int(map.spawn.y))
+	var t := MapData.add_token(map, {"kind": "pc", "name": sheet.name, "x": p.x, "y": p.y, "color": sheet.pawn.color,
+		"owner": player_id, "char_id": player_id, "hp": sheet.hp, "hp_max": sheet.hp_max})
+	if not t.is_empty():
+		t.id = _pawn_id(player_id)
+
+
+## Passage (pion « objet » relié à une autre carte) : « Entrer ».
+func _cmd_enter(player: Dictionary, payload: Dictionary) -> String:
+	var map: Dictionary = maps.get(active_map, {})
+	var t := MapData.token(map, String(payload.get("token", "")))
+	var me := MapData.token(map, _pawn_id(player.id))
+	if t.is_empty() or t.get("hidden", false) or String(t.get("link", "")) == "":
+		return "Passage introuvable."
+	if me.is_empty() or Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))) > 1:
+		return "Approchez-vous du passage (case voisine)."
+	var at := Vector2i(int(t.get("link_x", -1)), int(t.get("link_y", -1)))
+	return travel(player.id, String(t.link), at)
+
+
+## Le MJ relie un pion « objet » à une autre carte ; un passage de retour est
+## créé au départ de la carte cible s'il n'y en a pas déjà un.
+func mj_link_maps(map_id: String, token_id: String, target_map: String) -> void:
+	var map: Dictionary = maps.get(map_id, {})
+	var t := MapData.token(map, token_id)
+	if t.is_empty():
+		return
+	if target_map == "" or not maps.has(target_map):
+		t.erase("link")
+		t.erase("link_name")
+		map_changed(map_id, true)
+		return
+	var dest: Dictionary = maps[target_map]
+	t.link = target_map
+	t.link_name = String(dest.name)
+	if String(t.get("name", "")) in ["", "Pion", "Objet"]:
+		t.name = "Entrée : %s" % dest.name
+	var back := false
+	for o in dest.tokens:
+		if String(o.get("link", "")) == map_id:
+			back = true
+	if not back:
+		var p := MapData.free_cell_near(dest, int(dest.spawn.x), int(dest.spawn.y))
+		var r := MapData.add_token(dest, {"kind": "object", "name": "Sortie : %s" % map.name, "x": p.x, "y": p.y, "color": "#8a7a5a"})
+		if not r.is_empty():
+			r.link = map_id
+			r.link_name = String(map.name)
+			r.link_x = int(t.x)
+			r.link_y = int(t.y)
+	map_changed(map_id, true)
+	map_changed(target_map, true)
 
 
 static func _clock() -> float:
@@ -1260,7 +1397,7 @@ func tick(delta: float) -> void:
 
 
 func _tick_encounter(enc: Dictionary, delta: float) -> void:
-	if String(enc.get("map_id", "")) != active_map:
+	if not maps.has(String(enc.get("map_id", ""))):
 		_end_encounter(enc)
 		return
 	if String(enc.result) == "":
@@ -1268,7 +1405,7 @@ func _tick_encounter(enc: Dictionary, delta: float) -> void:
 	if String(enc.result) != "":
 		_end_encounter(enc)
 		return
-	var map: Dictionary = maps.get(active_map, {})
+	var map: Dictionary = maps.get(String(enc.map_id), {})
 	var cur_id: String = _with(enc, _current_token)
 	var key := "%d:%d" % [int(enc.round), int(enc.turn)]
 	if key != String(enc.get("turn_key", "")):
@@ -1297,6 +1434,11 @@ func _tick_encounter(enc: Dictionary, delta: float) -> void:
 func _scan_aggro() -> void:
 	if not bool(Content.rule(content, "auto_aggro")) or Phases.def(phase.type).turns or not session.get("started", false):
 		return
+	for mid in occupied_maps():
+		_on_map(String(mid), _scan_aggro_here)
+
+
+func _scan_aggro_here() -> void:
 	var map: Dictionary = maps.get(active_map, {})
 	for t in map.get("tokens", []):
 		if String(t.get("kind", "")) != "pc" or t.get("hidden", false) or combat.is_ko(t) or not encounter_of(String(t.id)).is_empty():
@@ -1769,7 +1911,7 @@ func _refresh_sprites(map: Dictionary) -> void:
 				elif String(sheet.get("class_id", "")) != "":
 					sprite = "units/" + String(sheet.class_id)
 			"object":
-				sprite = "props/door" if t.get("door", false) else "items/chest"
+				sprite = "props/door" if t.get("door", false) else ("props/signpost" if String(t.get("link", "")) != "" else "items/chest")
 				if t.get("pickup", false) and not (t.get("chest_items", []) as Array).is_empty():
 					var def := Content.get_entry(content, "items", String(t.chest_items[0].get("item", "")))
 					sprite = "items/" + String(def.get("icon", "bag"))
@@ -1784,7 +1926,7 @@ func _refresh_sprites(map: Dictionary) -> void:
 func map_changed(map_id: String, tokens_only: bool = false) -> void:
 	_unsaved = true
 	_refresh_sprites(maps.get(map_id, {}))
-	if map_id == active_map:
+	if map_id == active_map or player_map.values().has(map_id):
 		_mark("tokens" if tokens_only else "map")
 	maps_changed.emit()
 
@@ -3450,6 +3592,9 @@ func broadcast_fx(list: Array) -> void:
 	var map: Dictionary = maps.get(active_map, {})
 	var visible: Array = list.filter(func(f): return not MapData.token(map, String(f.get("token", ""))).get("hidden", false))
 	for player in _accepted_online():
+		# Seuls les joueurs présents sur cette carte voient l'effet.
+		if map_of_player(player.id) != active_map:
+			continue
 		var ids: Variant = _visible_tokens_for(player.id)
 		var mine: Array = visible if ids == null else visible.filter(func(f): return (ids as Dictionary).has(String(f.get("token", ""))))
 		if not mine.is_empty():
@@ -3499,7 +3644,8 @@ func flush() -> void:
 	var dirty := _dirty
 	_dirty = {}
 	if dirty.has("map") or dirty.has("tokens"):
-		_refresh_sprites(maps.get(active_map, {}))
+		for mid in occupied_maps():
+			_refresh_sprites(maps.get(String(mid), {}))
 	if dirty.has("characters"):
 		_broadcast_characters()
 	if dirty.has("map"):
@@ -3618,10 +3764,12 @@ func characters_for(player_id: String) -> Array:
 ## avec le brouillard de guerre, seulement ce que son personnage voit (pions,
 ## étiquettes des zones explorées) + l'état du brouillard pour l'affichage.
 func _map_view(player_id: String = "") -> Dictionary:
-	var map: Dictionary = maps.get(active_map, {})
+	var map: Dictionary = maps.get(map_of_player(player_id) if player_id != "" else active_map, {})
 	if map.is_empty():
 		return {}
 	var view := MapData.view_for_player(map)
+	# Pions de joueurs partis sur une autre carte : on ne les montre pas.
+	view["tokens"] = (view.tokens as Array).filter(func(t): return String(t.get("kind", "")) != "pc" or map_of_player(String(t.get("owner", ""))) == String(map.id))
 	if player_id == "" or not Vision.enabled(map):
 		return view
 	var seen := Vision.visible_for(map, player_id, characters, content)
@@ -3642,7 +3790,7 @@ func _map_view(player_id: String = "") -> Dictionary:
 
 ## Pions qu'un joueur voit en ce moment (null : tous les pions non cachés).
 func _visible_tokens_for(player_id: String) -> Variant:
-	var map: Dictionary = maps.get(active_map, {})
+	var map: Dictionary = maps.get(map_of_player(player_id), {})
 	if map.is_empty() or not Vision.enabled(map):
 		return null
 	var ids := {}
@@ -3865,7 +4013,7 @@ func save() -> String:
 	var error := CampaignStore.save({
 		"session": session, "players": players_out, "characters": characters, "maps": maps,
 		"map_order": map_order, "active_map": active_map, "messages": messages, "next_message": _next_message, "music": music,
-		"content": content, "quests": quests, "loot": loot, "phase": phase, "adventure": adventure,
+		"content": content, "quests": quests, "loot": loot, "phase": phase, "adventure": adventure, "player_map": player_map,
 	})
 	if error == "":
 		_unsaved = false
@@ -3919,6 +4067,7 @@ func _load(data: Dictionary, settings: Dictionary) -> void:
 		maps[m.id] = m
 	map_order = (data.get("map_order", maps.keys()) as Array).filter(func(id): return maps.has(id))
 	active_map = String(data.get("active_map", ""))
+	player_map = data.get("player_map", {}) if data.get("player_map") is Dictionary else {}
 	if not maps.has(active_map):
 		active_map = map_order[0] if not map_order.is_empty() else ""
 	messages = data.get("messages", [])

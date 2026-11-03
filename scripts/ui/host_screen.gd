@@ -972,7 +972,8 @@ func _refresh_map_select() -> void:
 	_map_select.clear()
 	for id in server.map_order:
 		var m: Dictionary = server.maps[id]
-		_map_select.add_item(("› " if id == server.active_map else "") + String(m.name))
+		var here := server.players.keys().filter(func(pid): return server.map_of_player(String(pid)) == id and server.characters.has(pid)).size()
+		_map_select.add_item(("› " if id == server.active_map else "") + String(m.name) + ("  (%d joueur%s)" % [here, "s" if here > 1 else ""] if here > 0 else ""))
 		_map_select.set_item_metadata(_map_select.item_count - 1, id)
 		if id == _edit_map:
 			_map_select.select(_map_select.item_count - 1)
@@ -1196,6 +1197,29 @@ func _item_option(selected_id: String, empty_label: String) -> OptionButton:
 		if String(it.id) == selected_id:
 			o.select(o.item_count - 1)
 	return o
+
+
+## Passage vers une autre carte (entrée d'une ville, d'une grotte…).
+func _passage_box(t: Dictionary) -> Control:
+	var server := Net.server
+	var box := UIKit.fold(null, "Passage vers une autre carte", String(t.get("link", "")) != "", "InsetPanel")
+	box.add_child(UIKit.label("Un joueur à côté peut « Entrer » : il passe seul sur l'autre carte (les autres ne changent pas). Un passage de retour est créé tout seul.", "MutedLabel", true))
+	var o := OptionButton.new()
+	o.fit_to_longest_item = false
+	o.add_item("Aucun (pas un passage)")
+	o.set_item_metadata(0, "")
+	for id in server.map_order:
+		if id != _edit_map:
+			o.add_item(String(server.maps[id].name))
+			o.set_item_metadata(o.item_count - 1, String(id))
+			if String(id) == String(t.get("link", "")):
+				o.select(o.item_count - 1)
+	var tid := String(t.id)
+	o.item_selected.connect(func(i):
+		server.mj_link_maps(_edit_map, tid, String(o.get_item_metadata(i)))
+		_refresh_inspector())
+	box.add_child(o)
+	return box.get_parent().get_parent()
 
 
 ## Coffre ou porte : clé requise, énigme.
@@ -1519,6 +1543,7 @@ func _refresh_inspector() -> void:
 	look.item_selected.connect(func(i): upd.call({"sprite_custom": String(look.get_item_metadata(i))}))
 	UIKit.field(_inspector, "Apparence", look)
 	if t.kind == "object":
+		_inspector.add_child(_passage_box(t))
 		_inspector.add_child(_lock_box(t, upd))
 	if t.kind in ["monster", "npc"]:
 		_inspector.add_child(_npc_voice_box(t))

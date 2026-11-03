@@ -29,6 +29,7 @@ func _ready() -> void:
 	_test_alliances()
 	_test_keys()
 	_test_npc_control()
+	_test_nested_maps()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -1035,3 +1036,60 @@ func _test_npc_control() -> void:
 	pa.x = 7
 	pa.y = 5
 	_expect(s._cmd_talk(a, {"token": npc.id}) == "" and s.quests_for(a.id).any(func(x): return x.id == q.id and x.status == "offer"), "la quête confiée au PNJ est proposée à qui lui parle")
+
+
+func _test_nested_maps() -> void:
+	print("\n— Cartes imbriquées : entrer dans une ville sans emmener tout le monde")
+	var s := _server()
+	var a := _add_player(s, "Aria")
+	var b := _add_player(s, "Bram")
+	for p in [a, b]:
+		s._cmd_char_create(p, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": p.name}})
+	var world := s.mj_create_map("Monde", 40, 20)
+	var city := s.mj_generate_map("ville", "grande", "Valombre", 5)
+	s.mj_set_active_map(world.id)
+	s.mj_start_game("libre")
+	var wmap: Dictionary = s.maps[world.id]
+	var gate := s.mj_add_token(world.id, {"kind": "object", "name": "Pion", "x": 10, "y": 10})
+	s.mj_link_maps(world.id, gate.id, city.id)
+	_expect(String(gate.link) == city.id and String(gate.name).contains("Valombre"), "passage créé vers la ville")
+	_expect((s.maps[city.id].tokens as Array).any(func(t): return String(t.get("link", "")) == world.id), "un passage de retour est créé dans la ville")
+	var pa := MapData.token(wmap, "pawn_" + a.id)
+	var pb := MapData.token(wmap, "pawn_" + b.id)
+	pa.x = 11
+	pa.y = 10
+	pb.x = 30
+	pb.y = 10
+	_expect(s._dispatch(b, Protocol.CMD_ENTER, {"token": gate.id}) != "", "trop loin du passage : on ne peut pas entrer")
+	_expect(s._on_map(s.map_of_player(a.id), func(): return s._dispatch(a, Protocol.CMD_ENTER, {"token": gate.id})) == "", "Aria entre dans la ville")
+	_expect(s.map_of_player(a.id) == city.id and s.map_of_player(b.id) == world.id and s.active_map == world.id, "seule Aria change de carte ; Bram et la carte du groupe ne bougent pas")
+	_expect(String(s._map_view(a.id).id) == city.id and String(s._map_view(b.id).id) == world.id, "chacun reçoit la carte où il se trouve")
+	_expect(not (s._map_view(b.id).tokens as Array).any(func(t): return String(t.get("owner", "")) == a.id), "Bram ne voit plus le pion d'Aria sur la carte du monde")
+	var ca := MapData.token(s.maps[city.id], "pawn_" + a.id)
+	var dest := MapData.free_cell_near(s.maps[city.id], int(ca.x) + 2, int(ca.y))
+	var err: String = s._on_map(city.id, func(): return s._cmd_pawn_move(a, {"map_id": city.id, "token_id": ca.id, "x": dest.x, "y": dest.y}))
+	_expect(err == "" and int(ca.x) == dest.x, "Aria se déplace dans la ville (%s)" % err)
+	_expect(s._cmd_pawn_move(b, {"map_id": world.id, "token_id": pb.id, "x": 31, "y": 10}) == "", "Bram continue d'explorer le monde")
+	# Un monstre de la ville attaque Aria : le combat a lieu dans la ville.
+	var wolf: Dictionary = s._on_map(city.id, func(): return s.mj_spawn_monster("loup", int(ca.x) + 2, int(ca.y), false))
+	s._scan_aggro()
+	var enc := s.encounter_of(String(ca.id))
+	_expect(not enc.is_empty() and String(enc.map_id) == city.id, "un monstre de la ville attaque Aria : combat local dans la ville")
+	var guard := 0
+	while not enc.is_empty() and s.encounters.has(enc.id) and s._with(enc, s._current_token) != ca.id and guard < 10:
+		s.tick(2.5)
+		guard += 1
+	_expect(s.encounters.has(enc.id), "le combat de la ville continue même si le groupe est sur une autre carte")
+	s.mj_encounter_end(String(enc.id))
+	(s.maps[city.id].tokens as Array).erase(wolf)
+	var back: Dictionary = (s.maps[city.id].tokens as Array).filter(func(t): return String(t.get("link", "")) == world.id)[0]
+	ca.x = int(back.x) + 1
+	ca.y = int(back.y)
+	if not MapData.passable(s.maps[city.id], int(ca.x), int(ca.y)):
+		var c := MapData.free_cell_near(s.maps[city.id], int(back.x), int(back.y))
+		ca.x = c.x
+		ca.y = c.y
+	_expect(s._on_map(city.id, func(): return s._dispatch(a, Protocol.CMD_ENTER, {"token": back.id})) == "" and s.map_of_player(a.id) == world.id, "Aria ressort par le passage de retour")
+	_expect(not MapData.token(wmap, "pawn_" + a.id).is_empty(), "son pion réapparaît près de l'entrée du monde")
+	s.mj_set_active_map(city.id)
+	_expect(s.map_of_player(a.id) == city.id and s.map_of_player(b.id) == city.id, "« Montrer cette carte aux joueurs » ramène tout le monde au même endroit")

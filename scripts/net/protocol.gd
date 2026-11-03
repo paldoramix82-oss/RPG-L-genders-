@@ -73,6 +73,8 @@ const CMD_TALK := "talk"
 const CMD_QUEST_ACCEPT := "quest_accept"
 ## Épreuve : {skill, target?, text?, to?} → jet automatique et conséquences.
 const CMD_CHECK := "check"
+## Passer par un passage vers une autre carte : {token}.
+const CMD_ENTER := "enter"
 
 # --- Événements serveur -> client ---
 const EVT_JOIN_STATUS := "join_status"
