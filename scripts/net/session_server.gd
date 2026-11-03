@@ -999,7 +999,7 @@ func _spotters(map: Dictionary, cell: Vector2i, pawn: Dictionary) -> Array:
 
 func _can_aggro(m: Dictionary) -> bool:
 	return String(m.get("kind", "")) == "monster" and not m.get("hidden", false) and not combat.is_ko(m) \
-		and combat.side(m) != "players" and float(m.get("calm_until", 0.0)) <= _clock() and encounter_of(String(m.id)).is_empty()
+		and combat.side(m) == "enemies" and float(m.get("calm_until", 0.0)) <= _clock() and encounter_of(String(m.id)).is_empty()
 
 
 ## Case où s'arrête un déplacement libre (en suivant le chemin) : la première
@@ -1063,7 +1063,7 @@ func _check_join(t: Dictionary) -> bool:
 	for enc in encounters.values():
 		for id in enc.order:
 			var f := MapData.token(map, String(id))
-			if f.is_empty() or combat.is_ko(f) or combat.side(f) == "players":
+			if f.is_empty() or combat.is_ko(f) or combat.side(f) != "enemies":
 				continue
 			var fp := Vector2i(int(f.x), int(f.y))
 			var tp := Vector2i(int(t.x), int(t.y))
@@ -1107,6 +1107,14 @@ func start_encounter(monsters: Array, seed_players: Array, ambush: bool) -> Dict
 			heroes.append(t)
 	if heroes.is_empty():
 		return {}
+	# Les monstres et PNJ alliés tout proches se battent aux côtés des héros.
+	for t in map.tokens:
+		if String(t.get("kind", "")) in ["monster", "npc"] and combat.side(t) == "players" and not t.get("hidden", false) \
+				and not combat.is_ko(t) and encounter_of(String(t.id)).is_empty() and not group.has(t):
+			for h in heroes:
+				if Rules.distance(Vector2i(int(h.x), int(h.y)), Vector2i(int(t.x), int(t.y))) <= radius:
+					heroes.append(t)
+					break
 	var enc := {"id": "enc_" + Protocol.random_hex(3), "type": "combat", "local": true, "order": [], "turn": 0, "round": 1,
 		"moves_left": 0, "ap": 0, "action_used": false, "initiative": {}, "result": "", "players": [], "map_id": active_map,
 		"timer": 0.0, "manual": false, "turn_key": ""}
@@ -1114,7 +1122,8 @@ func start_encounter(monsters: Array, seed_players: Array, ambush: bool) -> Dict
 		enc.initiative[String(t.id)] = _rng.randi_range(1, 20) + int(combat.stats_of(t).initiative)
 		enc.order.append(String(t.id))
 	for h in heroes:
-		enc.players.append(String(h.owner))
+		if String(h.get("kind", "")) == "pc":
+			enc.players.append(String(h.owner))
 	var foes_first := ambush
 	enc.order.sort_custom(func(a, b):
 		var fa: bool = combat.side(MapData.token(map, a)) != "players"
@@ -1156,7 +1165,11 @@ func _engage(player: Dictionary, own: Dictionary, target_id: String) -> String:
 	if not busy.is_empty():
 		_check_join(own)
 		return "" if not encounter_of(String(own.id)).is_empty() else "Ce combat est trop loin pour le rejoindre."
-	if String(target.get("kind", "")) == "npc" and String(target.get("side", "")) == "":
+	if combat.side(target) == "players":
+		return "%s est votre allié." % target.name
+	# Attaquer un neutre (ou un PNJ) le rend hostile.
+	if combat.side(target) == "neutral":
+		target.attitude = "hostile"
 		target.side = "enemies"
 	target.calm_until = 0.0
 	var enc := start_encounter([target], [player.id], false)
@@ -1682,6 +1695,9 @@ func _refresh_sprites(map: Dictionary) -> void:
 		if String(t.get("sprite_custom", "")) != "":
 			sprite = "units/" + String(t.sprite_custom)
 		t.sprite = sprite
+		# Camp effectif, pour les téléphones (couleur du socle, boutons proposés).
+		if String(t.get("kind", "")) in ["monster", "npc"]:
+			t.disposition = combat.side(t)
 
 
 func map_changed(map_id: String, tokens_only: bool = false) -> void:

@@ -1605,6 +1605,16 @@ func _open_monster_panel(t: Dictionary, dist: int) -> void:
 	var hp_max := int(t.get("hp_max", 0))
 	if hp_max > 0:
 		panel.body.add_child(UIKit.label("PV : %d / %d" % [int(t.get("hp", 0)), hp_max], "MutedLabel"))
+	match String(t.get("disposition", "enemies")):
+		"players":
+			var ally := UIKit.label("Allié : il combat à vos côtés quand un combat éclate près de vous.", "StrongLabel", true)
+			ally.add_theme_color_override("font_color", Palette.OK)
+			panel.body.add_child(ally)
+			return
+		"neutral":
+			var n := UIKit.label("Neutre : il ne vous attaquera pas. L'attaquer le rendra hostile.", "StrongLabel", true)
+			n.add_theme_color_override("font_color", Palette.GOLD)
+			panel.body.add_child(n)
 	panel.body.add_child(UIKit.label("Attaquer lance un combat qui ne concerne que vous et les héros tout proches. Vous jouez en premier.", "", true))
 	if dist > 8:
 		panel.body.add_child(GameUI.hint("Trop loin : approchez-vous (8 cases au plus, avec la vue dégagée)."))

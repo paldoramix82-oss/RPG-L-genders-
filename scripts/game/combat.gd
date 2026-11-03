@@ -72,15 +72,38 @@ func touch(t: Dictionary) -> void:
 	s.map_changed(s.active_map, true)
 
 
+## Camp d'un pion : « players » (héros et leurs alliés), « enemies », ou
+## « neutral » (n'attaque pas, n'est pas attaqué, ne compte pas pour la
+## victoire). L'attitude choisie par le MJ (pion, puis modèle de monstre)
+## décide pour les monstres et PNJ ; les PNJ sont neutres par défaut.
 func side(t: Dictionary) -> String:
-	if String(t.get("side", "")) != "":
-		return String(t.side)
+	var explicit := String(t.get("side", ""))
+	if explicit in ["players", "enemies", "neutral"] and String(t.get("attitude", "")) == "":
+		return explicit
 	if String(t.get("kind", "")) == "pc":
 		return "players"
+	match attitude_of(t):
+		"allie":
+			return "players"
+		"neutre":
+			return "neutral"
+		"hostile":
+			return "enemies"
 	var sh := sheet_of(t)
-	if String(sh.get("side", "")) != "":
+	if String(sh.get("side", "")) in ["players", "enemies"]:
 		return String(sh.side)
-	return "enemies"
+	return "neutral" if String(t.get("kind", "")) == "npc" else "enemies"
+
+
+## Attitude : celle du pion (choisie par le MJ), sinon celle du modèle de monstre.
+func attitude_of(t: Dictionary) -> String:
+	if String(t.get("attitude", "")) != "":
+		return String(t.attitude)
+	if String(t.get("kind", "")) == "monster":
+		var mid := String(sheet_of(t).get("monster_id", ""))
+		if mid != "":
+			return String(Content.get_entry(content(), "monsters", mid).get("attitude", "hostile"))
+	return ""
 
 
 func is_ko(t: Dictionary) -> bool:
@@ -948,12 +971,14 @@ func use_item(actor: Dictionary, uid: String, target: Dictionary) -> String:
 
 ## Avance vers l'adversaire le plus proche et l'attaque (capacité offensive si possible).
 func auto_play(actor: Dictionary) -> String:
+	if side(actor) == "neutral":
+		return "%s reste sur ses gardes." % actor.name
 	var foes: Array = []
 	var local: bool = s.phase.get("local", false)
 	for t in map().get("tokens", []):
 		if local and not (s.phase.order as Array).has(String(t.id)):
 			continue
-		if t.kind != "object" and side(t) != side(actor) and not is_ko(t) and not t.get("hidden", false) and not has_flag(t, "untargetable"):
+		if t.kind != "object" and side(t) != side(actor) and side(t) != "neutral" and not is_ko(t) and not t.get("hidden", false) and not has_flag(t, "untargetable"):
 			foes.append(t)
 	if foes.is_empty():
 		return "Aucun adversaire visible."
@@ -1031,8 +1056,11 @@ func check_end() -> void:
 		var t := token(String(id))
 		if t.is_empty() or t.get("hidden", false):
 			continue
+		if side(t) == "neutral":
+			continue
 		if side(t) == "players":
-			if String(t.get("summoned_by", "")) != "":
+			# Seuls les héros comptent pour la défaite (pas les invocations ni les monstres alliés).
+			if String(t.get("summoned_by", "")) != "" or String(t.get("kind", "")) != "pc":
 				continue
 			heroes += 1
 			heroes_down += 1 if is_ko(t) else 0

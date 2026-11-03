@@ -448,6 +448,12 @@ func _draw_token(t: Dictionary, cell_pos: Vector2, cs: float, alpha: float) -> v
 	var ring := Color("1c1a20")
 	if kind == "monster":
 		ring = Palette.DANGER.darkened(0.2)
+	# Monstres et PNJ : socle vert s'ils sont alliés, doré s'ils sont neutres.
+	match String(t.get("disposition", "")):
+		"players":
+			ring = Palette.OK.darkened(0.1)
+		"neutral":
+			ring = Palette.GOLD_DIM
 	if t.get("owner", "") == my_id and my_id != "":
 		ring = Palette.GOLD
 	ring.a = alpha

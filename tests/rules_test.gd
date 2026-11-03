@@ -26,6 +26,7 @@ func _ready() -> void:
 	_test_town()
 	_test_collisions()
 	_test_monk_necro()
+	_test_alliances()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -923,3 +924,42 @@ func _test_monk_necro() -> void:
 	var before := (map.tokens as Array).size()
 	s.characters[players[2].id].res = 20
 	_expect(s.combat.use_ability(necro, raise, necro) == "" and (map.tokens as Array).size() == before + 1, "le Nécromancien relève un squelette")
+
+
+func _test_alliances() -> void:
+	print("\n— Alliances : monstres hostiles, neutres ou alliés")
+	var s := _server()
+	var a := _add_player(s, "Aria")
+	s._cmd_char_create(a, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Aria"}})
+	var m := s.mj_create_map("Plaine", 40, 20)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	var map: Dictionary = s.maps[s.active_map]
+	var pa := MapData.token(map, "pawn_" + a.id)
+	pa.x = 5
+	pa.y = 10
+	var friend := s.mj_spawn_monster("loup", 7, 10, false)
+	s.mj_update_token(m.id, friend.id, {"attitude": "allie"})
+	var calm := s.mj_spawn_monster("ours", 5, 12, false)
+	s.mj_update_token(m.id, calm.id, {"attitude": "neutre"})
+	s._after_move(pa)
+	s._scan_aggro()
+	_expect(s.encounters.is_empty(), "un loup allié et un ours neutre n'attaquent pas")
+	_expect(String(friend.disposition) == "players" and String(calm.disposition) == "neutral", "le camp est envoyé aux téléphones (socle vert / doré)")
+	var foe := s.mj_spawn_monster("loup", 9, 10, false)
+	s._after_move(pa)
+	var enc := s.encounter_of(pa.id)
+	_expect(not enc.is_empty() and (enc.order as Array).has(friend.id), "un monstre hostile attaque : le loup allié tout proche se bat aux côtés d'Aria")
+	_expect(not (enc.order as Array).has(calm.id), "l'ours neutre reste en dehors du combat")
+	if not enc.is_empty():
+		s.mj_encounter_end(String(enc.id))
+	map.tokens.erase(foe)
+	calm.calm_until = 0.0
+	_expect(s._cmd_turn(a, {"action": "engage", "target": calm.id}) == "" and s.combat.side(calm) == "enemies", "attaquer un neutre le rend hostile")
+	var e2 := s.encounter_of(pa.id)
+	if not e2.is_empty():
+		s.mj_encounter_end(String(e2.id))
+	_expect(s._cmd_turn(a, {"action": "engage", "target": friend.id}) != "", "on n'attaque pas un allié")
+	var tame := s.mj_content_save("monsters", {"id": "loup_apprivoise", "name": "Loup apprivoisé", "attitude": "allie", "hp": 15})
+	var t3 := s.mj_spawn_monster("loup_apprivoise", 20, 10, false)
+	_expect(s.combat.side(t3) == "players", "l'attitude du modèle de monstre s'applique à tous ses pions")
