@@ -2044,7 +2044,33 @@ func _open_char_tools(cid: String) -> void:
 			_close_overlay()
 			_show("table"))
 	_char_tools.deleted.connect(_close_overlay)
+	_char_tools.personal_ability_requested.connect(func(target):
+		_open_personal_editor(target, "abilities"))
+	_char_tools.personal_passive_requested.connect(func(target):
+		_open_personal_editor(target, "passive"))
 	panel.body.add_child(_char_tools)
+
+
+## Capacité ou passif « bien à lui » : composé avec les briques, puis donné
+## directement au personnage.
+func _open_personal_editor(cid: String, what: String) -> void:
+	var server := Net.server
+	var sheet: Dictionary = server.characters.get(cid, {})
+	if sheet.is_empty():
+		return
+	var title := ("Capacité de %s" if what == "abilities" else "Passif spécial de %s") % sheet.name
+	var panel := _open_overlay("edit", title, "spark")
+	var start := {"name": "", "icon": "star", "target": "enemy", "range": 1, "ap": 1, "roll": "attack"} if what == "abilities" else {"name": "", "icon": "spiral", "trigger": "always"}
+	var editor := ContentEditor.new(what, start, server.content)
+	editor.saved.connect(func(_k, data):
+		var err := server.mj_personal_ability(cid, data) if what == "abilities" else server.mj_grant_passive(cid, data)
+		if err != "":
+			ConfirmBox.show_content(self, "Impossible", UIKit.label(err, "", true))
+			return
+		_open_char_tools(cid))
+	editor.cancelled.connect(func(): _open_char_tools(cid))
+	panel.body.add_child(editor)
+	panel.set_footer(editor.action_bar)
 
 
 func _open_character_editor(cid: String) -> void:

@@ -891,34 +891,44 @@ func _cond_ok(cond: Dictionary, actor: Dictionary, target: Dictionary, element: 
 
 
 func has_trait(t: Dictionary, trait_id: String) -> bool:
-	return (_passive(t).get("traits", []) as Array).has(trait_id)
+	for p in _passives(t):
+		if (p.get("traits", []) as Array).has(trait_id):
+			return true
+	return false
 
 
-func _passive(t: Dictionary) -> Dictionary:
-	return sheet_of(t).get("passive", {}) if has_sheet(t) else {}
+func _passives(t: Dictionary) -> Array:
+	return Rules.passives(sheet_of(t)) if has_sheet(t) else []
 
 
-## Bonus conditionnels du passif de l'attaquant (les bonus sans condition sont déjà dans Rules.derived).
+## Bonus conditionnels des passifs de l'attaquant (les bonus sans condition sont déjà dans Rules.derived).
 func _passive_mods(actor: Dictionary, target: Dictionary, element: String) -> Dictionary:
-	var p := _passive(actor)
-	if String(p.get("trigger", "")) != "always" or (p.get("cond", {}) as Dictionary).is_empty():
-		return {"to_hit": 0, "damage": 0}
-	if not _cond_ok(p.cond, actor, target, element):
-		return {"to_hit": 0, "damage": 0}
-	var m: Dictionary = p.get("mods", {})
-	if m.has("damage") or m.has("damage_dice") or m.has("to_hit"):
-		_line("passive", "Passif : %s." % p.name)
-		_fxp(actor, "passive", 0, String(p.name))
-	return {"to_hit": int(m.get("to_hit", 0)), "damage": int(m.get("damage", 0)), "damage_dice": String(m.get("damage_dice", "")), "heal_pct": int(m.get("heal_pct", 0))}
+	var out := {"to_hit": 0, "damage": 0, "damage_dice": "", "heal_pct": 0}
+	for p in _passives(actor):
+		if String(p.get("trigger", "")) != "always" or (p.get("cond", {}) as Dictionary).is_empty():
+			continue
+		if not _cond_ok(p.cond, actor, target, element):
+			continue
+		var m: Dictionary = p.get("mods", {})
+		if m.has("damage") or m.has("damage_dice") or m.has("to_hit"):
+			_line("passive", "Passif : %s." % p.name)
+			_fxp(actor, "passive", 0, String(p.name))
+		out.to_hit += int(m.get("to_hit", 0))
+		out.damage += int(m.get("damage", 0))
+		out.heal_pct += int(m.get("heal_pct", 0))
+		if String(m.get("damage_dice", "")) != "" and String(out.damage_dice) == "":
+			out.damage_dice = String(m.damage_dice)
+	return out
 
 
 func _passive_defense(target: Dictionary) -> int:
-	var p := _passive(target)
-	if String(p.get("trigger", "")) != "always" or (p.get("cond", {}) as Dictionary).is_empty():
-		return 0
-	if not _cond_ok(p.cond, target, {}, ""):
-		return 0
-	return int(p.get("mods", {}).get("defense", 0))
+	var total := 0
+	for p in _passives(target):
+		if String(p.get("trigger", "")) != "always" or (p.get("cond", {}) as Dictionary).is_empty():
+			continue
+		if _cond_ok(p.cond, target, {}, ""):
+			total += int(p.get("mods", {}).get("defense", 0))
+	return total
 
 
 func _guardian_reduction(target: Dictionary) -> Dictionary:
@@ -926,21 +936,21 @@ func _guardian_reduction(target: Dictionary) -> Dictionary:
 	for t in map().get("tokens", []):
 		if t.id == target.id or is_ko(t) or side(t) != side(target):
 			continue
-		var p := _passive(t)
-		if String(p.get("trigger", "")) == "ally_damaged" and dist(t, target) <= int(p.get("range", 1)) and int(p.get("reduce", 0)) > int(best.amount):
-			best = {"amount": int(p.reduce), "name": String(t.name), "token": t, "passive": String(p.name)}
+		for p in _passives(t):
+			if String(p.get("trigger", "")) == "ally_damaged" and dist(t, target) <= int(p.get("range", 1)) and int(p.get("reduce", 0)) > int(best.amount):
+				best = {"amount": int(p.reduce), "name": String(t.name), "token": t, "passive": String(p.name)}
 	return best
 
 
 func _trigger_passive(t: Dictionary, trigger: String, other: Dictionary, spec: Dictionary) -> void:
-	var p := _passive(t)
-	if String(p.get("trigger", "")) != trigger or (p.get("effects", []) as Array).is_empty():
-		return
-	if not _cond_ok(p.get("cond", {}), t, other, String(spec.get("element", ""))):
-		return
-	_line("passive", "Passif de %s : %s." % [t.name, p.name])
-	_fxp(t, "passive", 0, String(p.name))
-	_apply_effects(t, t if other.is_empty() else other, p.effects, {"name": p.name, "stat": "Esprit"}, false, 1)
+	for p in _passives(t):
+		if String(p.get("trigger", "")) != trigger or (p.get("effects", []) as Array).is_empty():
+			continue
+		if not _cond_ok(p.get("cond", {}), t, other, String(spec.get("element", ""))):
+			continue
+		_line("passive", "Passif de %s : %s." % [t.name, p.name])
+		_fxp(t, "passive", 0, String(p.name))
+		_apply_effects(t, t if other.is_empty() else other, p.effects, {"name": p.name, "stat": "Esprit"}, false, 1)
 
 
 # ---------------------------------------------------------------------------

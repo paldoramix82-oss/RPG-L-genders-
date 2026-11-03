@@ -47,6 +47,8 @@ func _init(entry_kind: String, entry: Dictionary, content_data: Dictionary) -> v
 			_build_loot()
 		"species":
 			_build_species()
+		"passive":
+			_build_passive()
 	# Barre d'actions : placée par l'écran dans le bas fixe du panneau
 	# (toujours visible, même en haut d'un long formulaire).
 	var actions := HBoxContainer.new()
@@ -71,8 +73,10 @@ func _sec(title: String, variation: String = "CardPanel", open: bool = false) ->
 func show_preview() -> void:
 	var _preview := VBoxContainer.new()
 	_preview.add_theme_constant_override("separation", 8)
-	var entry := Content.sanitize(kind, collect(), content)
+	var entry := Content.sanitize_passive(collect()) if kind == "passive" else Content.sanitize(kind, collect(), content)
 	match kind:
+		"passive":
+			_preview.add_child(GameUI.passive_card(entry, content))
 		"items":
 			_preview.add_child(GameUI.item_card(entry, content))
 			var use := Effects.describe_list(entry.get("use", []), content)
@@ -302,7 +306,8 @@ func _ref_list(parent: Node, path: String, caption: String, ref_kind: String) ->
 
 ## Composeur d'effets : chaque ligne est un effet (type + réglages).
 func _effects(parent: Node, path: String, caption: String, hint: String = "") -> void:
-	var card := _sec(caption) if parent == self else UIKit.card(parent, caption, "InsetPanel")
+	var has: bool = _value(path, []) is Array and not (_value(path, []) as Array).is_empty()
+	var card := _sec(caption, "CardPanel", has) if parent == self else UIKit.card(parent, caption, "InsetPanel")
 	if hint != "":
 		card.add_child(UIKit.label(hint, "MutedLabel", true))
 	var list := EffectList.new(_value(path, []) if _value(path, []) is Array else [], content)
@@ -338,7 +343,8 @@ func _build_item() -> void:
 
 
 func _build_ability() -> void:
-	var main := _sec("Capacité")
+	_bricks(self, "ability", "")
+	var main := _sec("Capacité", "CardPanel", true)
 	_text(main, "name", "Nom", "Ex. : Lance de glace")
 	_text(main, "short", "Nom court (barre rapide)", "14 lettres max.")
 	_icon(main, "icon")
@@ -440,6 +446,12 @@ func _rebuild() -> void:
 	match kind:
 		"monsters":
 			_build_monster()
+		"abilities":
+			_build_ability()
+		"classes":
+			_build_class()
+		"passive":
+			_build_passive()
 
 
 ## Liste des apparences (sprites de personnages et de monstres).
@@ -566,7 +578,8 @@ func _build_class() -> void:
 	_int(vals, "crit_bonus", "Bonus de critique", 0, 10)
 	_int(vals, "defense_bonus", "Bonus de Défense", -5, 20)
 	_int(vals, "attack_bonus", "Bonus au toucher", -5, 20)
-	var p := _sec("Passif")
+	var p := _sec("Passif", "CardPanel", not (_value("passive/_bricks", []) as Array).is_empty())
+	_bricks(p, "passive", "passive/")
 	_text(p, "passive/name", "Nom du passif")
 	_long(p, "passive/description", "Description (ce que voient les joueurs)")
 	_icon(p, "passive/icon")
@@ -723,3 +736,112 @@ func _build_loot() -> void:
 					if String(v.item) != "":
 						out.append(v)
 			return out
+
+
+# ---------------------------------------------------------------------------
+# Briques
+# ---------------------------------------------------------------------------
+
+## Palette de briques : chaque brique touchée s'ajoute à l'entrée (effets,
+## cible, coût, déclencheur, bonus…), puis le formulaire se redessine.
+func _bricks(parent: Node, mode: String, prefix: String) -> void:
+	var box := _sec("Briques — composer en quelques touches", "InsetPanel", true) if parent == self else UIKit.fold(parent, "Briques — composer en quelques touches", true, "InsetPanel")
+	var stack: Array = _value(prefix + "_bricks", []) if _value(prefix + "_bricks", []) is Array else []
+	if not stack.is_empty():
+		var row := HBoxContainer.new()
+		box.add_child(row)
+		var l := UIKit.label("Posées : " + "  +  ".join(PackedStringArray(stack)), "StrongLabel", true)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		row.add_child(UIKit.button("Tout effacer", "DangerButton", func(): _clear_bricks(prefix)))
+	var palette := BrickPalette.new(mode, String(_value(prefix + "_group", "")))
+	palette.picked.connect(func(brick):
+		_set_path(data, prefix + "_group", palette.last_group)
+		_add_brick(brick, prefix))
+	box.add_child(palette)
+
+
+func _add_brick(brick: Dictionary, prefix: String) -> void:
+	var group := String(_value(prefix + "_group", ""))
+	data = collect()
+	if group != "":
+		_set_path(data, prefix + "_group", group)
+	for k in brick.get("fields", {}):
+		_set_path(data, prefix + String(k), brick.fields[k])
+	if brick.has("effects"):
+		var fx: Array = _value(prefix + "effects", []) if _value(prefix + "effects", []) is Array else []
+		fx.append_array((brick.effects as Array).duplicate(true))
+		_set_path(data, prefix + "effects", fx)
+	if brick.has("mods"):
+		var m: Dictionary = _value(prefix + "mods", {}) if _value(prefix + "mods", {}) is Dictionary else {}
+		for k in brick.mods:
+			m[k] = int(m.get(k, 0)) + int(brick.mods[k])
+		_set_path(data, prefix + "mods", m)
+	if brick.has("traits"):
+		var tr: Array = _value(prefix + "traits", []) if _value(prefix + "traits", []) is Array else []
+		for t in brick.traits:
+			if not tr.has(t):
+				tr.append(t)
+		_set_path(data, prefix + "traits", tr)
+	var stack: Array = _value(prefix + "_bricks", []) if _value(prefix + "_bricks", []) is Array else []
+	stack.append(String(brick.label))
+	_set_path(data, prefix + "_bricks", stack)
+	# Nom et description proposés tant que le MJ ne les a pas écrits.
+	var name_path := prefix + "name"
+	var auto_name := String(_value(prefix + "_auto_name", ""))
+	var cur_name := String(_value(name_path, ""))
+	if cur_name == "" or cur_name == auto_name or cur_name in ["Nouvelle capacité", "Capacité", "Nouveau passif"]:
+		var n := BrickPalette.suggest_name(stack.filter(func(x): return not String(x).begins_with("Un ") and not String(x).begins_with("Zone") and not String(x).begins_with("Soi")))
+		if n != "":
+			_set_path(data, name_path, n)
+			_set_path(data, prefix + "_auto_name", n)
+	var desc_path := prefix + "description"
+	var auto_desc := String(_value(prefix + "_auto_desc", ""))
+	if String(_value(desc_path, "")) == "" or String(_value(desc_path, "")) == auto_desc:
+		var d := Effects.describe_list(_value(prefix + "effects", []), content)
+		if d != "":
+			d = d.substr(0, 1).to_upper() + d.substr(1) + "."
+			_set_path(data, desc_path, d)
+			_set_path(data, prefix + "_auto_desc", d)
+	_rebuild()
+
+
+func _clear_bricks(prefix: String) -> void:
+	data = collect()
+	for k in ["effects", "_bricks"]:
+		_set_path(data, prefix + k, [])
+	_set_path(data, prefix + "mods", {})
+	_set_path(data, prefix + "traits", [])
+	_rebuild()
+
+
+## Passif seul (passif personnel d'un personnage).
+func _build_passive() -> void:
+	_bricks(self, "passive", "")
+	var main := _sec("Passif", "CardPanel", true)
+	_text(main, "name", "Nom du passif", "Ex. : Peau de pierre")
+	_long(main, "description", "Description (ce que voient les joueurs)")
+	_icon(main, "icon")
+	_enum(main, "trigger", "Se déclenche", TRIGGERS, "always")
+	_int(main, "cond/self_hp_below", "Condition : PV du personnage sous X % (0 = sans)", 0, 100)
+	_bool(main, "cond/target_weak", "Condition : cible blessée ou affaiblie")
+	_int(main, "reduce", "Protection d'un allié : dégâts réduits de", 0, 99)
+	_int(main, "range", "Portée de la protection (cases)", 0, 10)
+	var tr := _sec("Particularités")
+	var current: Array = data.get("traits", [])
+	var checks := {}
+	for k in Content.TRAITS:
+		var c := CheckBox.new()
+		c.text = String(Content.TRAITS[k])
+		c.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		c.button_pressed = current.has(k)
+		tr.add_child(c)
+		checks[k] = c
+	_get["traits"] = func():
+		var out: Array = []
+		for k in checks:
+			if checks[k].button_pressed:
+				out.append(k)
+		return out
+	_mods(self, "mods", "Bonus du passif")
+	_effects(self, "effects", "Effets quand il se déclenche")

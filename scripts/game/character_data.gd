@@ -136,6 +136,14 @@ static func sanitize(input: Variant, base: Dictionary) -> Dictionary:
 		out.inventory = items
 	if input.get("passive") is Dictionary:
 		out.passive = Content.sanitize_passive(input.passive) if not (input.passive as Dictionary).is_empty() else {}
+	if input.get("extra_passives") is Array:
+		var extra: Array = []
+		for p in input.extra_passives:
+			if p is Dictionary and extra.size() < 6:
+				var cp := Content.sanitize_passive(p)
+				if String(cp.get("name", "")) != "":
+					extra.append(cp)
+		out.extra_passives = extra
 	if input.has("auto"):
 		out.auto = bool(input.auto)
 	for key in ["alloc", "trained"]:

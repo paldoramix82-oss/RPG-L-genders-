@@ -406,6 +406,9 @@ static func sanitize_ability(input: Dictionary) -> Dictionary:
 	}
 	if input.get("conditions") is Dictionary:
 		a.conditions = sanitize_cond(input.conditions)
+	# Capacité personnelle : créée pour un seul personnage (nom affiché au MJ).
+	if String(input.get("owner", "")) != "":
+		a.owner = _text(input.owner, 40)
 	if a.short == "":
 		a.short = a.name.substr(0, 14)
 	return a

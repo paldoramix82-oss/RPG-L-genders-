@@ -2636,6 +2636,65 @@ func mj_teach(char_id: String, ability_id: String) -> String:
 	return err
 
 
+## Capacité personnelle : ajoutée au catalogue (marquée au nom du personnage)
+## puis apprise aussitôt par ce seul personnage.
+func mj_personal_ability(char_id: String, data: Dictionary) -> String:
+	var c: Dictionary = characters.get(char_id, {})
+	if c.is_empty():
+		return "Personnage introuvable."
+	var d := data.duplicate(true)
+	d.owner = String(c.get("name", ""))
+	if String(d.get("id", "")) == "":
+		d.id = Content.make_id("", "%s %s" % [d.get("name", "capacite"), c.get("name", "")])
+	var clean := mj_content_save("abilities", d)
+	if clean.is_empty():
+		return "Capacité invalide."
+	var known := _known_ability(c, String(clean.id))
+	if not known.is_empty():
+		# Déjà connue : on remplace par la nouvelle version en gardant l'équipement.
+		var eq := bool(known.get("equipped", false))
+		known.clear()
+		known.merge(Content.ability_copy(content, String(clean.id)))
+		known.equipped = eq
+		_mark("characters")
+		characters_changed.emit()
+		return ""
+	return mj_teach(char_id, String(clean.id))
+
+
+## Passif personnel : s'ajoute au passif de classe (jusqu'à 6).
+func mj_grant_passive(char_id: String, passive: Dictionary) -> String:
+	var c: Dictionary = characters.get(char_id, {})
+	if c.is_empty():
+		return "Personnage introuvable."
+	var p := Content.sanitize_passive(passive)
+	if String(p.get("name", "")) == "":
+		return "Donnez un nom au passif."
+	if not c.get("extra_passives") is Array:
+		c.extra_passives = []
+	if c.extra_passives.size() >= 6:
+		return "Six passifs personnels au maximum."
+	c.extra_passives.append(p)
+	_reward_message(String(c.id), "%s obtient un passif : %s !" % [c.name, p.name], [{"t": "level", "text": p.name}, {"t": "info", "text": Effects.passive_text(p, content)}])
+	_mj_log("Passif personnel : %s → %s" % [p.name, c.name])
+	_mark("characters")
+	_unsaved = true
+	characters_changed.emit()
+	return ""
+
+
+func mj_remove_passive(char_id: String, index: int) -> void:
+	var c: Dictionary = characters.get(char_id, {})
+	var list: Array = c.get("extra_passives", [])
+	if index < 0 or index >= list.size():
+		return
+	_mj_log("Passif personnel retiré : %s ← %s" % [list[index].get("name", "?"), c.name])
+	list.remove_at(index)
+	_mark("characters")
+	_unsaved = true
+	characters_changed.emit()
+
+
 func mj_forget(char_id: String, ability_id: String) -> void:
 	var c: Dictionary = characters.get(char_id, {})
 	if c.is_empty():

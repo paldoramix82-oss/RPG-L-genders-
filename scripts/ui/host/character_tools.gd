@@ -5,6 +5,8 @@ extends VBoxContainer
 ## effets de statut, inventaire. Chaque modification est journalisée par l'hôte.
 
 signal edit_requested(char_id: String)
+signal personal_ability_requested(char_id: String)
+signal personal_passive_requested(char_id: String)
 signal create_item_requested(char_id: String)
 signal place_requested(char_id: String)
 signal deleted
@@ -95,6 +97,21 @@ func rebuild() -> void:
 	abil.add_child(_small("Apprendre cette capacité", "PrimaryButton", func():
 		if ab_pick.selected >= 0:
 			server.mj_teach(cid, String(ab_pick.get_item_metadata(ab_pick.selected)))))
+	var mine := HFlowContainer.new()
+	mine.add_theme_constant_override("h_separation", 6)
+	mine.add_theme_constant_override("v_separation", 6)
+	abil.add_child(mine)
+	mine.add_child(_small("Créer une capacité bien à lui…", "", func(): personal_ability_requested.emit(cid)))
+	mine.add_child(_small("Créer un passif spécial…", "", func(): personal_passive_requested.emit(cid)))
+	var extra: Array = sheet.get("extra_passives", [])
+	for i in extra.size():
+		var pr := HBoxContainer.new()
+		abil.add_child(pr)
+		var pl := UIKit.label("Passif personnel : %s — %s" % [extra[i].get("name", "?"), Effects.passive_text(extra[i], content)], "", true)
+		pl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pr.add_child(pl)
+		var idx := i
+		pr.add_child(_small("Retirer", "DangerButton", func(): server.mj_remove_passive(cid, idx)))
 	for a in sheet.get("abilities", []):
 		var id := String(a.get("id", ""))
 		var row := HBoxContainer.new()

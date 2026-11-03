@@ -30,6 +30,7 @@ func _ready() -> void:
 	_test_keys()
 	_test_npc_control()
 	_test_nested_maps()
+	_test_bricks()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -1093,3 +1094,71 @@ func _test_nested_maps() -> void:
 	_expect(not MapData.token(wmap, "pawn_" + a.id).is_empty(), "son pion réapparaît près de l'entrée du monde")
 	s.mj_set_active_map(city.id)
 	_expect(s.map_of_player(a.id) == city.id and s.map_of_player(b.id) == city.id, "« Montrer cette carte aux joueurs » ramène tout le monde au même endroit")
+
+
+func _brick(group: Array, label: String) -> Dictionary:
+	for b in group[2]:
+		if String(b.label) == label:
+			return b
+	return {}
+
+
+func _test_bricks() -> void:
+	print("\n— Briques : capacités et passifs composés, capacités personnelles")
+	var s := _server()
+	# Composer une capacité : forme « zone à distance » + Feu + Étourdir.
+	var a := {"name": "Pluie ardente", "effects": []}
+	var fire := {}
+	var stun := {}
+	for g in BrickPalette.EFFECT_GROUPS:
+		if fire.is_empty():
+			fire = _brick(g, "Feu")
+		if stun.is_empty():
+			stun = _brick(g, "Étourdir")
+	for b in [_brick(BrickPalette.SHAPES, "Zone à distance"), _brick(BrickPalette.COSTS, "Petit sort (3 mana)"), fire, stun]:
+		_expect(not b.is_empty(), "brique trouvée : %s" % b.get("label", "?"))
+		for k in b.get("fields", {}):
+			a[k] = b.fields[k]
+		a.effects.append_array((b.get("effects", []) as Array).duplicate(true))
+	var clean := Content.sanitize_ability(a)
+	_expect(clean.target == "area_enemy" and int(clean.radius) == 1 and int(clean.cost) == 3 and (clean.effects as Array).size() == 3, "les briques donnent une capacité valide (zone, coût, 3 effets)")
+	# Chaque brique d'effet passe la validation sans rien perdre.
+	var all_ok := true
+	for g in BrickPalette.EFFECT_GROUPS:
+		for b in g[2]:
+			if Content.sanitize_effects(b.effects).size() != (b.effects as Array).size():
+				all_ok = false
+				print("    brique invalide : ", b.label)
+	_expect(all_ok, "toutes les briques d'effet sont valides")
+	for b in BrickPalette.EFFECT_GROUPS[0][2] + BrickPalette.EFFECT_GROUPS[2][2]:
+		for e in b.effects:
+			if String(e.get("type", "")) == "status":
+				_expect(not Content.get_entry(s.content, "statuses", String(e.status)).is_empty(), "l'effet « %s » de la brique %s existe" % [e.status, b.label])
+	# Capacité personnelle donnée à un seul personnage.
+	var p := _add_player(s, "Kael")
+	s._cmd_char_create(p, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Kael"}})
+	var q := _add_player(s, "Lyra")
+	s._cmd_char_create(q, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Lyra"}})
+	var err := s.mj_personal_ability(p.id, clean)
+	_expect(err == "", "capacité personnelle créée et apprise : %s" % err)
+	var known: Array = (s.characters[p.id].abilities as Array).filter(func(x): return String(x.get("name", "")) == "Pluie ardente")
+	_expect(known.size() == 1 and String(known[0].get("owner", "")) == "Kael", "Kael connaît « Pluie ardente » (marquée à son nom)")
+	_expect((s.characters[q.id].abilities as Array).filter(func(x): return String(x.get("name", "")) == "Pluie ardente").is_empty(), "Lyra ne l'a pas")
+	# Passif spécial : bonus permanent + particularité, en plus du passif de classe.
+	var def0 := int(Rules.derived(s.characters[p.id], s.content).defense)
+	err = s.mj_grant_passive(p.id, {"name": "Peau de pierre", "trigger": "always", "mods": {"defense": 2}, "traits": ["anti_magie"]})
+	_expect(err == "", "passif spécial accordé : %s" % err)
+	_expect(not (s.characters[p.id].passive as Dictionary).is_empty() and (s.characters[p.id].extra_passives as Array).size() == 1, "le passif de classe est conservé, le passif spécial s'ajoute")
+	_expect(int(Rules.derived(s.characters[p.id], s.content).defense) == def0 + 2, "le bonus du passif spécial compte (+2 Défense)")
+	var m := s.mj_create_map("Plaine", 16, 10)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	var tk := MapData.token(s.maps[s.active_map], "pawn_" + p.id)
+	_expect(s.combat.has_trait(tk, "anti_magie"), "la particularité du passif spécial est prise en compte en combat")
+	_expect(s.mj_grant_passive(p.id, {"name": ""}) != "", "un passif sans nom est refusé")
+	s.mj_remove_passive(p.id, 0)
+	_expect((s.characters[p.id].extra_passives as Array).is_empty() and int(Rules.derived(s.characters[p.id], s.content).defense) == def0, "retirer le passif spécial annule son bonus")
+	# Sauvegarde / relecture de la fiche : les passifs personnels survivent.
+	s.mj_grant_passive(p.id, {"name": "Rage froide", "trigger": "on_damaged", "effects": [{"type": "stat", "stat": "Force", "amount": 2, "turns": 2, "on": "self"}]})
+	var back := CharacterData.sanitize(s.characters[p.id].duplicate(true), s.characters[p.id])
+	_expect((back.get("extra_passives", []) as Array).size() == 1 and String(back.extra_passives[0].trigger) == "on_damaged", "les passifs personnels sont gardés à la sauvegarde")

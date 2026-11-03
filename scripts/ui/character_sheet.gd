@@ -218,6 +218,10 @@ func _skills(c: Dictionary, d: Dictionary) -> void:
 	if not passive.is_empty() and String(passive.get("name", "")) != "":
 		var pc := GameUI.section(self, "Passif de classe", "spiral")
 		pc.add_child(GameUI.passive_card(passive, content))
+	if not (c.get("extra_passives", []) as Array).is_empty():
+		var xp := GameUI.section(self, "Passifs personnels", "star")
+		for ep in c.extra_passives:
+			xp.add_child(GameUI.passive_card(ep, content))
 	var res_name := String(d.res_name)
 	var equipped := Rules.equipped_abilities(c)
 	var ac := GameUI.section(self, "Équipées", "bolt")

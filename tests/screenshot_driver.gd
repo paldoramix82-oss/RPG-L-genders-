@@ -125,6 +125,17 @@ func _host() -> void:
 				ed.show_preview()
 		"monster_editor":
 			screen._open_content_editor("monsters", {"name": "Loup des neiges"})
+		"brick_editor":
+			screen._open_content_editor("abilities", {"name": ""})
+			await get_tree().process_frame
+			for ed in screen.find_children("*", "ContentEditor", true, false):
+				ed._add_brick(BrickPalette.SHAPES[2][5], "")
+				ed._add_brick(BrickPalette.EFFECT_GROUPS[0][2][3], "")
+				ed._add_brick(BrickPalette.EFFECT_GROUPS[2][2][0], "")
+		"personal_passive":
+			var cid := String(server.characters.keys()[0])
+			screen._open_char_tools(cid)
+			screen._open_personal_editor(cid, "passive")
 		"quest_editor":
 			screen._open_quest_editor(server.quests[-1] if phase == "libre_npc" else server.quests[0])
 		"ambush":

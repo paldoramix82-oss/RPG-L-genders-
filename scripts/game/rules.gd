@@ -91,6 +91,19 @@ static func base_stat(sheet: Dictionary, stat_name: String) -> int:
 
 
 ## Somme des bonus : peuple (et synergie avec la classe) + objets équipés + effets en cours (statuts).
+## Tous les passifs d'une fiche : celui de la classe + les passifs personnels
+## donnés par le MJ (« extra_passives »).
+static func passives(sheet: Dictionary) -> Array:
+	var out: Array = []
+	var p: Variant = sheet.get("passive", {})
+	if p is Dictionary and not (p as Dictionary).is_empty():
+		out.append(p)
+	for e in sheet.get("extra_passives", []):
+		if e is Dictionary and not (e as Dictionary).is_empty():
+			out.append(e)
+	return out
+
+
 static func mods(sheet: Dictionary, content: Dictionary) -> Dictionary:
 	var total := {}
 	var sid := String(sheet.get("species_id", ""))
@@ -155,13 +168,13 @@ static func derived(sheet: Dictionary, content: Dictionary) -> Dictionary:
 		"vision": maxi(1, int(r.get("vision_base", 3)) + dex / maxi(1, int(r.get("vision_dex_div", 2))) + int(m.get("vision", 0))),
 		"mods": m,
 	}
-	var passive: Dictionary = sheet.get("passive", {})
-	if String(passive.get("trigger", "")) == "always" and (passive.get("cond", {}) as Dictionary).is_empty():
-		var pm: Dictionary = passive.get("mods", {})
-		d.heal_pct += int(pm.get("heal_pct", 0))
-		d.defense += int(pm.get("defense", 0))
-		d.damage += int(pm.get("damage", 0))
-		d.to_hit += int(pm.get("to_hit", 0))
+	for passive in passives(sheet):
+		if String(passive.get("trigger", "")) == "always" and (passive.get("cond", {}) as Dictionary).is_empty():
+			var pm: Dictionary = passive.get("mods", {})
+			d.heal_pct += int(pm.get("heal_pct", 0))
+			d.defense += int(pm.get("defense", 0))
+			d.damage += int(pm.get("damage", 0))
+			d.to_hit += int(pm.get("to_hit", 0))
 	if not sheet.get("auto", false):
 		# Fiche libre ou monstre : les valeurs saisies priment (avec les bonus d'équipement).
 		if int(sheet.get("hp_max", 0)) > 0:
