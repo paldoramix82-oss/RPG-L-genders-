@@ -1188,6 +1188,60 @@ func _lock_box(t: Dictionary, upd: Callable) -> Control:
 	return box.get_parent().get_parent()
 
 
+## PNJ (ou monstre) piloté par le MJ : le faire parler ou agir, ses répliques,
+## les quêtes qu'il propose.
+func _npc_voice_box(t: Dictionary) -> Control:
+	var server := Net.server
+	var tid := String(t.id)
+	var box := UIKit.fold(null, "Faire parler, répliques et quêtes", t.kind == "npc", "InsetPanel")
+	var to := OptionButton.new()
+	to.add_item("À tout le monde")
+	to.set_item_metadata(0, Protocol.TO_ALL)
+	for p in server.players.values():
+		if p.status == Protocol.STATUS_ACCEPTED:
+			to.add_item("En aparté à %s" % p.name)
+			to.set_item_metadata(to.item_count - 1, String(p.id))
+	box.add_child(to)
+	var say := UIKit.line_edit("", "Ce qu'il dit, ou ce qu'il fait")
+	box.add_child(say)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	box.add_child(row)
+	var send := func(action: bool):
+		if server.mj_npc_say(tid, say.text, String(to.get_item_metadata(to.selected)), action):
+			say.clear()
+	say.text_submitted.connect(func(_v): send.call(false))
+	row.add_child(_small_button("Dire", "PrimaryButton", func(): send.call(false)))
+	row.add_child(_small_button("Agir (« … se lève et part »)", "", func(): send.call(true)))
+	box.add_child(UIKit.label("Répliques (une par ligne) : il en dit une quand un joueur vient lui parler.", "MutedLabel", true))
+	var lines := TextEdit.new()
+	lines.custom_minimum_size.y = 80
+	lines.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	lines.text = "\n".join(PackedStringArray(t.get("lines", [])))
+	lines.focus_exited.connect(func(): server.mj_set_npc_lines(_edit_map, tid, Array(lines.text.split("\n", false))))
+	box.add_child(lines)
+	var mine: Array = server.quests.filter(func(q): return String(q.get("giver", "")).to_lower() == String(t.name).to_lower())
+	box.add_child(UIKit.label("Quêtes qu'il propose : %s" % (", ".join(PackedStringArray(mine.map(func(q): return String(q.title)))) if not mine.is_empty() else "aucune"), "", true))
+	var pick := OptionButton.new()
+	pick.fit_to_longest_item = false
+	pick.add_item("Lui confier une quête…")
+	pick.set_item_metadata(0, "")
+	for q in server.quests:
+		if String(q.status) in ["draft", "active"] and not mine.has(q):
+			pick.add_item(String(q.title))
+			pick.set_item_metadata(pick.item_count - 1, String(q.id))
+	pick.item_selected.connect(func(i):
+		var qid := String(pick.get_item_metadata(i))
+		if qid != "":
+			server.mj_quest_set_giver(qid, String(t.name))
+			_notifier.push("%s propose maintenant cette quête aux joueurs qui lui parlent." % t.name, "success")
+			_refresh_inspector())
+	box.add_child(pick)
+	box.add_child(_small_button("Nouvelle quête pour ce PNJ…", "", func():
+		_open_quest_editor({"giver": String(t.name), "kind": "side", "objectives": []})))
+	return box.get_parent().get_parent()
+
+
 ## Monstre ou PNJ : objets qu'il garde et lâche à sa défaite (clés, indices…).
 func _carries_box(t: Dictionary, upd: Callable) -> Control:
 	var carried: Array = (t.get("carries", []) as Array).duplicate()
@@ -1424,6 +1478,7 @@ func _refresh_inspector() -> void:
 	if t.kind == "object":
 		_inspector.add_child(_lock_box(t, upd))
 	if t.kind in ["monster", "npc"]:
+		_inspector.add_child(_npc_voice_box(t))
 		_inspector.add_child(_carries_box(t, upd))
 	if t.kind in ["monster", "npc"]:
 		var att := OptionButton.new()
@@ -2016,6 +2071,7 @@ func _open_quest_editor(quest: Dictionary) -> void:
 			draft.rewards.items.append({"item": String(clean.id), "qty": 1})
 			_open_quest_editor(draft)))
 	panel.body.add_child(editor)
+	panel.set_footer(editor.action_bar)
 
 
 ## Coffre commun : ce que les joueurs peuvent se partager.

@@ -42,6 +42,8 @@ var fog_override := {}
 var fog_alpha := 1.0
 ## Chiffres et textes flottants (dégâts, soins, effets) : {token, text, color, t}.
 var _floaters: Array = []
+## Bulles de paroles des PNJ : {token, text, t}.
+var _bubbles: Array = []
 
 var zoom := 1.0
 var offset := Vector2.ZERO
@@ -212,7 +214,10 @@ func _process(delta: float) -> void:
 	for f in _floaters:
 		f.t = float(f.t) + delta
 	_floaters = _floaters.filter(func(f): return float(f.t) < 1.8)
-	if moving or current_turn != "" or _dragging != "" or not reachable.is_empty() or not _floaters.is_empty() or target_mode:
+	for b in _bubbles:
+		b.t = float(b.t) + delta
+	_bubbles = _bubbles.filter(func(b): return float(b.t) < 5.0)
+	if moving or current_turn != "" or _dragging != "" or not reachable.is_empty() or not _floaters.is_empty() or not _bubbles.is_empty() or target_mode:
 		queue_redraw()
 
 
@@ -226,6 +231,10 @@ func show_fx(list: Array) -> void:
 		var amount := int(f.get("amount", 0))
 		var text := ""
 		var col := Palette.TEXT
+		if String(f.get("type", "")) == "say":
+			_bubbles = _bubbles.filter(func(b): return b.token != id)
+			_bubbles.append({"token": id, "text": String(f.get("text", "")).substr(0, 90), "t": 0.0})
+			continue
 		match String(f.get("type", "")):
 			"dmg":
 				text = "−%d" % amount
@@ -336,6 +345,8 @@ func _draw() -> void:
 			if not tt.is_empty():
 				var pc := cell_center(_display.get(tt.id, Vector2(float(tt.x), float(tt.y))))
 				draw_arc(pc, cs * (0.55 + 0.05 * sin(_time * 5.0)), 0, TAU, 28, Palette.DANGER.lightened(0.2), maxf(2.0, cs * 0.06), true)
+	for b in _bubbles:
+		_draw_bubble(b, cs)
 	for f in _floaters:
 		if float(f.t) < 0:
 			continue
@@ -726,3 +737,36 @@ func _tap(c: Vector2i) -> void:
 		move_requested.emit(selected, c.x, c.y)
 	else:
 		select("")
+
+
+## Bulle de paroles au-dessus d'un pion (PNJ que le MJ fait parler).
+func _draw_bubble(b: Dictionary, cs: float) -> void:
+	var tk := MapData.token(map, String(b.token))
+	if tk.is_empty():
+		return
+	var p := cell_center(_display.get(tk.id, Vector2(float(tk.x), float(tk.y))))
+	var a := clampf((5.0 - float(b.t)) / 0.5, 0.0, 1.0)
+	var fs := clampi(int(cs * 0.32), 11, 18)
+	var text := String(b.text)
+	var maxw := 220.0
+	var lines: PackedStringArray = []
+	var cur := ""
+	for word in text.split(" "):
+		var test := (cur + " " + word).strip_edges()
+		if _font.get_string_size(test, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > maxw and cur != "":
+			lines.append(cur)
+			cur = word
+		else:
+			cur = test
+	if cur != "":
+		lines.append(cur)
+	var w := 0.0
+	for l in lines:
+		w = maxf(w, _font.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+	var h := lines.size() * (fs + 3) + 10
+	var r := Rect2(p + Vector2(-w * 0.5 - 8, -cs * 0.95 - h), Vector2(w + 16, h))
+	draw_rect(r.grow(1), Color(0, 0, 0, 0.55 * a))
+	draw_rect(r, Color(0.96, 0.93, 0.85, a))
+	draw_colored_polygon(PackedVector2Array([Vector2(p.x - 6, r.end.y), Vector2(p.x + 6, r.end.y), Vector2(p.x, r.end.y + 8)]), Color(0.96, 0.93, 0.85, a))
+	for i in lines.size():
+		draw_string(_font, r.position + Vector2(8, 5 + _font.get_ascent(fs) + i * (fs + 3)), lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.15, 0.12, 0.1, a))

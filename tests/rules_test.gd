@@ -28,6 +28,7 @@ func _ready() -> void:
 	_test_monk_necro()
 	_test_alliances()
 	_test_keys()
+	_test_npc_control()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -1003,3 +1004,28 @@ func _test_keys() -> void:
 	_expect(s._cmd_open(a, {"token": door.id, "answer": "  PIANO "}) == "" and MapData.token(map, door.id).is_empty(), "bonne réponse (majuscules, article et espaces ignorés) : la porte s'ouvre")
 	var hint := s.mj_place_item(m.id, String(key.id), 20, 5)
 	_expect(not hint.is_empty() and hint.get("pickup", false), "le MJ peut aussi poser la clé par terre, à ramasser")
+
+
+func _test_npc_control() -> void:
+	print("\n— PNJ pilotés par le MJ")
+	var s := _server()
+	var a := _add_player(s, "Aria")
+	var b := _add_player(s, "Bram")
+	for p in [a, b]:
+		s._cmd_char_create(p, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": p.name}})
+	var m := s.mj_create_map("Taverne", 20, 12)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	var map: Dictionary = s.maps[s.active_map]
+	var npc := s.mj_add_token(m.id, {"kind": "npc", "name": "Gros Bill", "x": 6, "y": 5})
+	_expect(s.mj_npc_say(npc.id, "Encore vous ? Payez d'abord.") and String(s.messages[-1].from_name) == "Gros Bill", "le MJ fait parler un PNJ (message à son nom)")
+	_expect(s.mj_npc_say(npc.id, "Psst… la cave est piégée.", a.id) and String(s.messages[-1].to) == a.id, "aparté : un seul joueur l'entend")
+	_expect(s.mj_npc_say(npc.id, "frappe du poing sur le comptoir.", Protocol.TO_ALL, true) and String(s.messages[-1].kind) == Protocol.KIND_NARRATION, "faire agir le PNJ (récit)")
+	s.mj_set_npc_lines(m.id, npc.id, ["Bienvenue au Sanglier Rieur !", "", "On ne se bat pas ici."])
+	_expect((npc.lines as Array).size() == 2, "répliques du PNJ enregistrées (lignes vides ignorées)")
+	var q := s.mj_quest_save({"title": "La cave aux rats", "kind": "side", "objectives": [{"text": "Vider la cave"}], "rewards": {"xp": 20}})
+	s.mj_quest_set_giver(String(q.id), "Gros Bill")
+	var pa := MapData.token(map, "pawn_" + a.id)
+	pa.x = 7
+	pa.y = 5
+	_expect(s._cmd_talk(a, {"token": npc.id}) == "" and s.quests_for(a.id).any(func(x): return x.id == q.id and x.status == "offer"), "la quête confiée au PNJ est proposée à qui lui parle")

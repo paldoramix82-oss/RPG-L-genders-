@@ -2971,6 +2971,12 @@ func _cmd_talk(player: Dictionary, payload: Dictionary) -> String:
 		return "%s refuse de vous parler pour le moment." % npc.name
 	npc_offer(npc, player.id)
 	quest_event("talk", {"name": String(npc.name)}, [player.id])
+	# Réplique choisie par le MJ : bulle au-dessus du PNJ, visible du joueur.
+	var lines: Array = npc.get("lines", [])
+	if not lines.is_empty():
+		var line := String(lines[_rng.randi_range(0, lines.size() - 1)])
+		if player.online:
+			_send.call(player.peer_id, Protocol.EVT_FX, {"fx": [{"type": "say", "token": String(npc.id), "text": line}]})
 	return ""
 
 
@@ -3284,6 +3290,53 @@ func _quests_changed() -> void:
 # ---------------------------------------------------------------------------
 
 ## Narration du MJ (mise en forme « récit », distincte des messages).
+## Le MJ fait parler (ou agir) un PNJ : message à son nom et bulle au-dessus
+## de son pion. to : tout le monde ou un joueur (aparté).
+func mj_npc_say(token_id: String, text: String, to: String = Protocol.TO_ALL, action: bool = false) -> bool:
+	var map: Dictionary = maps.get(active_map, {})
+	var t := MapData.token(map, token_id)
+	text = Protocol.sanitize_text(text, 500)
+	if t.is_empty() or text == "" or not _valid_mj_target(to):
+		return false
+	if action:
+		_add_message({"kind": Protocol.KIND_NARRATION, "from": Protocol.MJ_ID, "from_name": String(t.name), "to": to,
+			"text": "%s %s" % [t.name, text], "title": ""})
+	else:
+		_add_message({"from": Protocol.MJ_ID, "from_name": String(t.name), "to": to, "text": "« %s »" % text, "npc": token_id})
+	if not t.get("hidden", false):
+		var fx_list := [{"type": "say", "token": token_id, "text": ("*%s*" % text) if action else text}]
+		if to == Protocol.TO_ALL:
+			broadcast_fx(fx_list)
+		elif players.has(to) and players[to].online:
+			_send.call(players[to].peer_id, Protocol.EVT_FX, {"fx": fx_list})
+			fx.emit(fx_list)
+	return true
+
+
+## Répliques d'un PNJ (dites quand un joueur vient lui parler).
+func mj_set_npc_lines(map_id: String, token_id: String, lines: Array) -> void:
+	var t := MapData.token(maps.get(map_id, {}), token_id)
+	if t.is_empty():
+		return
+	var clean: Array = []
+	for l in lines:
+		var txt := Protocol.sanitize_text(String(l), 200)
+		if txt != "" and clean.size() < 6:
+			clean.append(txt)
+	t.lines = clean
+	map_changed(map_id, true)
+
+
+## Confie une quête existante à un PNJ : il la propose aux joueurs qui lui parlent.
+func mj_quest_set_giver(quest_id: String, npc_name: String) -> void:
+	var q := _quest(quest_id)
+	if q.is_empty():
+		return
+	q.giver = Protocol.sanitize_text(npc_name, 60)
+	q.offer = true
+	_quests_changed()
+
+
 func mj_narrate(text: String, to: String = Protocol.TO_ALL, title: String = "") -> bool:
 	text = Protocol.sanitize_text(text)
 	if text == "" or not _valid_mj_target(to):

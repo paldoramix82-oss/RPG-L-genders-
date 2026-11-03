@@ -18,6 +18,7 @@ var _objectives: VBoxContainer
 var _players := {}
 var _xp: SpinBox
 var _offer: CheckBox
+var action_bar: HFlowContainer
 var _auto: CheckBox
 var _gold: SpinBox
 var _items: VBoxContainer
@@ -39,6 +40,18 @@ func _init(data: Dictionary) -> void:
 	UIKit.field(main, "Type", _kind)
 	_giver = UIKit.line_edit(String(quest.get("giver", "")), "Ex. : le maire de Valombre")
 	UIKit.field(main, "Confiée par (facultatif)", _giver)
+	# Choisir un PNJ présent sur une carte : il proposera la quête quand on lui parle.
+	var npcs := OptionButton.new()
+	npcs.fit_to_longest_item = false
+	npcs.add_item("… ou choisir un PNJ des cartes")
+	for m in server.maps.values():
+		for t in m.get("tokens", []):
+			if String(t.get("kind", "")) == "npc":
+				npcs.add_item(String(t.name))
+	npcs.item_selected.connect(func(i):
+		if i > 0:
+			_giver.text = npcs.get_item_text(i))
+	main.add_child(npcs)
 	_desc = TextEdit.new()
 	_desc.text = String(quest.get("description", ""))
 	_desc.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
@@ -92,10 +105,11 @@ func _init(data: Dictionary) -> void:
 	rcard.add_child(ir)
 	ir.add_child(UIKit.button("+ Objet du catalogue", "", func(): _add_item("", 1)))
 	ir.add_child(UIKit.button("+ Créer un objet sur mesure…", "", func(): create_item_requested.emit()))
+	# Barre d'actions : placée par l'écran dans le bas fixe du panneau.
 	var actions := HFlowContainer.new()
 	actions.add_theme_constant_override("h_separation", 8)
 	actions.add_theme_constant_override("v_separation", 8)
-	add_child(actions)
+	action_bar = actions
 	actions.add_child(UIKit.button("Annuler", "", func(): cancelled.emit()))
 	actions.add_child(UIKit.button("Enregistrer", "", func(): saved.emit(collect(), false)))
 	if String(quest.get("status", "draft")) == "draft":

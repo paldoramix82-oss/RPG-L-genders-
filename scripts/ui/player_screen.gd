@@ -1672,9 +1672,11 @@ func _open_npc_panel(t: Dictionary, dist: int, auto_talk: bool = true) -> void:
 	if near and auto_talk:
 		_client.talk_to(token_id)
 	var role := String(t.get("role", ""))
-	if role != "" and near:
+	var lines: Array = t.get("lines", [])
+	if (role != "" or not lines.is_empty()) and near:
 		if not _greetings.has(token_id):
-			_greetings[token_id] = QuestLibrary.greeting(role, _rng)
+			# Répliques écrites par le MJ d'abord, sinon celles du métier.
+			_greetings[token_id] = String(lines[_rng.randi_range(0, lines.size() - 1)]) if not lines.is_empty() else QuestLibrary.greeting(role, _rng)
 		var g := UIKit.label("« %s »" % _greetings[token_id], "", true)
 		g.add_theme_color_override("font_color", Palette.GOLD.lightened(0.2))
 		panel.body.add_child(g)
