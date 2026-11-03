@@ -42,6 +42,34 @@ static func card(parent: Node, title: String = "", variation: String = "CardPane
 	return body
 
 
+## Section repliable (titre cliquable « + / − ») : garde les longs formulaires
+## lisibles sur téléphone. Renvoie le conteneur du contenu.
+static func fold(parent: Node, title: String, open: bool = false, variation: String = "CardPanel") -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = variation
+	if parent:
+		parent.add_child(panel)
+	var col := VBoxContainer.new()
+	panel.add_child(col)
+	var head := Button.new()
+	head.flat = true
+	head.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	head.custom_minimum_size.y = TOUCH_HEIGHT
+	head.theme_type_variation = "HeadingLabel"
+	head.add_theme_font_size_override("font_size", 18)
+	head.add_theme_color_override("font_color", Palette.GOLD)
+	col.add_child(head)
+	var body := VBoxContainer.new()
+	body.visible = open
+	col.add_child(body)
+	var update := func(): head.text = ("−  " if body.visible else "+  ") + title
+	head.pressed.connect(func():
+		body.visible = not body.visible
+		update.call())
+	update.call()
+	return body
+
+
 ## Ligne « libellé au-dessus du champ » dans une colonne.
 static func field(parent: Node, caption: String, control: Control) -> Control:
 	var box := VBoxContainer.new()

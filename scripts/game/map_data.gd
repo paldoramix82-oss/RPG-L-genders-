@@ -283,6 +283,18 @@ static func update_token(t: Dictionary, data: Dictionary, map: Dictionary) -> vo
 	for key in ["owner", "char_id"]:
 		if data.has(key):
 			t[key] = String(data[key]).substr(0, 40)
+	# Apparence choisie par le MJ (sprite de assets/sprites/units) ; "" = automatique.
+	if data.has("sprite_custom"):
+		var sc := String(data.sprite_custom).substr(0, 30)
+		if sc == "":
+			t.erase("sprite_custom")
+		else:
+			t["sprite_custom"] = sc
+	if data.has("attitude") and String(data.attitude) in ["hostile", "neutre", "allie", ""]:
+		if String(data.attitude) == "":
+			t.erase("attitude")
+		else:
+			t["attitude"] = String(data.attitude)
 
 
 static func add_label(map: Dictionary, x: int, y: int, text: String, hidden: bool) -> Dictionary:

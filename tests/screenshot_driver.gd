@@ -123,6 +123,8 @@ func _host() -> void:
 			await get_tree().process_frame
 			for ed in screen.find_children("*", "ContentEditor", true, false):
 				ed.show_preview()
+		"monster_editor":
+			screen._open_content_editor("monsters", {"name": "Loup des neiges"})
 		"quest_editor":
 			screen._open_quest_editor(server.quests[-1] if phase == "libre_npc" else server.quests[0])
 		"ambush":

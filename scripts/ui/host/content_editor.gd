@@ -22,6 +22,8 @@ var kind := ""
 var data := {}
 var content := {}
 var _get := {}  # clé -> Callable() renvoyant la valeur
+var action_bar: HBoxContainer
+var _sections := 0
 
 
 func _init(entry_kind: String, entry: Dictionary, content_data: Dictionary) -> void:
@@ -45,14 +47,23 @@ func _init(entry_kind: String, entry: Dictionary, content_data: Dictionary) -> v
 			_build_loot()
 		"species":
 			_build_species()
+	# Barre d'actions : placée par l'écran dans le bas fixe du panneau
+	# (toujours visible, même en haut d'un long formulaire).
 	var actions := HBoxContainer.new()
-	add_child(actions)
+	action_bar = actions
 	actions.add_child(UIKit.button("Annuler", "", func(): cancelled.emit()))
 	actions.add_child(UIKit.spacer(false))
 	actions.add_child(UIKit.button("Aperçu", "", show_preview))
 	var save := UIKit.button("Enregistrer", "PrimaryButton", func(): saved.emit(kind, collect()))
 	save.custom_minimum_size.x = 180
 	actions.add_child(save)
+
+
+## Section repliable ; la première est ouverte, les autres fermées (sauf si
+## elles contiennent déjà quelque chose).
+func _sec(title: String, variation: String = "CardPanel", open: bool = false) -> VBoxContainer:
+	_sections += 1
+	return UIKit.fold(self, title, open or _sections == 1, variation)
 
 
 ## Aperçu : la carte telle que les joueurs la verront, après validation par les
@@ -215,7 +226,7 @@ func _dice(parent: Node, path: String, caption: String, fallback: String = "1d6"
 
 ## Bonus / malus : liste de lignes « Défense +2 ».
 func _mods(parent: Node, path: String, caption: String) -> void:
-	var card := UIKit.card(parent, caption, "InsetPanel")
+	var card := _sec(caption) if parent == self else UIKit.card(parent, caption, "InsetPanel")
 	var rows := VBoxContainer.new()
 	card.add_child(rows)
 	var add_row := func(key: String, value: int):
@@ -256,7 +267,7 @@ func _mods(parent: Node, path: String, caption: String) -> void:
 
 ## Liste de références (capacités d'un monstre, accordées par un objet…).
 func _ref_list(parent: Node, path: String, caption: String, ref_kind: String) -> void:
-	var card := UIKit.card(parent, caption, "InsetPanel")
+	var card := _sec(caption) if parent == self else UIKit.card(parent, caption, "InsetPanel")
 	var rows := VBoxContainer.new()
 	card.add_child(rows)
 	var add_row := func(id: String):
@@ -291,7 +302,7 @@ func _ref_list(parent: Node, path: String, caption: String, ref_kind: String) ->
 
 ## Composeur d'effets : chaque ligne est un effet (type + réglages).
 func _effects(parent: Node, path: String, caption: String, hint: String = "") -> void:
-	var card := UIKit.card(parent, caption, "InsetPanel")
+	var card := _sec(caption) if parent == self else UIKit.card(parent, caption, "InsetPanel")
 	if hint != "":
 		card.add_child(UIKit.label(hint, "MutedLabel", true))
 	var list := EffectList.new(_value(path, []) if _value(path, []) is Array else [], content)
@@ -304,7 +315,7 @@ func _effects(parent: Node, path: String, caption: String, hint: String = "") ->
 # ---------------------------------------------------------------------------
 
 func _build_item() -> void:
-	var main := UIKit.card(self, "Objet")
+	var main := _sec("Objet")
 	_text(main, "name", "Nom", "Ex. : Lame de lune")
 	_icon(main, "icon")
 	_enum(main, "category", "Catégorie", Content.CATEGORY_NAMES, "arme")
@@ -312,7 +323,7 @@ func _build_item() -> void:
 	_long(main, "description", "Description")
 	_int(main, "value", "Valeur (or)", 0, 999999)
 	_bool(main, "unique", "Objet unique (un seul exemplaire dans la campagne)")
-	var w := UIKit.card(self, "Arme (si c'est une arme)")
+	var w := _sec("Arme (si c'est une arme)")
 	_dice(w, "weapon/damage", "Dégâts", "1d6")
 	_enum(w, "weapon/stat", "Caractéristique utilisée", STAT_FIELDS, "Force")
 	_int(w, "weapon/crit", "Critique à partir de (20 = seulement sur 20)", 2, 20, 20)
@@ -322,18 +333,18 @@ func _build_item() -> void:
 	_effects(self, "use", "Effets à l'utilisation (potions, consommables)", "Laissez vide si l'objet ne s'utilise pas.")
 	_effects(self, "on_hit", "Effets quand l'arme touche", "Ex. : 25 % d'empoisonner, vol de vie…")
 	_ref_list(self, "grants", "Capacités accordées tant que l'objet est équipé", "abilities")
-	var book := UIKit.card(self, "Livre de compétence")
+	var book := _sec("Livre de compétence")
 	_ref(book, "teaches", "Apprend la capacité (à la lecture)", "abilities")
 
 
 func _build_ability() -> void:
-	var main := UIKit.card(self, "Capacité")
+	var main := _sec("Capacité")
 	_text(main, "name", "Nom", "Ex. : Lance de glace")
 	_text(main, "short", "Nom court (barre rapide)", "14 lettres max.")
 	_icon(main, "icon")
 	_long(main, "description", "Description")
 	_bool(main, "ultimate", "Ultime (utilisable quand la jauge est pleine)")
-	var costs := UIKit.card(self, "Coûts et portée")
+	var costs := _sec("Coûts et portée")
 	_int(costs, "cost", "Coût en ressource (mana…)", 0, 999)
 	_int(costs, "ap", "Coût en points d'action", 0, 6, 1)
 	_int(costs, "cooldown", "Recharge (tours, 0 = aucune)", 0, 99)
@@ -348,14 +359,14 @@ func _build_ability() -> void:
 
 
 func _build_status() -> void:
-	var main := UIKit.card(self, "Effet de statut")
+	var main := _sec("Effet de statut")
 	_text(main, "name", "Nom", "Ex. : Gelé")
 	_icon(main, "icon")
 	_color(main, "color", "Couleur")
 	_enum(main, "kind", "Type", {"buff": "Bénéfique", "debuff": "Néfaste"}, "debuff")
 	_long(main, "description", "Description (affichée aux joueurs)")
 	_mods(self, "mods", "Bonus / malus tant que l'effet dure")
-	var flags := UIKit.card(self, "Particularités")
+	var flags := _sec("Particularités")
 	var current: Array = data.get("flags", [])
 	var checks := {}
 	for spec in [["stun", "Perd son tour (étourdi)"], ["root", "Ne peut pas se déplacer"], ["silence", "Ne peut pas utiliser de capacité"],
@@ -371,25 +382,126 @@ func _build_status() -> void:
 			if checks[k].button_pressed:
 				out.append(k)
 		return out
-	var tick := UIKit.card(self, "Au début de chaque tour (facultatif)")
+	var tick := _sec("Au début de chaque tour (facultatif)")
 	_enum(tick, "tick/type", "Effet", {"": "Rien", "damage": "Dégâts", "heal": "Soin"}, "")
 	_dice(tick, "tick/dice", "Dés", "1d4")
 
 
+## Modèles de monstres : caractéristiques, PV, dégâts, butin et apparence
+## calculés d'après un niveau (création rapide).
+const ARCHETYPES := {
+	"bete": {"name": "Bête (loup, ours…)", "stats": {"Force": 1, "Dextérité": 2, "Constitution": 1}, "hp": 1.0, "dice": "d6",
+		"speed": 6, "loot": "bete", "sprite": "loup", "icon": "paw", "element": "physique", "range": 1},
+	"humanoide": {"name": "Humanoïde (bandit, soldat…)", "stats": {"Force": 1, "Dextérité": 1, "Charisme": 1}, "hp": 1.0, "dice": "d8",
+		"speed": 5, "loot": "brigand", "sprite": "bandit", "icon": "sword", "element": "physique", "range": 1},
+	"mort_vivant": {"name": "Mort-vivant (squelette, goule…)", "stats": {"Constitution": 2, "Force": 1, "Esprit": -1}, "hp": 1.1, "dice": "d6",
+		"speed": 4, "loot": "mort_vivant", "sprite": "squelette", "icon": "skull", "element": "physique", "range": 1},
+	"magique": {"name": "Créature magique (esprit, mage…)", "stats": {"Intelligence": 2, "Esprit": 2, "Constitution": -1}, "hp": 0.8, "dice": "d8",
+		"speed": 5, "loot": "magique", "sprite": "ombre_errante", "icon": "spiral", "element": "magique", "range": 4},
+	"brute": {"name": "Brute (ogre, golem…)", "stats": {"Force": 3, "Constitution": 3, "Dextérité": -2}, "hp": 1.6, "dice": "d10",
+		"speed": 4, "loot": "gobelin", "sprite": "golem", "icon": "fist", "element": "physique", "range": 1},
+	"boss": {"name": "Boss (chef, dragon…)", "stats": {"Force": 3, "Constitution": 3, "Esprit": 2, "Dextérité": 1}, "hp": 3.0, "dice": "d10",
+		"speed": 5, "loot": "boss", "sprite": "jeune_dragon", "icon": "dragon", "element": "physique", "range": 1, "boss": true},
+}
+const ATTITUDES := {"hostile": "Hostile (attaque les héros)", "neutre": "Neutre (n'attaque pas, se défend)", "allie": "Allié (combat aux côtés des héros)"}
+
+
+## Remplit la fiche d'après un modèle et un niveau, puis reconstruit le formulaire.
+func _apply_archetype(arch_id: String, level: int) -> void:
+	var a: Dictionary = ARCHETYPES[arch_id]
+	data = collect()
+	var stats := {}
+	for st in STAT_FIELDS:
+		stats[st] = clampi(5 + level / 3 + int(a.stats.get(st, 0)), 1, 30)
+	data.stats = stats
+	data.hp = maxi(4, int((10 + level * 9) * float(a.hp)))
+	data.power = 1 + level / 2
+	data.defense_bonus = level / 3 + (2 if a.get("boss", false) else 0)
+	data.speed = int(a.speed)
+	data.weapon = {"damage": "%d%s" % [1 + level / 5, a.dice], "stat": "Intelligence" if a.element == "magique" else "Force",
+		"range": int(a.range), "element": a.element, "crit": 20}
+	data.xp = (15 + level * 12) * (3 if a.get("boss", false) else 1)
+	data.loot = a.loot
+	data.boss = a.get("boss", false)
+	data.res = 10 + level * 3
+	if String(data.get("sprite", "")) == "":
+		data.sprite = a.sprite
+	data.icon = a.icon
+	data["level"] = level
+	data["archetype"] = arch_id
+	_rebuild()
+
+
+func _rebuild() -> void:
+	for c in get_children():
+		c.queue_free()
+	_get.clear()
+	_sections = 0
+	match kind:
+		"monsters":
+			_build_monster()
+
+
+## Liste des apparences (sprites de personnages et de monstres).
+static func unit_sprites() -> Array:
+	var out: Array = []
+	for f in DirAccess.get_files_at("res://assets/sprites/units"):
+		var n := String(f).trim_suffix(".import").trim_suffix(".png")
+		if not out.has(n):
+			out.append(n)
+	out.sort()
+	return out
+
+
+func _sprite_pick(parent: Node, path: String, caption: String) -> void:
+	var o := OptionButton.new()
+	o.fit_to_longest_item = false
+	o.add_item("Automatique")
+	o.set_item_metadata(0, "")
+	for n in unit_sprites():
+		var t := Sprites.tex("units", String(n))
+		if t != null:
+			o.add_icon_item(t, String(n).replace("_", " ").capitalize())
+		else:
+			o.add_item(String(n))
+		o.set_item_metadata(o.item_count - 1, n)
+		if String(n) == String(_value(path, "")):
+			o.select(o.item_count - 1)
+	UIKit.field(parent, caption, o)
+	_get[path] = func(): return String(o.get_item_metadata(o.selected)) if o.selected >= 0 else ""
+
+
 func _build_monster() -> void:
-	var main := UIKit.card(self, "Monstre")
-	_text(main, "name", "Nom", "Ex. : Loup des neiges")
+	var quick := _sec("Création rapide")
+	quick.add_child(UIKit.label("Choisissez un modèle et un niveau : caractéristiques, PV, dégâts, XP et butin sont calculés pour vous. Retouchez ensuite ce que vous voulez dans les sections ci-dessous.", "MutedLabel", true))
+	_text(quick, "name", "Nom", "Ex. : Loup des neiges")
+	var arch := OptionButton.new()
+	arch.fit_to_longest_item = false
+	for k in ARCHETYPES:
+		arch.add_item(String(ARCHETYPES[k].name))
+		arch.set_item_metadata(arch.item_count - 1, k)
+		if k == String(data.get("archetype", "bete")):
+			arch.select(arch.item_count - 1)
+	UIKit.field(quick, "Modèle", arch)
+	var lvl := UIKit.spin(int(data.get("level", 1)), 1, 20)
+	UIKit.field(quick, "Niveau (1 = facile, 5 = sérieux, 10 = redoutable, 20 = légendaire)", lvl)
+	quick.add_child(UIKit.button("Calculer le monstre", "PrimaryButton", func():
+		_apply_archetype(String(arch.get_item_metadata(arch.selected)), int(lvl.value))))
+	_sprite_pick(quick, "sprite", "Apparence sur la carte")
+	_enum(quick, "attitude", "Attitude", ATTITUDES, "hostile")
+	quick.add_child(UIKit.label("Actuellement : %d PV, dégâts %s, %d XP." % [int(data.get("hp", 20)), String(data.get("weapon", {}).get("damage", "1d6")), int(data.get("xp", 20))], "StrongLabel", true))
+	var main := _sec("Description et pion")
 	_icon(main, "icon")
 	_color(main, "color", "Couleur du pion")
 	_long(main, "description", "Description")
 	_bool(main, "boss", "Boss")
-	var stats := UIKit.card(self, "Caractéristiques (1 à 10, 5 = moyen)")
+	var stats := _sec("Caractéristiques (1 à 10, 5 = moyen)")
 	var grid := GridContainer.new()
 	grid.columns = 3
 	stats.add_child(grid)
 	for s in STAT_FIELDS:
 		_int(grid, "stats/" + s, s, 1, 30, 5)
-	var fight := UIKit.card(self, "Combat")
+	var fight := _sec("Combat")
 	_int(fight, "hp", "Points de vie", 1, 99999, 20)
 	_int(fight, "defense_bonus", "Bonus de Défense", -10, 30)
 	_int(fight, "power", "Puissance (bonus de dégâts)", 0, 99, 2)
@@ -401,7 +513,7 @@ func _build_monster() -> void:
 	_int(fight, "weapon/range", "Portée de l'attaque", 1, 30, 1)
 	_enum(fight, "weapon/element", "Type de dégâts", {"physique": "Physique", "magique": "Magique"}, "physique")
 	_ref_list(self, "abilities", "Capacités", "abilities")
-	var rw := UIKit.card(self, "Récompenses")
+	var rw := _sec("Récompenses")
 	_int(rw, "xp", "XP rapportée", 0, 999999, 20)
 	_ref(rw, "loot", "Table de butin", "loot")
 
@@ -409,22 +521,22 @@ func _build_monster() -> void:
 ## Peuple : bonus, trait, capacités innées ; les synergies avec chaque classe se
 ## règlent ci-dessous (une ligne par classe).
 func _build_species() -> void:
-	var main := UIKit.card(self, "Peuple")
+	var main := _sec("Peuple")
 	_text(main, "name", "Nom", "Ex. : Elfe des neiges")
 	_icon(main, "icon")
 	_long(main, "description", "Description")
-	var stats := UIKit.card(self, "Bonus de caractéristiques (−5 à +5)")
+	var stats := _sec("Bonus de caractéristiques (−5 à +5)")
 	var grid := GridContainer.new()
 	grid.columns = 3
 	stats.add_child(grid)
 	for s in STAT_FIELDS:
 		_int(grid, "stats/" + s, s, -5, 5, 0)
 	_mods(self, "mods", "Bonus de jeu (PV, mana, vision, résistances…)")
-	var tr := UIKit.card(self, "Trait")
+	var tr := _sec("Trait")
 	_text(tr, "trait/name", "Nom du trait", "Ex. : Sang ancien")
 	_long(tr, "trait/description", "Ce qu'il fait, en une phrase")
 	_ref_list(self, "abilities", "Capacités de peuple (toujours disponibles)", "abilities")
-	var syn := UIKit.card(self, "Synergies avec les classes (facultatif)")
+	var syn := _sec("Synergies avec les classes (facultatif)")
 	syn.add_child(GameUI.hint("Ex. : un demi-orc druide gagne « Appel de la horde ». Laissez vide pour aucune synergie."))
 	for cls in Content.list(content, "classes"):
 		var cid := String(cls.id)
@@ -436,7 +548,7 @@ func _build_species() -> void:
 
 
 func _build_class() -> void:
-	var main := UIKit.card(self, "Classe")
+	var main := _sec("Classe")
 	_text(main, "name", "Nom", "Ex. : Nécromancien")
 	_text(main, "tagline", "Accroche", "Une phrase")
 	_text(main, "role", "Rôle", "Ex. : Soutien, tank…")
@@ -444,13 +556,13 @@ func _build_class() -> void:
 	_color(main, "color", "Couleur")
 	_enum(main, "emblem", "Emblème", ["sword", "dagger", "fist", "claw", "flame", "spirit", "eye", "heart", "paw", "gear", "staff", "bow", "lute"], "sword")
 	_int(main, "difficulty", "Difficulté (1 à 3)", 1, 3, 1)
-	var stats := UIKit.card(self, "Bonus de caractéristiques")
+	var stats := _sec("Bonus de caractéristiques")
 	var grid := GridContainer.new()
 	grid.columns = 3
 	stats.add_child(grid)
 	for s in STAT_FIELDS:
 		_int(grid, "bonus/" + s, s, -5, 5, 0)
-	var vals := UIKit.card(self, "Valeurs de base")
+	var vals := _sec("Valeurs de base")
 	_int(vals, "hp_base", "PV de base", 1, 999, 14)
 	_int(vals, "hp_per_level", "PV gagnés par niveau", 0, 99, 5)
 	_text(vals, "resource/name", "Nom de la ressource", "Mana, Vigueur, AEC…")
@@ -460,7 +572,7 @@ func _build_class() -> void:
 	_int(vals, "crit_bonus", "Bonus de critique", 0, 10)
 	_int(vals, "defense_bonus", "Bonus de Défense", -5, 20)
 	_int(vals, "attack_bonus", "Bonus au toucher", -5, 20)
-	var p := UIKit.card(self, "Passif")
+	var p := _sec("Passif")
 	_text(p, "passive/name", "Nom du passif")
 	_long(p, "passive/description", "Description (ce que voient les joueurs)")
 	_icon(p, "passive/icon")
@@ -472,7 +584,7 @@ func _build_class() -> void:
 	_int(p, "passive/range", "Portée de la protection (cases)", 0, 10)
 	_mods(p, "passive/mods", "Bonus du passif")
 	_effects(p, "passive/effects", "Effets du passif quand il se déclenche")
-	var kit := UIKit.card(self, "Capacités de départ")
+	var kit := _sec("Capacités de départ")
 	for i in 3:
 		var path := "abilities"
 		var current: Array = data.get("abilities", [])
@@ -498,7 +610,7 @@ func _build_class() -> void:
 
 
 func _learnables() -> void:
-	var card := UIKit.card(self, "Capacités à apprendre en montant de niveau", "InsetPanel")
+	var card := _sec("Capacités à apprendre en montant de niveau", "InsetPanel")
 	var rows := VBoxContainer.new()
 	card.add_child(rows)
 	var add := func(id: String, level: int):
@@ -531,7 +643,7 @@ func _learnables() -> void:
 
 
 func _kit_rows() -> void:
-	var card := UIKit.card(self, "Équipement de départ", "InsetPanel")
+	var card := _sec("Équipement de départ", "InsetPanel")
 	var rows := VBoxContainer.new()
 	card.add_child(rows)
 	var add := func(id: String, qty: int, equip: bool):
@@ -568,7 +680,7 @@ func _kit_rows() -> void:
 
 
 func _build_loot() -> void:
-	var main := UIKit.card(self, "Table de butin")
+	var main := _sec("Table de butin")
 	_text(main, "name", "Nom", "Ex. : Repaire des brigands")
 	var g := HBoxContainer.new()
 	main.add_child(g)
@@ -579,7 +691,7 @@ func _build_loot() -> void:
 	UIKit.field(g, "Or maximum", hi)
 	_get["gold"] = func(): return [int(lo.value), int(hi.value)]
 	for spec in [["entries", "Objets possibles (chance en %)", true], ["guaranteed", "Objets garantis", false]]:
-		var card := UIKit.card(self, spec[1], "InsetPanel")
+		var card := _sec(spec[1], "InsetPanel")
 		var rows := VBoxContainer.new()
 		card.add_child(rows)
 		var chance_mode: bool = spec[2]

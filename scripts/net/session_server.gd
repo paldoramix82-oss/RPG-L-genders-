@@ -1664,7 +1664,11 @@ func _refresh_sprites(map: Dictionary) -> void:
 			"pc":
 				sprite = "units/" + (String(sheet.get("class_id", "")) if String(sheet.get("class_id", "")) != "" else "heros")
 			"monster":
-				sprite = "units/" + (String(sheet.get("monster_id", "")) if String(sheet.get("monster_id", "")) != "" else "monstre")
+				var mdef := Content.get_entry(content, "monsters", String(sheet.get("monster_id", "")))
+				if String(mdef.get("sprite", "")) != "":
+					sprite = "units/" + String(mdef.sprite)
+				else:
+					sprite = "units/" + (String(sheet.get("monster_id", "")) if String(sheet.get("monster_id", "")) != "" else "monstre")
 			"npc":
 				if String(t.get("role", "")) != "":
 					sprite = "units/" + String(t.role)
@@ -1675,6 +1679,8 @@ func _refresh_sprites(map: Dictionary) -> void:
 				if t.get("pickup", false) and not (t.get("chest_items", []) as Array).is_empty():
 					var def := Content.get_entry(content, "items", String(t.chest_items[0].get("item", "")))
 					sprite = "items/" + String(def.get("icon", "bag"))
+		if String(t.get("sprite_custom", "")) != "":
+			sprite = "units/" + String(t.sprite_custom)
 		t.sprite = sprite
 
 

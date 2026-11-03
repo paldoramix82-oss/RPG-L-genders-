@@ -7,6 +7,8 @@ extends Control
 signal closed
 
 var body: VBoxContainer
+## Barre fixe sous le contenu (toujours visible : Enregistrer, Annuler…).
+var footer: HBoxContainer
 var _sheet: PanelContainer
 var _title: Label
 var _scroll: TouchScroll
@@ -86,16 +88,38 @@ func _init(title: String, wide_layout: bool = false, icon_name: String = "") -> 
 	body.add_theme_constant_override("separation", 12)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(body)
+	footer = HBoxContainer.new()
+	footer.add_theme_constant_override("separation", 8)
+	footer.visible = false
+	col.add_child(footer)
 
 
 func _ready() -> void:
-	# Petite entrée animée.
-	var from := Vector2(0, 60) if not _wide else Vector2(60, 0)
+	# Toujours la taille de la fenêtre visible (même si l'écran derrière est plus
+	# haut) : la barre du bas (Enregistrer…) reste à l'écran.
+	top_level = true
+	_fit_viewport()
+	get_viewport().size_changed.connect(_fit_viewport)
+	# Petite entrée animée (fondu seulement : le panneau reste ancré à la fenêtre).
 	_sheet.modulate.a = 0.0
-	_sheet.position += from
-	var tw := create_tween().set_parallel(true)
-	tw.tween_property(_sheet, "modulate:a", 1.0, 0.16)
-	tw.tween_property(_sheet, "position", _sheet.position - from, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	create_tween().tween_property(_sheet, "modulate:a", 1.0, 0.16)
+
+
+func _fit_viewport() -> void:
+	var r := get_viewport().get_visible_rect()
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	global_position = r.position
+	size = r.size
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		_sheet.set_offset(side, 0.0)
+
+
+func set_footer(control: Control) -> void:
+	for c in footer.get_children():
+		c.queue_free()
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(control)
+	footer.visible = true
 
 
 func set_title(text: String) -> void:

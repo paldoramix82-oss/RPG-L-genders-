@@ -532,6 +532,8 @@ static func sanitize_monster(input: Dictionary, content: Dictionary) -> Dictiona
 		"defense_bonus": _int(input.get("defense_bonus", 0), -10, 30), "boss": bool(input.get("boss", false)),
 		"speed": _int(input.get("speed", 5), 1, 20, 5), "res": _int(input.get("res", 10), 0, 999, 10),
 		"power": _int(input.get("power", 2), 0, 99, 2), "aggro": _int(input.get("aggro", 0), 0, 20),
+		"sprite": _text(input.get("sprite", ""), 30), "attitude": String(input.get("attitude", "hostile")) if String(input.get("attitude", "")) in ["hostile", "neutre", "allie"] else "hostile",
+		"archetype": _text(input.get("archetype", ""), 20), "level": _int(input.get("level", 1), 1, 20, 1),
 	}
 
 

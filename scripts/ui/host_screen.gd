@@ -1313,6 +1313,29 @@ func _refresh_inspector() -> void:
 	_inspector.add_child(hidden)
 	if t.kind != "pc":
 		_inspector.add_child(_color_row(t.color, func(c): upd.call({"color": c})))
+	# Apparence : n'importe quel personnage ou monstre dessiné.
+	var look := OptionButton.new()
+	look.fit_to_longest_item = false
+	look.add_item("Apparence automatique")
+	look.set_item_metadata(0, "")
+	for n in ContentEditor.unit_sprites():
+		var tx := Sprites.tex("units", String(n))
+		look.add_icon_item(tx, String(n).replace("_", " ").capitalize()) if tx != null else look.add_item(String(n))
+		look.set_item_metadata(look.item_count - 1, n)
+		if String(n) == String(t.get("sprite_custom", "")):
+			look.select(look.item_count - 1)
+	look.item_selected.connect(func(i): upd.call({"sprite_custom": String(look.get_item_metadata(i))}))
+	UIKit.field(_inspector, "Apparence", look)
+	if t.kind in ["monster", "npc"]:
+		var att := OptionButton.new()
+		var att_specs := [["", "Attitude du modèle"], ["hostile", "Hostile"], ["neutre", "Neutre"], ["allie", "Allié des héros"]]
+		for spec in att_specs:
+			att.add_item(spec[1])
+			att.set_item_metadata(att.item_count - 1, spec[0])
+			if spec[0] == String(t.get("attitude", "")):
+				att.select(att.item_count - 1)
+		att.item_selected.connect(func(i): upd.call({"attitude": String(att.get_item_metadata(i))}))
+		UIKit.field(_inspector, "Attitude", att)
 	var note := UIKit.line_edit(String(t.get("note", "")), "Note secrète du MJ")
 	note.text_submitted.connect(func(v): upd.call({"note": v}))
 	note.focus_exited.connect(func(): upd.call({"note": note.text}))
@@ -1870,6 +1893,7 @@ func _open_content_editor(kind: String, entry: Dictionary, give_to: String = "",
 		else:
 			_close_overlay())
 	panel.body.add_child(editor)
+	panel.set_footer(editor.action_bar)
 
 
 func _on_content_changed() -> void:
