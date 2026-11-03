@@ -123,6 +123,20 @@ Cocher chaque ligne et noter les remarques.
 - [ ] N4. Pions : petit personnage selon la classe ; PNJ selon le métier ; monstres reconnaissables.
 - [ ] N5. Zoom avant / arrière sur téléphone : pixels nets, pas de ralentissement sur une carte immense.
 
+### O. Outils MJ et ergonomie du téléphone
+- [ ] O1. *Créer › Monstres › + Nouveau* : *Enregistrer* visible en bas sans défiler ; création rapide (modèle + niveau) puis Enregistrer.
+- [ ] O2. *Créer › Capacités › + Nouveau* : toucher *Zone à distance*, *Feu*, *Étourdir* ; le nom se remplit ; *Aperçu* ; Enregistrer ; *Infos* sur la ligne.
+- [ ] O3. *Fiche et outils* d'un héros : *Créer une capacité bien à lui…* (seul ce héros l'a) et *Créer un passif spécial…* (+2 Défense : la Défense monte ; *Retirer* : elle redescend).
+- [ ] O4. Un Moine : un soigneur ne peut pas le cibler avec *Soin* ; *Premiers soins* fonctionne ; une zone magique le touche.
+- [ ] O5. Un Nécromancien lève un squelette qui combat avec le groupe.
+- [ ] O6. Un loup mis en **Allié** : pas de combat en passant à côté ; il aide pendant un combat proche. En **Neutre** : il n'attaque que si on l'attaque.
+- [ ] O7. Coffre à clé : sans la clé « verrouillé » ; la clé portée par un monstre tombe à sa mort ; avec elle le coffre s'ouvre. Énigme : mauvaise réponse refusée, bonne réponse ouvre.
+- [ ] O8. PNJ : *Dire* une phrase (bulle sur la carte), répliques à l'approche, quête confiée au choix.
+- [ ] O9. *Monde › Décor* : poser arbres, meubles, portes ; un joueur ne traverse ni murs, ni décor, ni eau (sauf s'il sait nager).
+- [ ] O10. Sur une étiquette de ville, *Passage vers une autre carte* vers une carte de ville ; un joueur touche *Entrer* : lui seul change de carte ; le MJ voit « 1 joueur » sur cette carte.
+- [ ] O11. Téléphone : barre *Agir / Épreuves / Dés* ; en combat *Rapide / Puissante / Plus…* ; toucher *Force* sur la fiche : explication.
+- [ ] O12. Générer une carte *Immense* sur PC et sur téléphone : pas de blocage notable ; zoom et déplacement fluides.
+
 ## Rapport
 
 Merci d'indiquer, pour chaque ligne en échec : modèle de téléphone, version d'Android, type de réseau (box / partage de connexion de quel téléphone), et le message affiché. Ces informations permettent de corriger avant la phase 2.

@@ -207,7 +207,14 @@ Les univers sont de simples fichiers JSON dans `data/universes/` : on peut en aj
   - *Journal* : quêtes (principales d'abord, objectifs, récompenses), groupe, codex, réglages (musique, connexion, aide).
 - Sur PC (fenêtre large), la carte et le récit s'affichent côte à côte.
 
+
+**Téléphone : menus regroupés.** Sous la carte, trois boutons seulement : **Agir** (fouiller, parler, ramasser, entrer…), **Épreuves** et **Dés**. En combat : **Rapide**, **Puissante** et **Plus…** (se défendre, objet, épreuve, fuir). **Toucher une caractéristique** de la fiche explique ce qu'elle fait ; chaque capacité a sa carte d'information.
+
+**Classes** : en plus des autres, le **Moine** (passif : **insensible à la magie ciblée** — ni sort ni soin magique à cible unique ne peut le viser, ami ou ennemi ; les zones l'atteignent, les soins non magiques comme les premiers soins aussi) et le **Nécromancien** (lève des squelettes, draine la vie).
+
 ## Côté MJ
+
+*(Voir aussi plus bas : « Outils du MJ : briques, alliances, clés, PNJ, cartes imbriquées ».)*
 
 L'écran est organisé en quatre zones, séparées par des **barres déplaçables** à la souris. Raccourcis : Ctrl + S sauvegarder, F1 carte, F2 récit, F5 tour suivant (combat), Ctrl + E événement rapide, Ctrl + Q nouvelle quête, Ctrl + N écrire, Échap fermer un panneau (bouton *Raccourcis* en haut).
 
@@ -224,6 +231,18 @@ L'écran est organisé en quatre zones, séparées par des **barres déplaçable
   - **Codex** (avec les secrets MJ) et **Réseau** (état, adresses, journal des connexions).
 - **Fiche et outils d'un personnage** : ± PV, soigner, mettre hors de combat, ± ressource, charger l'ultime, donner XP ou or, ± caractéristiques, donner un objet (du catalogue ou créé sur le moment), apprendre / oublier une capacité, équiper / retirer, appliquer / retirer un effet, inventaire, modifier l'histoire et les valeurs (fiche libre), placer sur la carte.
 - **Journal du MJ** : chaque modification manuelle (PV, objets, effets, XP, règles…) est notée dans le récit, visible du MJ seul.
+
+## Outils du MJ : briques, alliances, clés, PNJ, cartes imbriquées
+
+- **Briques** (*Créer › Capacités*, le passif d'une classe, et la fiche d'un personnage) : au lieu de régler chaque champ, on **touche des briques qui s'empilent** — *Forme* (un ennemi au contact ou à distance, un allié, soi-même, zone autour de soi, zone à distance, aura), *Coût* (gratuit, petit sort, gros sort, une fois par combat), *Frapper* (coup, gros coup, sort, feu, glace, poison, saignement, vol de vie), *Soigner et protéger*, *Contrôler* (étourdir, immobiliser, silence, aveugler, effrayer, affaiblir, repousser, attirer, voler 1 PA), *Renforcer*, *Invoquer* (squelette, esprit, loup, golem), *Conditions* (achever une cible blessée, soin si moins de 50 % de PV, 30 % d'étourdir…). Pour un passif : *Quand ça se déclenche* (toujours, début de tour, quand il touche, achève, est blessé, soigne, garde un allié) et *Bonus permanents* (Défense, dégâts, toucher, PV, vitesse, PA, savoir nager, insensible à la magie ciblée). Le nom et la description se remplissent tout seuls ; chaque effet reste modifiable plus bas ; *Tout effacer* recommence.
+- **Capacité ou passif bien à lui** : dans *Fiche et outils* d'un personnage, *Créer une capacité bien à lui…* (apprise par ce seul personnage, marquée à son nom) et *Créer un passif spécial…* (s'ajoute au passif de classe, six au plus, retirable).
+- **Bouton Infos** : dans les listes de *Créer*, *Infos* montre ce que fait une capacité, un monstre, une classe, un objet ou un effet, comme le verront les joueurs.
+- **Éditeurs** : *Enregistrer* reste toujours visible en bas ; les sections se replient. **Monstre en création rapide** : un modèle (bête, humanoïde, mort-vivant, créature magique, brute, boss) et un niveau remplissent tout ; on choisit l'apparence du pion et l'attitude.
+- **Alliances** : chaque monstre (ou chaque pion, dans l'inspecteur) est **hostile**, **neutre** ou **allié** (anneau rouge, jaune ou vert). Un allié n'attaque pas les héros et combat à leurs côtés quand il est proche ; un neutre ne fait rien tant qu'on ne l'attaque pas, puis devient hostile.
+- **Clés, portes et énigmes** : dans l'inspecteur d'un coffre, *Serrure, clé et énigme* : *Clé requise pour ouvrir* (ou *Créer une nouvelle clé…*), clé gardée ou non par la serrure, et **énigme** facultative (question et réponse secrète, majuscules et accents ignorés). Cochez *C'est une porte* pour qu'il bloque le passage jusqu'à son ouverture. Sur un monstre, *Objets qu'il garde* › *Lui confier* ou *Créer une clé et la lui confier…* : lâchés à sa défaite.
+- **PNJ pilotés** : sur un PNJ, *Faire parler, répliques et quêtes* : *Dire* (bulle au-dessus du pion, à tout le monde ou en aparté à un joueur), *Agir* (« … se lève et part »), ses **répliques** quand on lui parle, *Lui confier une quête…* ou *Nouvelle quête pour ce PNJ…* (le donneur se choisit aussi dans l'éditeur de quête).
+- **Décor au pinceau** (*Monde › Décor*) : arbres, buissons, rochers, fleurs, mobilier, portes, clôtures, panneaux, bancs, charrettes, bannières, trône, cages, râteliers, os, bois… posés case par case. **Murs, arbres, rochers et meubles bloquent** le passage ; **l'eau** ne se traverse qu'en sachant nager (Dextérité suffisante, peuple aquatique ou bonus *nage*). Les déplacements suivent un vrai chemin.
+- **Cartes imbriquées** : sur une étiquette ou un pion, *Passage vers une autre carte* (ex. la petite ville de la carte du monde → la grande carte de la ville). Un joueur à côté touche **Entrer** : **lui seul** change de carte, les autres restent où ils sont. Le MJ voit combien de joueurs sont sur chaque carte et peut suivre chacune.
 
 ## Aventures prêtes à jouer et cartes
 

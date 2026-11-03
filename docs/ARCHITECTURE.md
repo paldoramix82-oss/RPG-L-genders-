@@ -176,3 +176,15 @@ L'état de l'hôte est fait de dictionnaires simples, sérialisés en JSON dans 
 ## Sauvegarde
 
 Format 2 (`CampaignStore.FORMAT`) : session, joueurs, fiches, cartes, messages, musique, **catalogue**, **quêtes**, **coffre**, **phase**. Un fichier au format 1 est converti au chargement (`Migrate`), après copie de l'original en `<id>.json.v1`.
+
+## Collisions, alliances, clés, cartes imbriquées, briques
+
+- **Passage** : `MapData.walkable(map, x, y, swim)` (terrains infranchissables, `BLOCKING_DECOR` et préfixes de décor bloquant, eau selon `swim`), `reach()` (parcours en largeur, 8 directions, sans couper les coins de murs) et `path()`. Le serveur s'en sert pour les déplacements libres et en combat (`_move_in_turn`, `_spend_move`), l'IA des monstres aussi (`Combat._step_toward`). Nage : `can_swim(t)` (règle `swim_dex`, modificateur `nage`).
+- **Rendu de la carte** : `TerrainPainter` découpe la carte en morceaux de 16 × 16 cases (SubViewport chacun) redessinés seulement quand ils changent ; l'interface regroupe ses rafraîchissements (`_later`).
+- **Camps** : `Combat.side(t)` → `players`, `enemies` ou `neutral` d'après `attitude` (pion, sinon modèle de monstre). Les alliés rejoignent le camp des héros, les neutres ne jouent pas.
+- **Clés et énigmes** : champs de pion `key`, `consume_key`, `door`, `riddle_q`, `riddle_a`, `carries` (objets portés, lâchés à la défaite). `view_for_player` retire `riddle_a`, `carries`, `chest_items` et `note`.
+- **PNJ** : `mj_npc_say`, `mj_set_npc_lines`, `mj_quest_set_giver` ; bulles transmises comme effet `say`.
+- **Cartes imbriquées** : `player_map[pid]` donne la carte de chaque joueur ; `_on_map(map_id, f)` prête temporairement `active_map` le temps d'une commande (`_dispatch`). Vues et effets ne sont envoyés qu'aux joueurs de la même carte ; `travel`, `_cmd_enter`, `mj_link_maps`.
+- **Passifs multiples** : `Rules.passives(sheet)` = passif de classe + `extra_passives` (passifs personnels). `Combat` (bonus conditionnels, défense, garde, déclencheurs, particularités) et `Rules.derived` parcourent la liste.
+- **Briques** : `BrickPalette` (interface du MJ) ne contient que des données — effets, champs (`target`, `radius`, `cost`, `trigger`…), bonus et particularités — fusionnées dans l'entrée par `ContentEditor._add_brick`, puis validées comme toute création (`Content.sanitize_*`). Capacités personnelles : `mj_personal_ability` (champ `owner`), passifs : `mj_grant_passive` / `mj_remove_passive`.
+

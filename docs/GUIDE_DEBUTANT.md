@@ -255,6 +255,14 @@ Les séparations entre les zones se **déplacent à la souris** : agrandissez la
 
 **Le jeu fait le gros du travail** : les monstres attaquent et jouent seuls, les combats ne concernent que ceux qui y sont, les quêtes avancent et se terminent seules. Votre rôle : raconter, répondre aux actions, et surveiller **Combat › Combats en cours** (reprendre la main sur un combat, passer un tour, le terminer). Pour tout faire à la main, décochez *Monstres agressifs* et *Monstres automatiques* dans *Créer › Règles*.
 
+### Créer vite, sans tout régler
+- **Une capacité ou un passif** : touchez des **briques** (forme, coût, feu, soin, étourdir, invoquer…) ; elles s'empilent et le nom se remplit seul. Pour un héros en particulier : *Fiche et outils › Créer une capacité bien à lui…* ou *Créer un passif spécial…*.
+- **Un monstre** : choisissez un modèle et un niveau, tout le reste est calculé.
+- **Un monstre ami** : mettez-le **Allié** (ou **Neutre**) : il ne vous attaque pas.
+- **Un coffre à clé** : *Créer une clé*, verrouillez le coffre avec, et confiez la clé à un monstre. Ou posez une **énigme**.
+- **Une ville à visiter** : reliez la petite ville de la grande carte à la carte de la ville ; chaque joueur y entre quand il veut, sans déplacer les autres.
+- **Hésitez sur ce que fait quelque chose ?** Bouton **Infos**.
+
 ### Improviser
 - Un joueur trouve un trésor inattendu ? *Créer un objet* (nom, rareté, effets) puis donnez-le directement.
 - Un piège ? *Dégâts ou soins de groupe*. Une falaise à escalader ? *Épreuve de groupe* (Dextérité, difficulté 15).
