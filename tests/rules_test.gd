@@ -25,6 +25,7 @@ func _ready() -> void:
 	_test_checks()
 	_test_town()
 	_test_collisions()
+	_test_monk_necro()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -872,3 +873,53 @@ func _test_collisions() -> void:
 	_expect(s.can_swim(pa) and s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 15, "y": 10}) == "", "avec assez de Dextérité, on nage dans l'eau peu profonde")
 	_expect(s._cmd_pawn_move(a, {"map_id": m.id, "token_id": pa.id, "x": 16, "y": 10}) != "", "l'eau profonde reste infranchissable")
 	s.content.rules.swim_dex = 6
+
+
+func _test_monk_necro() -> void:
+	print("\n— Moine (insensible à la magie ciblée) et Nécromancien")
+	var s := _server()
+	_expect(not Rules.get_class_def(s.content, "moine").is_empty() and not Rules.get_class_def(s.content, "necromancien").is_empty(), "classes Moine et Nécromancien disponibles")
+	var players: Array = []
+	for spec in [["Mo", "moine"], ["Soi", "soigneur"], ["Ne", "necromancien"]]:
+		var p := _add_player(s, spec[0])
+		s._cmd_char_create(p, {"class_id": spec[1], "alloc": Rules.get_class_def(s.content, spec[1]).recommended, "choices": [0], "identity": {"name": spec[0]}})
+		players.append(p)
+	var m := s.mj_create_map("Arène", 20, 12)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	var map: Dictionary = s.maps[s.active_map]
+	var tok := func(p): return MapData.token(map, "pawn_" + p.id)
+	var monk: Dictionary = tok.call(players[0])
+	var healer: Dictionary = tok.call(players[1])
+	var necro: Dictionary = tok.call(players[2])
+	monk.x = 5
+	monk.y = 5
+	healer.x = 6
+	healer.y = 5
+	necro.x = 4
+	necro.y = 5
+	_expect(s.combat.has_trait(monk, "anti_magie"), "le passif du Moine porte la particularité « anti_magie »")
+	s.mj_set_phase("combat")
+	var heal: Dictionary = Content.get_entry(s.content, "abilities", "soin")
+	s.phase.ap = 9
+	s.characters[players[1].id].res = 50
+	s._damage_token(monk, 8)
+	s._damage_token(necro, 4)
+	var hp0 := int(monk.hp)
+	var err := s.combat.use_ability(healer, heal, monk)
+	_expect(err != "" and int(monk.hp) == hp0, "un soin magique ne peut pas viser le Moine : %s" % err)
+	_expect(s.combat.use_ability(healer, heal, necro) == "", "le même soin vise un autre allié sans problème")
+	var bandage: Dictionary = Content.get_entry(s.content, "abilities", "premiers_soins")
+	_expect(s.combat.use_ability(healer, bandage, monk) == "" and int(monk.hp) > hp0, "des premiers soins (non magiques) le soignent")
+	var bolt := {"name": "Boule test", "target": "enemy", "range": 6, "ap": 1, "element": "magique", "roll": "none", "effects": [{"type": "damage", "dice": "1d6"}]}
+	var wolf := s.mj_spawn_monster("loup", 9, 5, false)
+	_expect(s.combat.use_ability(wolf, bolt, monk) != "", "un sort ennemi ciblé ne peut pas viser le Moine")
+	var area := {"name": "Zone test", "target": "area_enemy", "range": 6, "radius": 1, "ap": 1, "element": "magique", "roll": "none", "effects": [{"type": "damage", "dice": "1d6", "bonus": 2}]}
+	var hp1 := int(monk.hp)
+	_expect(s.combat.use_ability(wolf, area, monk) == "" and int(monk.hp) < hp1, "une zone magique atteint le Moine")
+	var punch := {"name": "Coup test", "target": "enemy", "range": 6, "ap": 1, "element": "physique", "roll": "none", "effects": [{"type": "damage", "dice": "1d4"}]}
+	_expect(s.combat.use_ability(wolf, punch, monk) == "", "une attaque physique le vise normalement")
+	var raise: Dictionary = Content.get_entry(s.content, "abilities", "lever_squelette")
+	var before := (map.tokens as Array).size()
+	s.characters[players[2].id].res = 20
+	_expect(s.combat.use_ability(necro, raise, necro) == "" and (map.tokens as Array).size() == before + 1, "le Nécromancien relève un squelette")

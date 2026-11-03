@@ -369,6 +369,10 @@ func use_ability(actor: Dictionary, ability: Dictionary, target: Dictionary, cel
 		var check := _check_target(actor, target, kind, rng, _has_heal(ability))
 		if check != "":
 			return check
+		# Moine (anti_magie) : aucun sort ni soin à cible unique ne peut le viser
+		# (sauf lui-même) ; les zones, elles, l'atteignent.
+		if target.id != actor.id and String(ability.get("element", "physique")) in ["magique", "soin"] and has_trait(target, "anti_magie"):
+			return "%s est insensible à la magie ciblée : impossible de le viser avec ce sort (les zones l'atteignent)." % target.name
 		targets = [target]
 	var err := _pay_ap(int(ability.get("ap", 1)))
 	if err != "":
@@ -856,6 +860,10 @@ func _cond_ok(cond: Dictionary, actor: Dictionary, target: Dictionary, element: 
 	if cond.has("chance") and _rng.randi_range(1, 100) > int(cond.chance):
 		return false
 	return true
+
+
+func has_trait(t: Dictionary, trait_id: String) -> bool:
+	return (_passive(t).get("traits", []) as Array).has(trait_id)
 
 
 func _passive(t: Dictionary) -> Dictionary:

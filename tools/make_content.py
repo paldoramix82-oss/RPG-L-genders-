@@ -295,8 +295,9 @@ ab("renaissance", "Renaissance", "phoenix", "Une fois par combat : rend 50 % des
 
 # --- Classes ------------------------------------------------------------------
 
-def passive(name, desc, trigger, icon="star", cond=None, mods=None, effects=None, reduce=0, rng=0):
+def passive(name, desc, trigger, icon="star", cond=None, mods=None, effects=None, reduce=0, rng=0, traits=None):
     p = {"name": name, "description": desc, "trigger": trigger, "icon": icon}
+    if traits: p["traits"] = traits
     if cond: p["cond"] = cond
     if mods: p["mods"] = mods
     if effects: p["effects"] = effects
@@ -333,6 +334,52 @@ def kit(*pairs):
 
 def choice(title, *ids):
     return {"title": title, "options": list(ids)}
+
+
+def moine(res_name, res_stat):
+    return klass("moine", "Moine", "Poings de fer, esprit de pierre : la magie glisse sur lui.", "Combattant au contact", "#d8862a", "fist",
+          "Un artiste martial que rien n'atteint : aucun sort ne peut le viser (ni pour le blesser, ni pour le soigner). "
+          "Seules les zones et les coups physiques le touchent. Il compte sur ses poings, sa vitesse et sa méditation.",
+          {"Dextérité": 1, "Esprit": 1}, 17, 5, res_name, res_stat, 8, 6,
+          passive("Esprit impénétrable", "Insensible à la magie ciblée : aucun sort ni soin à cible unique ne peut le viser "
+                  "(les zones l'atteignent normalement). +1 résistance magique.", "always", "ward", mods={"resist_mag": 1}, traits=["anti_magie"]),
+          [ab("paume_foudroyante", "Paume foudroyante", "fist", "1d8 + Dextérité et repousse de 1 case.", 2, 1, 1, "enemy", [dmg("1d8", stat="Dextérité"), push(1)], "Dextérité", short="Paume"),
+           ab("deluge_coups", "Déluge de coups", "hand", "Une rafale : 3d4 + Dextérité.", 3, 1, 1, "enemy", [dmg("3d4", stat="Dextérité")], "Dextérité", 1, short="Déluge"),
+           ab("meditation", "Méditation", "spiral", "Soigne 1d8 + Esprit, retire un effet néfaste et vous met En garde 1 tour.", 3, 1, 0, "self",
+              [heal("1d8", 0, "self"), cleanse(1, "self"), st("protege", 1, on="self")], "Esprit", 2, short="Méditer")],
+          ab("poing_dragon", "Poing du dragon", "dragon", "ULTIME : 4d8 + Dextérité, Étourdi 1 tour, repousse de 2 cases.", 0, 2, 1, "enemy",
+             [dmg("4d8", stat="Dextérité"), st("etourdi", 1), push(2)], "Dextérité", ultimate=True, short="Dragon"),
+          [{"ability": ab("pas_du_vent", "Pas du vent", "wind", "Hâte 2 tours (vitesse et PA).", 2, 1, 0, "self", [st("hate", 2, on="self")], "Dextérité", 3), "level": 2},
+           {"ability": ab("frappe_nerveuse", "Frappe nerveuse", "target", "1d6 + Dextérité et Réduit au silence 2 tours.", 3, 1, 1, "enemy",
+                          [dmg("1d6", stat="Dextérité"), st("silence", 2)], "Dextérité", 2), "level": 3}],
+          kit(("armure_cuir", 1, True), ("ration", 2, False)),
+          [choice("Votre arme", "baton_chene", "griffes_acier", "lance")],
+          rec(FOR=2, DEX=5, CON=3, INT=0, ESP=4, CHA=1), difficulty=2)
+
+
+def necromancien(res_name, res_stat):
+    return klass("necromancien", "Nécromancien", "La mort n'est qu'un outil.", "Invocateur et magie noire", "#6a4a8a", "skull",
+          "Relève les morts pour combattre à sa place, draine la vie de ses ennemis et maudit ceux qui lui résistent. "
+          "Fragile, il doit rester derrière ses serviteurs.",
+          {"Intelligence": 1, "Esprit": 1}, 12, 4, res_name, res_stat, 10, 5,
+          passive("Moisson des âmes", "Quand il met un ennemi hors de combat : il regagne 4 PV et 2 de ressource.", "on_kill", "skull",
+                  effects=[{"type": "heal", "amount": 4, "on": "self"}, restore("res", 2)]),
+          [ab("lever_squelette", "Lever un squelette", "skull", "Un squelette (12 PV, 1d6) se relève et combat pour vous.", 4, 2, 1, "self",
+              [summon("Squelette", 12, "1d6", 11, "#d8d0c0")], "Intelligence", 3, short="Squelette"),
+           ab("trait_ombre", "Trait d'ombre", "spirit", "1d10 + Intelligence dégâts magiques et Affaibli 1 tour.", 2, 1, 6, "enemy",
+              [dmg("1d10", element="magique"), st("affaibli", 1)], "Intelligence", element="magique", short="Ombre"),
+           ab("drain_vie", "Drain de vie", "drop", "1d8 + Intelligence dégâts magiques ; vous regagnez la moitié des dégâts.", 3, 1, 4, "enemy",
+              [dmg("1d8", element="magique"), drain(50)], "Intelligence", 1, element="magique", short="Drain")],
+          ab("armee_morts", "Armée des morts", "skull", "ULTIME : deux squelettes et une goule (20 PV, 1d8) se relèvent à vos côtés.", 0, 2, 0, "self",
+             [summon("Squelette", 12, "1d6", 11, "#d8d0c0"), summon("Squelette", 12, "1d6", 11, "#d8d0c0"), summon("Goule", 20, "1d8", 12, "#7a8a6a")],
+             "Intelligence", ultimate=True, short="Armée"),
+          [{"ability": ab("malediction", "Malédiction", "eye", "Marqué et Vulnérable 3 tours.", 3, 1, 6, "enemy",
+                          [st("marque", 3), st("vulnerable", 3)], "Intelligence", 2, roll="none", element="magique"), "level": 2},
+           {"ability": ab("explosion_cadavre", "Explosion de cadavre", "bomb", "Zone de rayon 1 à 5 cases : 2d6 dégâts magiques.", 4, 2, 5, "area_enemy",
+                          [dmg("2d6", element="magique")], "Intelligence", 2, radius=1, element="magique"), "level": 3}],
+          kit(("robe_mage", 1, True), ("potion_mana", 1, False)),
+          [choice("Votre focaliseur", "baton_chene", "baguette_braise", "grimoire_poche")],
+          rec(FOR=0, DEX=2, CON=3, INT=5, ESP=4, CHA=1), difficulty=3)
 
 
 FANTASY = [
@@ -472,6 +519,8 @@ FANTASY = [
           kit(("armure_cuir", 1, True), ("herbes_medicinales", 2, False)),
           [choice("Votre arme", "baton_chene", "lance", "arc_court")],
           rec(FOR=2, DEX=3, CON=3, INT=0, ESP=5, CHA=2), difficulty=2),
+    moine("Ki", "Esprit"),
+    necromancien("Essence", "Intelligence"),
 ]
 
 LEGENDERS = [
@@ -610,6 +659,8 @@ LEGENDERS = [
           [choice("Votre arme", "griffes_acier", "hache_guerre", "marteau_armes")],
           rec(FOR=4, DEX=2, CON=5, INT=0, ESP=2, CHA=2), defense_bonus=1,
           magic={"category": "Mutation", "name": "ADN animal", "description": "Insensible à l'anti-magie."}),
+    moine("AEC", "Esprit"),
+    necromancien("AEC", "Intelligence"),
 ]
 
 # --- Tables de butin et monstres ---------------------------------------------

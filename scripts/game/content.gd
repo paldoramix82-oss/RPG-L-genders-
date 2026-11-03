@@ -33,6 +33,9 @@ const MOD_NAMES := {"hp_max": "PV max", "res_max": "Ressource max", "defense": "
 	"resist_phys": "Résistance physique", "resist_mag": "Résistance magique", "speed": "Vitesse", "heal_pct": "Soins (%)",
 	"crit": "Critique", "ap": "PA", "damage_taken": "Dégâts subis", "vision": "Vision", "nage": "Nage (traverse l'eau)"}
 
+## Particularités de passif.
+const TRAITS := {"anti_magie": "Insensible à la magie ciblée (sorts et soins à cible unique ; les zones l'atteignent)"}
+
 const DEFAULT_RULES := {
 	"stat_base": 5, "stat_pool": 15, "stat_min": 1, "stat_max": 10, "stat_cap": 14,
 	"ap_per_turn": 2, "move_ap": 1, "quick_attack_ap": 1, "power_attack_ap": 2, "defend_ap": 1, "item_ap": 1,
@@ -509,6 +512,13 @@ static func sanitize_passive(p: Dictionary) -> Dictionary:
 		"mods": sanitize_mods(p.get("mods", {})), "effects": sanitize_effects(p.get("effects", [])),
 		"reduce": _int(p.get("reduce", 0), 0, 99), "range": _int(p.get("range", 0), 0, 10),
 	}
+	# Particularités : anti_magie (insensible à la magie ciblée).
+	var traits: Array = []
+	for t in p.get("traits", []):
+		if String(t) in TRAITS and not traits.has(String(t)):
+			traits.append(String(t))
+	if not traits.is_empty():
+		out["traits"] = traits
 	if String(p.get("mods", {}).get("damage_dice", "") if p.get("mods") is Dictionary else "") != "":
 		out.mods["damage_dice"] = _dice(p.mods.damage_dice, "1d6")
 	return out

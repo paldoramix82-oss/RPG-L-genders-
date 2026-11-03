@@ -2727,6 +2727,8 @@ UNITS_DEF = {
     "psychique": dict(hair="court", hair_col="9a50e0", outfit="d8d0f0", held=("orbe",)),
     "tacticien": dict(hair="court", hair_col="3a3448", outfit="24438f", held=("livre",), cape="85202f"),
     "mutant": dict(hair="chauve", outfit="8a7a3a", skin="a8c880", held=()),
+    "moine": dict(hair="chauve", outfit="e8862a", pants="8a4a1a", belt="5c3a24", boots="5c3a24", held=(), cape=None),
+    "necromancien": dict(hair="long", hair_col="e8e0d0", outfit="2b2734", hat="capuche", hat_col="3a2a4a", eyes="glow", skin="c8c0b8", held=("orbe",), cape="57258f"),
     # Métiers de PNJ
     "habitant": dict(hair="court", hair_col="8a5a2a", outfit="a07a4a"),
     "aubergiste": dict(hair="barbe", hair_col="6a4a2a", outfit="8a5a3a", apron=True, held=("chope",)),
