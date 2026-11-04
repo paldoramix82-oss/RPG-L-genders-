@@ -165,7 +165,7 @@ func _ready() -> void:
 	_client.phase_changed.connect(_later.bind("phase", _refresh_phase))
 	_client.settings_changed.connect(_refresh_all)
 	_client.settings_changed.connect(func(): _refresh_overlay("shop"))
-	_client.map_changed.connect(_later.bind("shop", func(): _refresh_overlay("shop")))
+	_client.map_changed.connect(func(): _later("shop", func(): _refresh_overlay("shop")))
 	_client.command_failed.connect(_on_command_failed)
 	_client.quests_changed.connect(_on_quests)
 	_client.loot_changed.connect(func(): _refresh_overlay("inventory"))

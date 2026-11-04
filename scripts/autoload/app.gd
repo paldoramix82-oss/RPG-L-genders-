@@ -31,6 +31,40 @@ func _ready() -> void:
 	if device_token() == "":
 		settings.set_value("device", "token", Protocol.random_hex(16))
 		save_settings()
+	_autojoin.call_deferred()
+
+
+## Fenêtre joueur d'essai ouverte par le MJ sur son PC :
+## `-- --autojoin=127.0.0.1:17800 --name=Essai` rejoint la partie tout seul.
+func _autojoin() -> void:
+	var target := ""
+	var who := "Essai"
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--autojoin="):
+			target = arg.get_slice("=", 1)
+		elif arg.begins_with("--name="):
+			who = arg.get_slice("=", 1)
+	if target == "" or not target.contains(":"):
+		return
+	await get_tree().process_frame
+	Net.joined.connect(func(): goto(SCENE_PLAYER), CONNECT_ONE_SHOT)
+	var err := Net.join(target.get_slice(":", 0), int(target.get_slice(":", 1)), who)
+	if err != "":
+		push_warning(err)
+
+
+## Ouvre une fenêtre joueur d'essai (PC seulement) : un deuxième jeu, au format
+## téléphone, qui rejoint la partie de cet ordinateur. Renvoie "" ou l'erreur.
+func open_test_player(port: int, index: int) -> String:
+	if is_mobile():
+		return "Sur téléphone, utilisez un autre appareil pour tester."
+	var args := PackedStringArray()
+	if not OS.has_feature("template"):
+		args.append_array(["--path", ProjectSettings.globalize_path("res://")])
+	args.append_array(["--resolution", "420x860", "--", "--profile=essai%d" % index, "--force-mobile",
+		"--autojoin=127.0.0.1:%d" % port, "--name=Essai %d" % index])
+	var pid := OS.create_process(OS.get_executable_path(), args)
+	return "" if pid > 0 else "Impossible d'ouvrir la fenêtre d'essai."
 
 
 ## Identifiant secret de cet appareil : permet de retrouver son personnage après une coupure.

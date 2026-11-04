@@ -404,8 +404,9 @@ func _build_dashboard() -> void:
 	server.log_added.connect(_add_log)
 	# Rafraîchissements regroupés : une seule fois par image, même si l'hôte
 	# signale des dizaines de changements (déplacements, PV, combats…).
-	server.characters_changed.connect(_later.bind("chars", _refresh_characters))
-	server.characters_changed.connect(_later.bind("players", _refresh_players))
+	server.characters_changed.connect(func():
+		_later("chars", _refresh_characters)
+		_later("players", _refresh_players))
 	server.maps_changed.connect(_later.bind("maps", _on_maps_changed))
 	server.phase_changed.connect(_queue_phase_refresh)
 	server.saved.connect(_on_saved)
@@ -1008,6 +1009,10 @@ func _build_world_tools() -> Control:
 	var shop := UIKit.card(side, "Boutique du MJ")
 	shop.add_child(UIKit.label("Vos propres objets à vendre, prix et stock : quand elle est ouverte, chaque joueur peut acheter et vendre de n'importe où (bouton « Boutique » de son menu Agir).", "MutedLabel", true))
 	shop.add_child(_small_button("Ouvrir ma boutique…", "PrimaryButton", _open_mj_shop))
+	if not App.is_mobile():
+		var solo := UIKit.card(side, "Essai solo")
+		solo.add_child(UIKit.label("Testez une aventure, un monstre ou une capacité sans téléphone : une fenêtre joueur (format téléphone) s'ouvre sur ce PC et rejoint la partie. Acceptez-la, créez un héros, jouez.", "MutedLabel", true))
+		solo.add_child(_small_button("Ouvrir une fenêtre joueur", "PrimaryButton", _open_test_player))
 	var lib := UIKit.card(side, "Bibliothèque")
 	lib.add_child(UIKit.label("Exportez vos créations (monstres, capacités, objets, classes, PNJ, cartes) dans un fichier, pour les réutiliser dans une autre campagne ou les donner à un autre MJ.", "MutedLabel", true))
 	var lrow := HFlowContainer.new()
@@ -2994,82 +2999,7 @@ func _tool_key(code: int) -> String:
 
 
 func _open_command_palette() -> void:
-	var server := Net.server
-	var e: Array = []
-	var add := func(title: String, kind: String, f: Callable): e.append({"title": title, "kind": kind, "run": f})
-	# Actions courantes.
-	add.call("Générer une carte", "action", _dialog_generate_map)
-	add.call("Nouvelle carte vide", "action", _dialog_new_map)
-	add.call("Nouvelle quête", "action", func(): _open_quest_editor({}))
-	add.call("Boutique du MJ", "action", _open_mj_shop)
-	add.call("Annuler la dernière suppression ou le dernier don", "action", func():
-		var err := server.mj_restore()
-		_notifier.push(err if err != "" else "Rétabli.", "warning" if err != "" else "success"))
-	add.call("Exporter vers la bibliothèque", "action", _dialog_export_library)
-	add.call("Importer une bibliothèque", "action", _dialog_import_library)
-	add.call("Sauvegarder la campagne", "action", func(): server.save())
-	add.call("Montrer cette carte aux joueurs", "action", func(): server.mj_set_active_map(_edit_map))
-	add.call("Épreuve de groupe", "événement", _event_check)
-	add.call("Dégâts ou soins de groupe", "événement", _event_group_hp)
-	add.call("Récompense de groupe", "événement", _event_reward)
-	add.call("Embuscade", "événement", _event_ambush)
-	add.call("Afficher / masquer les performances", "réglage", func():
-		Perf.set_enabled(not Perf.enabled())
-		App.save_settings())
-	add.call("Texte plus grand", "réglage", func(): _scale_ui(0.15))
-	add.call("Texte plus petit", "réglage", func(): _scale_ui(-0.15))
-	# Onglets et outils.
-	for spec in [["combat", "Combat"], ["world", "Monde"], ["quests", "Quêtes"], ["create", "Créer"], ["chars", "Fiches"], ["codex", "Codex"], ["net", "Réseau"], ["adventure", "Aventure"]]:
-		add.call(spec[1], "onglet", _show.bind(spec[0]))
-	for spec in MAP_TOOLS:
-		add.call(spec[1], "outil de carte", func():
-			_show("table")
-			_set_tool(spec[0]))
-	for code in MapData.TERRAINS:
-		add.call("Peindre : %s" % MapData.TERRAINS[code][0], "terrain", func():
-			_paint_code = code
-			_show("table")
-			_set_tool("paint"))
-	# Placer en un geste.
-	var place := func(spec: Dictionary, title: String, tab: String):
-		_place_spec = spec
-		_place_title = title
-		_place_tab = tab
-		_show("table")
-		_set_tool("place")
-		_notifier.push("Touchez la carte pour poser : %s." % title, "info")
-	for m in Content.list(server.content, "monsters"):
-		add.call("Placer : %s" % m.name, "monstre", place.bind({"type": "monster", "id": String(m.id)}, String(m.name), "monster"))
-		add.call("Modifier le monstre %s" % m.name, "catalogue", _open_content_editor.bind("monsters", m))
-	for rid in Prefabs.ROLE_ORDER:
-		var title := String(QuestLibrary.role(rid).get("title", rid)).capitalize()
-		add.call("Placer : %s" % title, "habitant", place.bind({"type": "npc_role", "role": rid}, title, "npc_role"))
-	for it in Content.list(server.content, "items"):
-		add.call("Placer : %s" % it.name, "objet", place.bind({"type": "item", "id": String(it.id)}, String(it.name), "item"))
-		add.call("Modifier l'objet %s" % it.name, "catalogue", _open_content_editor.bind("items", it))
-	for a in Content.list(server.content, "abilities"):
-		add.call("Modifier la capacité %s" % a.name, "catalogue", _open_content_editor.bind("abilities", a))
-	for look in SessionServer.PASSAGE_LOOKS:
-		add.call("Placer : %s" % SessionServer.PASSAGE_LOOKS[look], "passage", place.bind({"type": "passage", "look": look}, String(SessionServer.PASSAGE_LOOKS[look]), "passage"))
-	add.call("Placer : coffre", "coffre", place.bind({"type": "chest", "name": "Coffre"}, "Coffre", "chest"))
-	for id in Prefabs.LIST:
-		add.call("Bâtir : %s" % Prefabs.get_def(String(id)).name, "bâtiment", func():
-			_prefab_id = String(id)
-			_show("table")
-			_set_tool("prefab"))
-	# Personnages, cartes, quêtes.
-	for c in server.characters.values():
-		add.call("Fiche : %s" % c.name, "personnage" if String(c.get("owner", "")) != "" else "PNJ", _open_char_tools.bind(String(c.id)))
-	for id in server.map_order:
-		add.call("Carte : %s" % server.maps[id].name, "carte", func():
-			_edit_map = String(id)
-			_refresh_map_select()
-			_load_edit_map()
-			_show("table"))
-	for q in server.quests:
-		add.call("Quête : %s" % q.title, "quête", _open_quest_editor.bind(q))
-	for t in MusicLibrary.tracks():
-		add.call("Musique : %s — %s" % [t.mood, t.title], "musique", func(): server.mj_music(String(t.id), true))
+	var e := CommandEntries.build(self)
 	var pal := CommandPalette.new(e)
 	var box := ConfirmBox.show_content(self, "Recherche rapide", pal)
 	pal.done.connect(func(): if is_instance_valid(box): box.queue_free())
@@ -3176,3 +3106,13 @@ func _dialog_import_library() -> void:
 			add_child(fd)
 			fd.popup_centered_ratio(0.7)))
 	_dialog("Importer une bibliothèque", box, func(): pass)
+
+
+
+var _test_windows := 0
+
+
+func _open_test_player() -> void:
+	_test_windows += 1
+	var err := App.open_test_player(int(Net.server.session.port), _test_windows)
+	_notifier.push(err if err != "" else "Fenêtre d'essai ouverte : acceptez « Essai %d » s'il le faut." % _test_windows, "warning" if err != "" else "success")

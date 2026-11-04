@@ -1882,123 +1882,25 @@ func mj_set_portal(map_id: String, token_id: String, target_map: String, tx: int
 # Commerce : PNJ marchands et boutique du MJ
 # ---------------------------------------------------------------------------
 
-## Boutique visée par un joueur : celle d'un PNJ proche, ou celle du MJ si elle est ouverte.
-func _shop_for(player: Dictionary, shop_id: String) -> Dictionary:
-	if shop_id == "mj":
-		var s: Dictionary = session.get("mj_shop", {})
-		return {"shop": s, "name": "Boutique du MJ"} if not s.is_empty() and s.get("open", false) else {"error": "La boutique du MJ est fermée."}
-	var map: Dictionary = maps.get(active_map, {})
-	var t := MapData.token(map, shop_id)
-	var me := MapData.token(map, _pawn_id(player.id))
-	if t.is_empty() or t.get("hidden", false) or not t.get("shop") is Dictionary:
-		return {"error": "Ce marchand n'est pas là."}
-	if combat.side(t) == "enemies":
-		return {"error": "%s ne veut pas commercer avec vous." % t.name}
-	if me.is_empty() or Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))) > 2:
-		return {"error": "Approchez-vous de %s pour commercer." % t.name}
-	if not encounter_of(String(me.id)).is_empty():
-		return {"error": "Pas de commerce en plein combat."}
-	return {"shop": t.shop, "name": String(t.name), "token": t}
-
-
+## Commerce : voir Trade.
 func _cmd_buy(player: Dictionary, payload: Dictionary) -> String:
-	var c: Dictionary = characters.get(player.id, {})
-	if c.is_empty():
-		return "Créez d'abord votre personnage."
-	var found := _shop_for(player, String(payload.get("shop", "")))
-	if found.has("error"):
-		return String(found.error)
-	var item_id := String(payload.get("item", ""))
-	var qty := clampi(int(payload.get("qty", 1)), 1, 99)
-	var line := {}
-	for it in found.shop.get("items", []):
-		if String(it.item) == item_id:
-			line = it
-	if line.is_empty():
-		return "Cet objet n'est pas en vente."
-	if int(line.stock) >= 0 and int(line.stock) < qty:
-		return "Il n'en reste que %d." % int(line.stock)
-	var cost := int(line.price) * qty
-	if int(c.get("gold", 0)) < cost:
-		return "Pas assez d'or : il faut %d pièces (vous en avez %d)." % [cost, int(c.get("gold", 0))]
-	var inst := Content.item_instance(content, item_id, qty)
-	if inst.is_empty() or Inventory.add(c, inst).is_empty():
-		return "Votre sac est plein."
-	c.gold = int(c.get("gold", 0)) - cost
-	if int(line.stock) > 0:
-		line.stock = int(line.stock) - qty
-	_trade_message(player, c, "achète %s ×%d à %s pour %d or." % [inst.name, qty, found.name, cost])
-	return ""
+	return Trade.buy(self, player, payload)
 
 
 func _cmd_sell(player: Dictionary, payload: Dictionary) -> String:
-	var c: Dictionary = characters.get(player.id, {})
-	if c.is_empty():
-		return "Créez d'abord votre personnage."
-	var found := _shop_for(player, String(payload.get("shop", "")))
-	if found.has("error"):
-		return String(found.error)
-	var pct := int(found.shop.get("buy_pct", 50))
-	if pct <= 0:
-		return "%s n'achète rien." % found.name
-	var uid := String(payload.get("uid", ""))
-	var inst := {}
-	for it in c.get("inventory", []):
-		if String(it.get("uid", "")) == uid:
-			inst = it
-	if inst.is_empty():
-		return "Objet introuvable dans votre sac."
-	if inst.get("equipped", false):
-		return "Retirez d'abord cet objet (il est équipé)."
-	if String(inst.get("category", "")) == "quete":
-		return "On ne vend pas un objet de quête."
-	var qty := clampi(int(payload.get("qty", 1)), 1, int(inst.get("qty", 1)))
-	var gain := Shop.sell_price(content, inst, pct) * qty
-	inst.qty = int(inst.get("qty", 1)) - qty
-	if int(inst.qty) <= 0:
-		(c.inventory as Array).erase(inst)
-	c.gold = int(c.get("gold", 0)) + gain
-	_trade_message(player, c, "vend %s ×%d à %s pour %d or." % [inst.name, qty, found.name, gain])
-	return ""
+	return Trade.sell(self, player, payload)
 
 
-func _trade_message(player: Dictionary, c: Dictionary, text: String) -> void:
-	_add_message({"kind": Protocol.KIND_SYSTEM, "from": Protocol.MJ_ID, "from_name": "Commerce", "to": String(player.id), "text": "%s %s" % [c.name, text]})
-	_mj_log("Commerce : %s %s" % [c.name, text])
-	_mark("characters")
-	_mark("tokens")
-	if session.get("mj_shop", {}).get("open", false):
-		_broadcast_settings()
-	_unsaved = true
-	characters_changed.emit()
-	maps_changed.emit()
-
-
-## MJ : boutique d'un PNJ (vide = n'est plus marchand).
 func mj_set_shop(map_id: String, token_id: String, shop: Dictionary) -> void:
-	var map: Dictionary = maps.get(map_id, {})
-	var t := MapData.token(map, token_id)
-	if t.is_empty():
-		return
-	var clean := Shop.sanitize(shop, content)
-	if clean.is_empty() or (clean.items as Array).is_empty() and not shop.get("keep", false):
-		t.erase("shop")
-	else:
-		t.shop = clean
-	map_changed(map_id, true)
+	Trade.set_npc_shop(self, map_id, token_id, shop)
 
 
-## MJ : stock par défaut selon le métier (ou « marchand »).
 func mj_default_shop(role: String) -> Dictionary:
-	return Shop.default_stock(content, role if Shop.is_merchant_role(role) else "marchand", _rng)
+	return Trade.default_for_role(self, role)
 
 
-## MJ : sa propre boutique, ouverte à tous les joueurs où qu'ils soient.
 func mj_set_mj_shop(shop: Dictionary) -> void:
-	session.mj_shop = Shop.sanitize(shop, content)
-	_mj_log("Boutique du MJ %s (%d objets)." % ["ouverte" if session.mj_shop.get("open", false) else "fermée", (session.mj_shop.get("items", []) as Array).size()])
-	_broadcast_settings()
-	_unsaved = true
+	Trade.set_mj_shop(self, shop)
 
 
 ## Pose un objet à ramasser sur la carte (clé, indice…).
@@ -4544,75 +4446,9 @@ func _to_trash(kind: String, title: String, data: Dictionary) -> void:
 	trash_changed.emit()
 
 
-## Rétablit une entrée de la corbeille (la plus récente si id vide).
+## Rétablit une entrée de la corbeille (la plus récente si id vide) : voir MjTrash.
 func mj_restore(trash_id: String = "") -> String:
-	if trash.is_empty():
-		return "La corbeille est vide."
-	var idx := trash.size() - 1
-	if trash_id != "":
-		idx = -1
-		for i in trash.size():
-			if String(trash[i].id) == trash_id:
-				idx = i
-		if idx < 0:
-			return "Déjà rétabli."
-	var e: Dictionary = trash[idx]
-	trash.remove_at(idx)
-	var d: Dictionary = e.data
-	match String(e.kind):
-		"token":
-			var map: Dictionary = maps.get(String(d.map), {})
-			if map.is_empty():
-				return "La carte n'existe plus."
-			var t: Dictionary = d.token
-			var p := MapData.free_cell_near(map, int(t.x), int(t.y))
-			t.x = p.x
-			t.y = p.y
-			map.tokens.append(t)
-			map_changed(String(d.map), true)
-		"character":
-			var sheet: Dictionary = d.sheet
-			characters[String(sheet.id)] = sheet
-			for l in d.get("links", []):
-				var t := MapData.token(maps.get(String(l[0]), {}), String(l[1]))
-				if not t.is_empty():
-					t.char_id = String(sheet.id)
-			_mark("characters")
-			characters_changed.emit()
-		"content":
-			content[String(d.kind)][String(d.entry.id)] = d.entry
-			if String(d.kind) in Content.PLAYER_KINDS:
-				_mark("content")
-			content_changed.emit()
-		"item":
-			var c: Dictionary = characters.get(String(d.char), {})
-			if c.is_empty():
-				return "Le personnage n'existe plus."
-			Inventory.add(c, d.item)
-			Rules.refresh(c, content)
-			_mark("characters")
-			characters_changed.emit()
-		"given_item":
-			var c: Dictionary = characters.get(String(d.char), {})
-			var it := Inventory.find(c, String(d.uid)) if not c.is_empty() else {}
-			if it.is_empty():
-				# L'objet a pu être regroupé : on retire par identifiant de catalogue.
-				return "Objet introuvable (déjà utilisé ou vendu ?)."
-			Inventory.consume(c, String(d.uid), mini(int(d.qty), int(it.get("qty", 1))))
-			Rules.refresh(c, content)
-			_mark("characters")
-			characters_changed.emit()
-		"given_gold":
-			var c: Dictionary = characters.get(String(d.char), {})
-			if c.is_empty():
-				return "Le personnage n'existe plus."
-			c.gold = maxi(0, int(c.get("gold", 0)) - int(d.amount))
-			_mark("characters")
-			characters_changed.emit()
-	_mj_log("Rétabli : %s." % e.title)
-	_unsaved = true
-	trash_changed.emit()
-	return ""
+	return MjTrash.restore(self, trash_id)
 
 
 # ---------------------------------------------------------------------------

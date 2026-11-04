@@ -1,0 +1,57 @@
+# Tests automatiques à chaque envoi : compilation de tous les scripts,
+# règles du jeu (vérifications unitaires) et test réseau réel (1 hôte + clients).
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GODOT_VERSION: 4.4.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Godot (cache)
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}
+
+      - name: Télécharger Godot
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot && cd ~/godot
+          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip && rm godot.zip
+
+      - name: Importer le projet
+        run: |
+          GODOT=~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64
+          timeout 300 $GODOT --headless --path . --import || true
+
+      - name: Compiler tous les scripts
+        run: |
+          export GODOT=~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64
+          out=$(timeout 300 tests/check.sh)
+          echo "$out"
+          echo "$out" | grep -q " 0 en erreur"
+
+      - name: Règles du jeu
+        run: |
+          GODOT=~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64
+          out=$(timeout 300 $GODOT --headless --path . res://tests/rules_test.tscn 2>&1)
+          echo "$out" | grep -E "ÉCHEC|RÉSULTAT"
+          echo "$out" | grep -q "0 en échec"
+
+      - name: Test réseau (hôte + joueurs)
+        run: |
+          export GODOT=~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64
+          export LOGDIR=$(mktemp -d)
+          out=$(timeout 500 tests/run_net_test.sh)
+          echo "$out" | tail -20
+          echo "$out" | grep -q "tous les tests réseau passent"

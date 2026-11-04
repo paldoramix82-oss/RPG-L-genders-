@@ -133,6 +133,10 @@ func _host() -> void:
 			for pal in screen.find_children("*", "CommandPalette", true, false):
 				pal._search.text = "loup"
 				pal._fill()
+				# Lance la première entrée (« Placer : Loup ») : outil Placer choisi.
+				pal._run(pal._first)
+			await get_tree().process_frame
+			print("OUTIL=", screen._tool, " PLACE=", screen._place_spec)
 		"shop_edit":
 			screen._open_mj_shop()
 		"mj_shop_open":
