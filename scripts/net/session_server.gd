@@ -290,6 +290,10 @@ func _dispatch(player: Dictionary, cmd: String, payload: Dictionary) -> String:
 			return _cmd_check(player, payload)
 		Protocol.CMD_ENTER:
 			return _cmd_enter(player, payload)
+		Protocol.CMD_BUY:
+			return _cmd_buy(player, payload)
+		Protocol.CMD_SELL:
+			return _cmd_sell(player, payload)
 		_:
 			return "Commande inconnue."
 	return ""
@@ -1087,6 +1091,15 @@ func _cmd_enter(player: Dictionary, payload: Dictionary) -> String:
 	if me.is_empty() or Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))) > 1:
 		return "Approchez-vous du passage (case voisine)."
 	var at := Vector2i(int(t.get("link_x", -1)), int(t.get("link_y", -1)))
+	if String(t.link) == String(map.id):
+		# Téléportation sur la même carte.
+		var p := MapData.free_cell_near(map, at.x, at.y) if at.x >= 0 else Vector2i(int(map.spawn.x), int(map.spawn.y))
+		me.x = p.x
+		me.y = p.y
+		me.erase("safe_until")
+		_system_message("%s emprunte %s." % [characters.get(player.id, {}).get("name", player.name), t.name])
+		map_changed(active_map, true)
+		return ""
 	return travel(player.id, String(t.link), at)
 
 
@@ -1618,6 +1631,8 @@ func open_chest(token_id: String, player_id: String = "") -> String:
 	if t.get("pickup", false):
 		return _pick_up(map, t, player_id)
 	var drop := Inventory.roll_loot(content, String(t.loot), _rng)
+	drop.gold = int(drop.get("gold", 0)) + int(t.get("chest_gold", 0))
+	t.erase("chest_gold")
 	for it in t.get("chest_items", []):
 		var inst := Content.item_instance(content, String(it.get("item", "")), int(it.get("qty", 1)))
 		if not inst.is_empty():
@@ -1690,7 +1705,7 @@ func _cmd_open(player: Dictionary, payload: Dictionary) -> String:
 		characters_changed.emit()
 		return ""
 	if String(t.get("loot", "")) == "":
-		if (t.get("chest_items", []) as Array).is_empty():
+		if (t.get("chest_items", []) as Array).is_empty() and int(t.get("chest_gold", 0)) <= 0:
 			return "%s est vide." % t.name
 		t.loot = "-"
 	return open_chest(String(t.id), String(player.id))
@@ -1717,6 +1732,267 @@ func mj_create_key(key_name: String) -> Dictionary:
 		n = "Clé"
 	return mj_content_save("items", {"id": "cle_" + Protocol.random_hex(3), "name": n, "icon": "key", "category": "quete",
 		"rarity": "peu_commun", "description": "Elle doit bien ouvrir quelque chose…", "value": 0})
+
+
+# ---------------------------------------------------------------------------
+# Placement facile : on choisit dans une palette, on touche la carte.
+# ---------------------------------------------------------------------------
+
+## Apparences possibles d'un passage (sprites de assets/sprites/props).
+const PASSAGE_LOOKS := {"door": "Porte", "portal": "Portail magique", "stairs_down": "Escalier qui descend",
+	"stairs_up": "Escalier qui monte", "ladder": "Échelle", "trapdoor": "Trappe", "cave": "Entrée de grotte",
+	"gate": "Grille", "well_magic": "Puits enchanté", "signpost": "Panneau (chemin)"}
+
+
+## Pose ce qui a été choisi dans la palette du MJ :
+##   {"type": "monster", "id", "hidden"}  {"type": "npc_role", "role"}
+##   {"type": "character", "id"}  {"type": "item", "id"}
+##   {"type": "chest", "items": [{item, qty}], "gold", "loot"}
+##   {"type": "passage", "look", "name"}
+func mj_place(map_id: String, spec: Dictionary, x: int, y: int) -> Dictionary:
+	var map: Dictionary = maps.get(map_id, {})
+	if map.is_empty() or not MapData.in_bounds(map, x, y):
+		return {}
+	var t := {}
+	match String(spec.get("type", "")):
+		"monster":
+			t = _spawn_on(map_id, String(spec.get("id", "")), Vector2i(x, y), bool(spec.get("hidden", false)))
+		"npc_role":
+			t = mj_place_role_npc(map_id, String(spec.get("role", "")), x, y)
+		"character":
+			var sheet: Dictionary = characters.get(String(spec.get("id", "")), {})
+			if sheet.is_empty() or players.has(String(sheet.id)):
+				return {}
+			for o in map.tokens:
+				if String(o.get("char_id", "")) == String(sheet.id):
+					var p0 := MapData.free_cell_near(map, x, y)
+					o.x = p0.x
+					o.y = p0.y
+					map_changed(map_id, true)
+					return o
+			var p := MapData.free_cell_near(map, x, y)
+			t = MapData.add_token(map, {"kind": "monster" if sheet.get("kind", "") == "monster" else "npc", "name": sheet.name,
+				"x": p.x, "y": p.y, "color": sheet.pawn.color, "char_id": sheet.id, "hp": sheet.hp, "hp_max": sheet.hp_max})
+		"item":
+			t = mj_place_item(map_id, String(spec.get("id", "")), x, y)
+		"chest":
+			var p := MapData.free_cell_near(map, x, y)
+			t = MapData.add_token(map, {"kind": "object", "name": String(spec.get("name", "Coffre")), "x": p.x, "y": p.y, "color": "#a07a3a"})
+			if not t.is_empty():
+				_fill_chest(t, spec)
+		"passage":
+			t = _add_passage(map, MapData.free_cell_near(map, x, y), String(spec.get("look", "door")), String(spec.get("name", "")))
+		_:
+			return {}
+	if not t.is_empty():
+		_mj_log("Placé : %s (%d, %d)." % [t.get("name", "?"), int(t.x), int(t.y)])
+	map_changed(map_id, true)
+	return t
+
+
+func _add_passage(map: Dictionary, p: Vector2i, look: String, title: String) -> Dictionary:
+	if not PASSAGE_LOOKS.has(look):
+		look = "door"
+	var t := MapData.add_token(map, {"kind": "object", "name": title if title.strip_edges() != "" else String(PASSAGE_LOOKS[look]),
+		"x": p.x, "y": p.y, "color": "#8a7a5a"})
+	if not t.is_empty():
+		t.look = look
+		t.passage = true
+	return t
+
+
+## Contenu d'un coffre choisi par le MJ : objets précis, or, et/ou table de butin.
+func _fill_chest(t: Dictionary, spec: Dictionary) -> void:
+	var items: Array = []
+	for it in spec.get("items", []):
+		if it is Dictionary and not Content.get_entry(content, "items", String(it.get("item", ""))).is_empty() and items.size() < 20:
+			items.append({"item": String(it.item), "qty": clampi(int(it.get("qty", 1)), 1, 999)})
+	t.chest_items = items
+	t.chest_gold = clampi(int(spec.get("gold", 0)), 0, 999999)
+	var table := String(spec.get("loot", ""))
+	if table != "" and not content.get("loot", {}).has(table):
+		table = ""
+	t.loot = table if table != "" else ("-" if not items.is_empty() or int(t.chest_gold) > 0 else "")
+	t.erase("pickup")
+
+
+func mj_set_chest(map_id: String, token_id: String, spec: Dictionary) -> void:
+	var map: Dictionary = maps.get(map_id, {})
+	var t := MapData.token(map, token_id)
+	if t.is_empty() or String(t.get("kind", "")) != "object":
+		return
+	_fill_chest(t, spec)
+	if String(spec.get("name", "")).strip_edges() != "":
+		t.name = Protocol.sanitize_name(String(spec.name))
+	_mj_log("Coffre « %s » rempli : %d objet(s), %d or." % [t.name, (t.chest_items as Array).size(), int(t.chest_gold)])
+	map_changed(map_id, true)
+
+
+## Pouvoir de téléportation d'un pion « objet » (porte, portail, escalier…) :
+## vers une autre carte, ou vers une case de la même carte. Passage de retour
+## posé automatiquement si demandé.
+func mj_set_portal(map_id: String, token_id: String, target_map: String, tx: int = -1, ty: int = -1, two_way: bool = true) -> String:
+	var map: Dictionary = maps.get(map_id, {})
+	var t := MapData.token(map, token_id)
+	if t.is_empty():
+		return "Pion introuvable."
+	if target_map == "":
+		for k in ["link", "link_name", "link_x", "link_y"]:
+			t.erase(k)
+		map_changed(map_id, true)
+		return ""
+	if not maps.has(target_map):
+		return "Carte introuvable."
+	var dest: Dictionary = maps[target_map]
+	if tx >= 0 and not MapData.in_bounds(dest, tx, ty):
+		return "Case hors de la carte."
+	t.link = target_map
+	t.link_name = String(dest.name)
+	t.link_x = tx
+	t.link_y = ty
+	t.passage = true
+	if not t.has("look"):
+		t.look = "door"
+	if two_way and target_map != map_id:
+		var back := false
+		for o in dest.tokens:
+			if String(o.get("link", "")) == map_id:
+				back = true
+		if not back:
+			var at := Vector2i(tx, ty) if tx >= 0 else Vector2i(int(dest.spawn.x), int(dest.spawn.y))
+			var r := _add_passage(dest, MapData.free_cell_near(dest, at.x, at.y), String(t.look), "Retour : %s" % map.name)
+			if not r.is_empty():
+				r.link = map_id
+				r.link_name = String(map.name)
+				r.link_x = int(t.x)
+				r.link_y = int(t.y)
+		map_changed(target_map, true)
+	_mj_log("Passage « %s » → %s%s." % [t.name, dest.name, (" (%d, %d)" % [tx, ty]) if tx >= 0 else ""])
+	map_changed(map_id, true)
+	return ""
+
+
+# ---------------------------------------------------------------------------
+# Commerce : PNJ marchands et boutique du MJ
+# ---------------------------------------------------------------------------
+
+## Boutique visée par un joueur : celle d'un PNJ proche, ou celle du MJ si elle est ouverte.
+func _shop_for(player: Dictionary, shop_id: String) -> Dictionary:
+	if shop_id == "mj":
+		var s: Dictionary = session.get("mj_shop", {})
+		return {"shop": s, "name": "Boutique du MJ"} if not s.is_empty() and s.get("open", false) else {"error": "La boutique du MJ est fermée."}
+	var map: Dictionary = maps.get(active_map, {})
+	var t := MapData.token(map, shop_id)
+	var me := MapData.token(map, _pawn_id(player.id))
+	if t.is_empty() or t.get("hidden", false) or not t.get("shop") is Dictionary:
+		return {"error": "Ce marchand n'est pas là."}
+	if combat.side(t) == "enemies":
+		return {"error": "%s ne veut pas commercer avec vous." % t.name}
+	if me.is_empty() or Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(int(t.x), int(t.y))) > 2:
+		return {"error": "Approchez-vous de %s pour commercer." % t.name}
+	if not encounter_of(String(me.id)).is_empty():
+		return {"error": "Pas de commerce en plein combat."}
+	return {"shop": t.shop, "name": String(t.name), "token": t}
+
+
+func _cmd_buy(player: Dictionary, payload: Dictionary) -> String:
+	var c: Dictionary = characters.get(player.id, {})
+	if c.is_empty():
+		return "Créez d'abord votre personnage."
+	var found := _shop_for(player, String(payload.get("shop", "")))
+	if found.has("error"):
+		return String(found.error)
+	var item_id := String(payload.get("item", ""))
+	var qty := clampi(int(payload.get("qty", 1)), 1, 99)
+	var line := {}
+	for it in found.shop.get("items", []):
+		if String(it.item) == item_id:
+			line = it
+	if line.is_empty():
+		return "Cet objet n'est pas en vente."
+	if int(line.stock) >= 0 and int(line.stock) < qty:
+		return "Il n'en reste que %d." % int(line.stock)
+	var cost := int(line.price) * qty
+	if int(c.get("gold", 0)) < cost:
+		return "Pas assez d'or : il faut %d pièces (vous en avez %d)." % [cost, int(c.get("gold", 0))]
+	var inst := Content.item_instance(content, item_id, qty)
+	if inst.is_empty() or Inventory.add(c, inst).is_empty():
+		return "Votre sac est plein."
+	c.gold = int(c.get("gold", 0)) - cost
+	if int(line.stock) > 0:
+		line.stock = int(line.stock) - qty
+	_trade_message(player, c, "achète %s ×%d à %s pour %d or." % [inst.name, qty, found.name, cost])
+	return ""
+
+
+func _cmd_sell(player: Dictionary, payload: Dictionary) -> String:
+	var c: Dictionary = characters.get(player.id, {})
+	if c.is_empty():
+		return "Créez d'abord votre personnage."
+	var found := _shop_for(player, String(payload.get("shop", "")))
+	if found.has("error"):
+		return String(found.error)
+	var pct := int(found.shop.get("buy_pct", 50))
+	if pct <= 0:
+		return "%s n'achète rien." % found.name
+	var uid := String(payload.get("uid", ""))
+	var inst := {}
+	for it in c.get("inventory", []):
+		if String(it.get("uid", "")) == uid:
+			inst = it
+	if inst.is_empty():
+		return "Objet introuvable dans votre sac."
+	if inst.get("equipped", false):
+		return "Retirez d'abord cet objet (il est équipé)."
+	if String(inst.get("category", "")) == "quete":
+		return "On ne vend pas un objet de quête."
+	var qty := clampi(int(payload.get("qty", 1)), 1, int(inst.get("qty", 1)))
+	var gain := Shop.sell_price(content, inst, pct) * qty
+	inst.qty = int(inst.get("qty", 1)) - qty
+	if int(inst.qty) <= 0:
+		(c.inventory as Array).erase(inst)
+	c.gold = int(c.get("gold", 0)) + gain
+	_trade_message(player, c, "vend %s ×%d à %s pour %d or." % [inst.name, qty, found.name, gain])
+	return ""
+
+
+func _trade_message(player: Dictionary, c: Dictionary, text: String) -> void:
+	_add_message({"kind": Protocol.KIND_SYSTEM, "from": Protocol.MJ_ID, "from_name": "Commerce", "to": String(player.id), "text": "%s %s" % [c.name, text]})
+	_mj_log("Commerce : %s %s" % [c.name, text])
+	_mark("characters")
+	_mark("tokens")
+	if session.get("mj_shop", {}).get("open", false):
+		_broadcast_settings()
+	_unsaved = true
+	characters_changed.emit()
+	maps_changed.emit()
+
+
+## MJ : boutique d'un PNJ (vide = n'est plus marchand).
+func mj_set_shop(map_id: String, token_id: String, shop: Dictionary) -> void:
+	var map: Dictionary = maps.get(map_id, {})
+	var t := MapData.token(map, token_id)
+	if t.is_empty():
+		return
+	var clean := Shop.sanitize(shop, content)
+	if clean.is_empty() or (clean.items as Array).is_empty() and not shop.get("keep", false):
+		t.erase("shop")
+	else:
+		t.shop = clean
+	map_changed(map_id, true)
+
+
+## MJ : stock par défaut selon le métier (ou « marchand »).
+func mj_default_shop(role: String) -> Dictionary:
+	return Shop.default_stock(content, role if Shop.is_merchant_role(role) else "marchand", _rng)
+
+
+## MJ : sa propre boutique, ouverte à tous les joueurs où qu'ils soient.
+func mj_set_mj_shop(shop: Dictionary) -> void:
+	session.mj_shop = Shop.sanitize(shop, content)
+	_mj_log("Boutique du MJ %s (%d objets)." % ["ouverte" if session.mj_shop.get("open", false) else "fermée", (session.mj_shop.get("items", []) as Array).size()])
+	_broadcast_settings()
+	_unsaved = true
 
 
 ## Pose un objet à ramasser sur la carte (clé, indice…).
@@ -1794,7 +2070,7 @@ func mj_fill(map_id: String, x: int, y: int, code: String) -> bool:
 
 
 ## Rectangle plein entre deux coins ; « room » : sol à l'intérieur, murs autour.
-func mj_paint_rect(map_id: String, a: Vector2i, b: Vector2i, code: String, room: bool = false) -> bool:
+func mj_paint_rect(map_id: String, a: Vector2i, b: Vector2i, code: String, room: bool = false, wall_code: String = "#") -> bool:
 	var map: Dictionary = maps.get(map_id, {})
 	if map.is_empty() or not MapData.TERRAINS.has(code):
 		return false
@@ -1803,7 +2079,7 @@ func mj_paint_rect(map_id: String, a: Vector2i, b: Vector2i, code: String, room:
 	for y in range(r.position.y, r.end.y):
 		for x in range(r.position.x, r.end.x):
 			var edge := x == r.position.x or y == r.position.y or x == r.end.x - 1 or y == r.end.y - 1
-			MapData.set_cell(map, x, y, "#" if room and edge else code)
+			MapData.set_cell(map, x, y, (wall_code if MapData.TERRAINS.has(wall_code) else "#") if room and edge else code)
 	map_changed(map_id)
 	return true
 
@@ -1921,6 +2197,8 @@ func _refresh_sprites(map: Dictionary) -> void:
 					sprite = "units/" + String(sheet.class_id)
 			"object":
 				sprite = "props/door" if t.get("door", false) else ("props/signpost" if String(t.get("link", "")) != "" else "items/chest")
+				if String(t.get("look", "")) != "" and PASSAGE_LOOKS.has(String(t.look)):
+					sprite = "props/" + String(t.look)
 				if t.get("pickup", false) and not (t.get("chest_items", []) as Array).is_empty():
 					var def := Content.get_entry(content, "items", String(t.chest_items[0].get("item", "")))
 					sprite = "items/" + String(def.get("icon", "bag"))
@@ -3295,6 +3573,10 @@ func mj_place_prefab(map_id: String, prefab_id: String, x: int, y: int, with_npc
 				chest.lock = lock
 	for c in out.monster:
 		_spawn_on(map_id, String(def.get("monster", "squelette")), c, true)
+	for c in out.get("portal", []):
+		_add_passage(map, c, "portal", "Portail")
+	for c in out.get("stairs", []):
+		_add_passage(map, c, "stairs_down", "Escalier")
 	var npc := {}
 	if with_npc and String(def.get("role", "")) != "" and not (out.npc as Array).is_empty():
 		npc = _add_role_npc(map_id, String(def.role), out.npc[0], not generated)
@@ -3337,6 +3619,8 @@ func _add_role_npc(map_id: String, role_id: String, p: Vector2i, with_quest: boo
 		return {}
 	t.role = role_id
 	t.side = "allies"
+	if Shop.is_merchant_role(role_id) and role_id in ["marchand", "forgeron", "herboriste", "mage"]:
+		t.shop = Shop.default_stock(content, role_id, _rng)
 	# Les habitants posés à la main ont tout de suite une quête ; ceux d'une carte
 	# générée en inventent une quand on leur parle (le journal du MJ reste lisible).
 	if with_quest and bool(Content.rule(content, "auto_npc_quests")):
@@ -3815,6 +4099,7 @@ func public_session() -> Dictionary:
 		"id": session.id, "name": session.name, "mj_name": session.mj_name, "max_players": session.max_players,
 		"universe": session.universe, "description": session.get("description", ""),
 		"players_edit_sheets": session.players_edit_sheets, "started": session.get("started", false),
+		"mj_shop": session.get("mj_shop", {}) if session.get("mj_shop", {}).get("open", false) else {},
 	}
 
 

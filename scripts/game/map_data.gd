@@ -46,7 +46,31 @@ const TERRAINS := {
 	"q": ["Rochers", "6a665e", true],
 	"R": ["Toits rouges", "8a4a36", true],
 	"u": ["Sol de grotte", "3d3833", true],
+	# Murs (infranchissables, cachent la vue).
+	"1": ["Mur de bois", "5a3e28", false],
+	"2": ["Mur de briques", "7a3b2e", false],
+	"3": ["Muraille de château", "5d5a63", false],
+	"4": ["Haie", "2e4a26", false],
+	"5": ["Paroi de grotte", "3a3029", false],
+	# Sols intérieurs.
+	"6": ["Parquet clair", "9a7650", true],
+	"7": ["Tapis rouge", "7a2f3a", true],
+	"8": ["Carrelage", "a8a091", true],
+	"9": ["Marbre", "c9c3b8", true],
+	"e": ["Dallage de temple", "5f5e74", true],
+	"i": ["Terre battue", "6e5640", true],
+	"j": ["Paille", "a89150", true],
 }
+
+## Familles de terrains (palette du MJ).
+const TERRAIN_GROUPS := {
+	"Nature": [".", "y", "f", "F", "h", "m", "q", "s", "k", "z", "n", "g"],
+	"Eau et danger": ["w", "W", "B", "l", "c", "a", "v"],
+	"Chemins et sols": ["r", "p", "o", "d", "6", "7", "8", "9", "e", "i", "j", "u", "x"],
+	"Murs": ["#", "1", "2", "3", "4", "5", "t"],
+	"Toits": ["b", "R"],
+}
+const WALLS := ["#", "1", "2", "3", "4", "5"]
 
 static var _templates: Array = []
 
@@ -305,6 +329,13 @@ static func update_token(t: Dictionary, data: Dictionary, map: Dictionary) -> vo
 		t["consume_key"] = bool(data.consume_key)
 	if data.has("door"):
 		t["door"] = bool(data.door)
+	# Apparence d'un passage (porte, portail, escalier…).
+	if data.has("look"):
+		var lk := String(data.look).substr(0, 20)
+		if lk == "" or not lk.is_valid_identifier():
+			t.erase("look")
+		else:
+			t["look"] = lk
 	for key in ["riddle_q", "riddle_a"]:
 		if data.has(key):
 			var txt := Protocol.sanitize_text(data[key], 200)
@@ -369,7 +400,7 @@ static func view_for_player(map: Dictionary) -> Dictionary:
 		if not t.get("hidden", false):
 			var copy: Dictionary = t.duplicate()
 			# Secrets du MJ : note, réponse d'énigme, objets portés, contenu des coffres.
-			for k in ["note", "riddle_a", "carries", "chest_items"]:
+			for k in ["note", "riddle_a", "carries", "chest_items", "chest_gold", "shop_secret"]:
 				copy.erase(k)
 			view.tokens.append(copy)
 	return view

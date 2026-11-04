@@ -8,7 +8,9 @@ extends RefCounted
 ## Plans : un caractère par case. Codes de terrain (voir MapData.TERRAINS), plus :
 ##   +  porte (sol du bâtiment)        @  place de l'habitant (sol)
 ##   $  coffre (sol)                   M  monstre caché (sol)
+##   %  portail magique (pion à relier)  /  escalier qui descend (pion à relier)
 ##   (espace)  case laissée telle quelle
+## « wall » : matériau des murs « # » (1 bois, 2 briques, 3 pierre, 4 haie, 5 grotte).
 ## et le mobilier (voir DECOR) : un terrain et un décor dessiné en pixel art.
 
 const LIST := {
@@ -141,6 +143,113 @@ const LIST := {
 		"#oo$oo#",
 		"#GoooG#",
 		"###+###"]},
+	"bibliotheque": {"name": "Bibliothèque", "floor": "6", "wall": "2", "role": "mage", "icon": "book", "rows": [
+		"#########",
+		"#SSSSSSS#",
+		"#6666666#",
+		"#S6T6T6S#",
+		"#S6D6D6S#",
+		"#666@66?#",
+		"#S6666$S#",
+		"####++###"]},
+	"boulangerie": {"name": "Boulangerie", "floor": "8", "wall": "2", "role": "marchand", "icon": "food", "rows": [
+		"#######",
+		"#EE*JJ#",
+		"#88888#",
+		"#T8@8O#",
+		"#888$8#",
+		"###++##"]},
+	"ecurie": {"name": "Écurie", "floor": "j", "wall": "1", "role": "fermier", "icon": "paw", "rows": [
+		"#########",
+		"#YjjYjjY#",
+		"#1j1j1j1#",
+		"#jjjjjjj#",
+		"#jj@jj:j#",
+		"####++###"]},
+	"chapelle": {"name": "Chapelle", "floor": "e", "wall": "3", "role": "pretre", "icon": "sun", "rows": [
+		"#######",
+		"#?eLe?#",
+		"#eee@e#",
+		"#=e=e=#",
+		"#=e=e=#",
+		"#ee$ee#",
+		"###+###"]},
+	"prison": {"name": "Prison", "floor": "o", "wall": "3", "role": "garde", "icon": "chain", "rows": [
+		"#########",
+		"#~o#~o#M#",
+		"#oo#oo#o#",
+		"##+##+#+#",
+		"#ooooooo#",
+		"#T@ooo^$#",
+		"####+####"]},
+	"salle_trone": {"name": "Salle du trône", "floor": "9", "wall": "3", "role": "noble", "icon": "crown", "rows": [
+		"###########",
+		"#!I9&@9I!$#",
+		"#999777999#",
+		"#I9977799I#",
+		"#999777999#",
+		"#I9977799I#",
+		"#999777999#",
+		"#####++####"]},
+	"alchimiste": {"name": "Boutique d'alchimiste", "floor": "6", "wall": "2", "role": "herboriste", "icon": "potion", "rows": [
+		"#######",
+		"#SU*SS#",
+		"#66666#",
+		"#T6@6*#",
+		"#66$66#",
+		"###++##"]},
+	"cabane": {"name": "Cabane de bûcheron", "floor": "i", "wall": "1", "role": "chasseur", "icon": "axe", "rows": [
+		"######",
+		"#Hi<<#",
+		"#ii@i#",
+		"#Ti$i#",
+		"##++##"]},
+	"maison_pierre": {"name": "Maison de pierre", "floor": "6", "wall": "3", "role": "habitant", "icon": "castle", "rows": [
+		"#######",
+		"#H6S6H#",
+		"#66666#",
+		"#TD@6E#",
+		"#666$6#",
+		"###++##"]},
+	"arene": {"name": "Arène d'entraînement", "floor": "s", "wall": "1", "role": "capitaine", "icon": "sword", "rows": [
+		"###########",
+		"#>sssssss>#",
+		"#sssssssss#",
+		"#sss@sssss#",
+		"#sssssssss#",
+		"#^sssssss^#",
+		"#####++####"]},
+	"mine": {"name": "Entrée de mine", "floor": "u", "wall": "5", "monster": "gobelin", "icon": "ore", "label": true, "rows": [
+		" ##### ",
+		"##uuu##",
+		"#XuMuO#",
+		"#uu/uu#",
+		"#:u$uu#",
+		"##+++##"]},
+	"cercle_portail": {"name": "Cercle du portail", "floor": "e", "wall": "3", "icon": "spiral", "rows": [
+		"  #+#  ",
+		" #eee# ",
+		"#?eee?#",
+		"+ee%ee+",
+		"#?eee?#",
+		" #eee# ",
+		"  #+#  "]},
+	"jardin": {"name": "Jardin à haies", "floor": "y", "wall": "4", "role": "herboriste", "icon": "leaf", "rows": [
+		"#########",
+		"#;yyVyy;#",
+		"#y=yyy=y#",
+		"#yyy@yyy#",
+		"#;yyyyy;#",
+		"####+####"]},
+	"taverne_port": {"name": "Taverne du port", "floor": "6", "wall": "1", "role": "aubergiste", "icon": "food", "rows": [
+		"##########",
+		"#OOTd6T6O#",
+		"#6666666J#",
+		"#T6T6@6T6#",
+		"#6666666$#",
+		"####++####",
+		"wwBBBBBBww",
+		"wwwwwwwwww"]},
 }
 
 ## Mobilier des plans : lettre → [terrain, décor]. « - » : case couverte par le
@@ -150,6 +259,8 @@ const DECOR := {
 	"A": ["t", "anvil"], "E": ["t", "hearth"], "L": ["o", "altar"], "G": [".", "grave"], "P": ["w", "well"],
 	"N": [".", "tent"], "C": ["c", "campfire"], "Q": ["p", "stall"], "K": ["t", "-"], "U": ["t", "cauldron"],
 	"V": ["t", "statue"], "I": ["t", "pillar"], "J": ["t", "sacks"], "Y": ["t", "hay"], "D": ["t", "chair"], "Z": ["d", "rug"],
+	"&": ["t", "throne"], "!": ["t", "banner"], "=": ["t", "bench"], "^": ["t", "weapon_rack"], "*": ["t", "jars"],
+	"~": ["t", "cage"], "<": ["t", "firewood"], ">": ["t", "dummy"], "?": ["t", "candles"], ":": ["t", "cart"], ";": [".", "flowerpot"],
 }
 const VARIANTS := {
 	"tent": ["tent_red", "tent_blue", "tent_green", "tent_beige"],
@@ -159,9 +270,11 @@ const VARIANTS := {
 
 
 ## Terrain d'une case de plan.
-static func cell_code(ch: String, floor_code: String) -> String:
-	if ch in ["+", "@", "$", "M"]:
+static func cell_code(ch: String, floor_code: String, wall_code: String = "#") -> String:
+	if ch in ["+", "@", "$", "M", "%", "/"]:
 		return floor_code
+	if ch == "#":
+		return wall_code
 	if DECOR.has(ch):
 		return String(DECOR[ch][0])
 	return ch
@@ -206,6 +319,9 @@ static func stamp(map: Dictionary, id: String, x: int, y: int) -> Dictionary:
 		return out
 	var a := anchor(map, id, x, y)
 	var floor_code := String(def.get("floor", "d"))
+	var wall_code := String(def.get("wall", "#"))
+	out["portal"] = []
+	out["stairs"] = []
 	var rows: Array = def.rows
 	out.rect = Rect2i(a, size_of(id))
 	for j in rows.size():
@@ -229,6 +345,14 @@ static func stamp(map: Dictionary, id: String, x: int, y: int) -> Dictionary:
 				"M":
 					code = floor_code
 					out.monster.append(p)
+				"#":
+					code = wall_code
+				"%":
+					code = floor_code
+					out.portal.append(p)
+				"/":
+					code = floor_code
+					out.stairs.append(p)
 			if DECOR.has(ch):
 				code = String(DECOR[ch][0])
 			if MapData.TERRAINS.has(code):

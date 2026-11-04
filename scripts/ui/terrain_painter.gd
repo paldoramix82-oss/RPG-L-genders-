@@ -261,6 +261,39 @@ func _detail(x: int, y: int, code: String) -> void:
 			_spr("nature", ["rock_0", "rock_1", "rock_big", "rock_moss"][int(n * 1000) % 4], x, y, true)
 		"b", "R":
 			_roof(x, y, p, base)
+		"1", "2", "3", "5":
+			_wall_cell(x, y, p, base, code)
+		"4":
+			_ci.draw_circle(c, S * 0.52, base.lightened(0.08))
+			for i in 4:
+				_ci.draw_circle(p + Vector2(_n(x, y, 20 + i), _n(x, y, 30 + i)) * S, S * 0.16, base.lightened(0.2))
+			_ci.draw_circle(c + Vector2(0, S * 0.3), S * 0.4, Color(0, 0, 0, 0.15))
+		"6":
+			for i in range(1, 3):
+				_ci.draw_line(Vector2(p.x + S * i / 3.0, p.y), Vector2(p.x + S * i / 3.0, p.y + S), base.darkened(0.2), 1.0)
+			_ci.draw_line(Vector2(p.x, p.y + S * (0.3 + n * 0.4)), Vector2(p.x + S / 3.0, p.y + S * (0.3 + n * 0.4)), base.darkened(0.2), 1.0)
+		"7":
+			_ci.draw_rect(Rect2(p + Vector2(S * 0.08, 0), Vector2(S * 0.84, S)), base.lightened(0.05))
+			_ci.draw_line(p + Vector2(S * 0.15, 0), p + Vector2(S * 0.15, S), Color("d9a441", 0.8), 1.0)
+			_ci.draw_line(p + Vector2(S * 0.85, 0), p + Vector2(S * 0.85, S), Color("d9a441", 0.8), 1.0)
+		"8":
+			for i in 4:
+				var q := p + Vector2(i % 2, i / 2) * S * 0.5
+				_ci.draw_rect(Rect2(q, Vector2(S * 0.5, S * 0.5)), base.lightened(0.12) if (i + x + y) % 2 == 0 else base.darkened(0.12))
+		"9":
+			_ci.draw_line(p + Vector2(S * _n(x, y, 1), 0), p + Vector2(S * _n(x, y, 2), S), base.darkened(0.12), 1.0)
+			_ci.draw_rect(Rect2(p, Vector2(S, S)), base.darkened(0.08), false, 1.0)
+		"e":
+			_ci.draw_rect(Rect2(p + Vector2(1, 1), Vector2(S - 2, S - 2)), base.darkened(0.2), false, 1.0)
+			if (x + y) % 3 == 0:
+				_ci.draw_circle(c, S * 0.12, base.lightened(0.18))
+		"i":
+			for i in 3:
+				_ci.draw_circle(p + Vector2(_n(x, y, 70 + i), _n(x, y, 80 + i)) * S, 1.0, base.darkened(0.25))
+		"j":
+			for i in 5:
+				var a := p + Vector2(_n(x, y, 100 + i), _n(x, y, 110 + i)) * S
+				_ci.draw_line(a, a + Vector2(S * 0.3, S * (_n(x, y, 120 + i) - 0.5) * 0.3), base.lightened(0.2), 1.0)
 		"#":
 			_ci.draw_rect(Rect2(p, Vector2(S, S)), base.lightened(0.12))
 			if _code(x, y + 1) != "#":
@@ -449,3 +482,42 @@ func _forest_cell(x: int, y: int, code: String, n: float) -> void:
 	elif pick < 12:
 		name = "tree_blossom"
 	_spr("nature", name, x, y, true)
+
+
+## Murs variés : bois (planches), briques, pierre taillée (créneaux), grotte.
+func _wall_cell(x: int, y: int, p: Vector2, base: Color, code: String) -> void:
+	_ci.draw_rect(Rect2(p, Vector2(S, S)), base.lightened(0.1))
+	var front := not (_code(x, y + 1) in MapData.WALLS)
+	match code:
+		"1":
+			for i in range(0, 4):
+				var xx := p.x + S * i / 4.0
+				_ci.draw_line(Vector2(xx, p.y), Vector2(xx, p.y + S), base.darkened(0.35), 1.0)
+			if front:
+				_ci.draw_rect(Rect2(p + Vector2(0, S * 0.6), Vector2(S, S * 0.4)), base.darkened(0.2))
+				_ci.draw_line(p + Vector2(0, S * 0.75), p + Vector2(S, S * 0.75), base.darkened(0.45), 1.0)
+		"2":
+			for row in 4:
+				var yy := p.y + S * row / 4.0
+				_ci.draw_line(Vector2(p.x, yy), Vector2(p.x + S, yy), base.darkened(0.4), 1.0)
+				var off := S / 4.0 if row % 2 else 0.0
+				for k in 2:
+					var xx := p.x + off + S * k / 2.0
+					_ci.draw_line(Vector2(xx, yy), Vector2(xx, yy + S / 4.0), base.darkened(0.4), 1.0)
+			if front:
+				_ci.draw_rect(Rect2(p + Vector2(0, S * 0.75), Vector2(S, S * 0.25)), Color(0, 0, 0, 0.25))
+		"3":
+			_ci.draw_rect(Rect2(p + Vector2(1, 1), Vector2(S - 2, S - 2)), base.darkened(0.3), false, 1.0)
+			_ci.draw_line(p + Vector2(0, S * 0.5), p + Vector2(S, S * 0.5), base.darkened(0.3), 1.0)
+			_ci.draw_line(p + Vector2(S * 0.5, 0), p + Vector2(S * 0.5, S * 0.5), base.darkened(0.3), 1.0)
+			if not (_code(x, y - 1) in MapData.WALLS):
+				for k in 2:
+					_ci.draw_rect(Rect2(p + Vector2(S * (0.1 + k * 0.5), -S * 0.15), Vector2(S * 0.3, S * 0.2)), base.lightened(0.15))
+			if front:
+				_ci.draw_rect(Rect2(p + Vector2(0, S * 0.7), Vector2(S, S * 0.3)), base.darkened(0.35))
+		"5":
+			_ci.draw_circle(p + Vector2(_n(x, y, 1), _n(x, y, 2)) * S, S * 0.3, base.lightened(0.12))
+			_ci.draw_circle(p + Vector2(_n(x, y, 3), _n(x, y, 4)) * S, S * 0.22, base.darkened(0.15))
+			if front:
+				_ci.draw_rect(Rect2(p + Vector2(0, S * 0.7), Vector2(S, S * 0.3)), Color(0, 0, 0, 0.3))
+	_ci.draw_line(p, p + Vector2(S, 0), base.lightened(0.28), 1.0)

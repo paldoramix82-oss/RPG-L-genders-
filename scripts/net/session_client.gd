@@ -131,6 +131,14 @@ func engage(token_id: String) -> String:
 
 
 ## Passer par un passage vers une autre carte (entrer dans une ville…).
+func buy(shop_id: String, item_id: String, qty: int = 1) -> void:
+	_send.call(Protocol.CMD_BUY, {"shop": shop_id, "item": item_id, "qty": qty})
+
+
+func sell(shop_id: String, uid: String, qty: int = 1) -> void:
+	_send.call(Protocol.CMD_SELL, {"shop": shop_id, "uid": uid, "qty": qty})
+
+
 func enter(token_id: String) -> String:
 	return send_command(Protocol.CMD_ENTER, {"token": token_id})
 

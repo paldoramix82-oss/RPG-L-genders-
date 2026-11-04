@@ -11,7 +11,7 @@ extends RefCounted
 ## le brouillard n'est pas qu'un effet d'affichage.
 
 ## Terrains qui bloquent la vue (la case elle-même reste visible).
-const OPAQUE := ["#", "F", "m", "R"]
+const OPAQUE := ["#", "F", "m", "R", "1", "2", "3", "4", "5"]
 
 
 ## Rayon de vision d'un personnage (en cases).

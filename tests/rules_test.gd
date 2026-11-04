@@ -32,6 +32,7 @@ func _ready() -> void:
 	_test_nested_maps()
 	_test_bricks()
 	_test_net_delta()
+	_test_world_tools()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -1221,3 +1222,91 @@ func _test_net_delta() -> void:
 	# Déconnexion : le prochain envoi est complet.
 	s.on_peer_disconnected(7)
 	_expect(not s._sent.has(p.id), "un joueur déconnecté recevra tout à son retour")
+
+
+func _test_world_tools() -> void:
+	print("\n— Placement, portails, coffres, commerce, murs et bâtiments")
+	var s := _server()
+	var p := _add_player(s, "Ivo")
+	s._cmd_char_create(p, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Ivo"}})
+	var a := s.mj_create_map("Ville", 30, 20)
+	var b := s.mj_create_map("Cave", 16, 12)
+	s.mj_set_active_map(a.id)
+	s.mj_start_game("libre")
+	var map: Dictionary = s.maps[a.id]
+	var me := MapData.token(map, "pawn_" + p.id)
+	me.x = 5
+	me.y = 5
+	# Placement facile.
+	var wolf := s.mj_place(a.id, {"type": "monster", "id": "loup", "hidden": true}, 20, 15)
+	_expect(not wolf.is_empty() and wolf.kind == "monster" and wolf.hidden, "palette : un monstre se pose d'un toucher (caché)")
+	var npc := s.mj_place(a.id, {"type": "npc_role", "role": "marchand"}, 6, 5)
+	_expect(not npc.is_empty() and npc.get("shop") is Dictionary and not (npc.shop.items as Array).is_empty(), "palette : un marchand arrive avec sa boutique")
+	var item := s.mj_place(b.id, {"type": "item", "id": "potion_soin"}, 3, 3)
+	_expect(not item.is_empty() and (s.maps[b.id].tokens as Array).has(item), "palette : un objet se pose sur n'importe quelle carte")
+	# Coffre au contenu choisi.
+	var chest := s.mj_place(a.id, {"type": "chest", "name": "Coffre du roi", "items": [{"item": "potion_soin", "qty": 3}], "gold": 75}, 5, 6)
+	_expect(not s._map_view(p.id).tokens.filter(func(t): return t.id == chest.id).is_empty() and not s._map_view(p.id).tokens.filter(func(t): return t.id == chest.id)[0].has("chest_items"), "le contenu du coffre reste secret pour les joueurs")
+	var gold0 := int(s.characters[p.id].gold)
+	var err := s._cmd_open(p, {"token": chest.id})
+	var pots := (s.characters[p.id].inventory as Array).filter(func(i): return String(i.item_id) == "potion_soin")
+	_expect(err == "" and int(s.characters[p.id].gold) == gold0 + 75 and not pots.is_empty(), "le coffre donne ses objets et son or : %s" % err)
+	_expect(s._cmd_open(p, {"token": chest.id}) != "", "puis il est vide")
+	# Portail sur la même carte (téléportation).
+	var tp := s.mj_place(a.id, {"type": "passage", "look": "portal"}, 5, 4)
+	_expect(tp.get("look", "") == "portal" and String(tp.sprite) == "props/portal", "un portail a son apparence")
+	_expect(s.mj_set_portal(a.id, tp.id, a.id, 25, 15) == "", "le portail mène ailleurs sur la même carte")
+	_expect(s._cmd_enter(p, {"token": tp.id}) == "" and Rules.distance(Vector2i(int(me.x), int(me.y)), Vector2i(25, 15)) <= 1, "toucher Entrer téléporte le joueur")
+	_expect(s.map_of_player(p.id) == a.id, "sans changer de carte")
+	# Porte vers une autre carte, avec retour.
+	var door := s.mj_place(a.id, {"type": "passage", "look": "stairs_down", "name": "Cave"}, 24, 15)
+	s.mj_set_portal(a.id, door.id, b.id, 2, 2, true)
+	_expect(s._cmd_enter(p, {"token": door.id}) == "" and s.map_of_player(p.id) == b.id, "l'escalier mène à la cave (lui seul change de carte)")
+	var back: Array = (s.maps[b.id].tokens as Array).filter(func(t): return String(t.get("link", "")) == a.id)
+	_expect(back.size() == 1 and String(back[0].look) == "stairs_down", "un passage de retour est posé tout seul")
+	s._on_map(b.id, func(): return s._cmd_enter(p, {"token": back[0].id}))
+	_expect(s.map_of_player(p.id) == a.id, "et ramène en ville")
+	# Commerce avec le PNJ marchand.
+	me = MapData.token(s.maps[a.id], "pawn_" + p.id)
+	me.x = 7
+	me.y = 5
+	var line: Dictionary = npc.shop.items[0]
+	s.characters[p.id].gold = int(line.price) * 2 + 5
+	var before_n := (s.characters[p.id].inventory as Array).size()
+	_expect(s._cmd_buy(p, {"shop": npc.id, "item": line.item, "qty": 1}) == "", "acheter chez le marchand")
+	_expect(int(s.characters[p.id].gold) == int(line.price) + 5, "l'or est retiré (%d)" % int(s.characters[p.id].gold))
+	s.characters[p.id].gold = 0
+	_expect(s._cmd_buy(p, {"shop": npc.id, "item": line.item}) != "", "pas assez d'or : refusé")
+	var sellable: Array = (s.characters[p.id].inventory as Array).filter(func(i): return not i.get("equipped", false) and String(i.get("category", "")) != "quete")
+	var g1 := int(s.characters[p.id].gold)
+	_expect(s._cmd_sell(p, {"shop": npc.id, "uid": sellable[0].uid}) == "" and int(s.characters[p.id].gold) > g1, "vendre un objet rapporte de l'or")
+	me.x = 20
+	_expect(s._cmd_buy(p, {"shop": npc.id, "item": line.item}).contains("Approchez"), "trop loin du marchand : refusé")
+	# Boutique du MJ.
+	_expect(s._cmd_buy(p, {"shop": "mj", "item": "potion_soin"}).contains("fermée"), "boutique du MJ fermée par défaut")
+	s.mj_set_mj_shop({"open": true, "items": [{"item": "potion_soin", "price": 5, "stock": 1}], "buy_pct": 30})
+	s.characters[p.id].gold = 20
+	_expect(s.public_session().mj_shop.items.size() == 1, "les joueurs voient la boutique du MJ ouverte")
+	_expect(s._cmd_buy(p, {"shop": "mj", "item": "potion_soin"}) == "" and int(s.characters[p.id].gold) == 15, "acheter au MJ, de n'importe où")
+	_expect(s._cmd_buy(p, {"shop": "mj", "item": "potion_soin"}).contains("reste"), "stock épuisé")
+	# Murs et sols variés, bâtiments.
+	for code in ["1", "2", "3", "4", "5"]:
+		_expect(not MapData.TERRAINS[code][2] and Vision.OPAQUE.has(code), "mur « %s » infranchissable et opaque" % MapData.TERRAINS[code][0])
+	s.mj_paint_rect(a.id, Vector2i(10, 10), Vector2i(14, 13), "6", true, "2")
+	_expect(MapData.cell(s.maps[a.id], 10, 10) == "2" and MapData.cell(s.maps[a.id], 12, 11) == "6", "outil Pièce : sol et murs au choix")
+	var n0 := Prefabs.LIST.size()
+	_expect(n0 >= 32, "%d bâtiments prêts" % n0)
+	var big := s.mj_create_map("Chantier", 80, 60)
+	var ok := true
+	var i := 0
+	for id in Prefabs.LIST:
+		var res := s.mj_place_prefab(big.id, String(id), 6 + (i % 6) * 12, 6 + (i / 6) * 10, false)
+		if (res.get("rect", Rect2i()) as Rect2i).size == Vector2i.ZERO:
+			ok = false
+			print("    bâtiment non posé : ", id)
+		i += 1
+	_expect(ok, "tous les bâtiments se posent")
+	var portals := (s.maps[big.id].tokens as Array).filter(func(t): return t.get("passage", false))
+	_expect(portals.size() >= 2, "le cercle du portail et la mine posent leurs passages (%d)" % portals.size())
+	var stone := (s.maps[big.id].cells as String).count("3")
+	_expect(stone > 20, "les bâtiments utilisent leurs murs (pierre : %d cases)" % stone)

@@ -75,6 +75,9 @@ const CMD_QUEST_ACCEPT := "quest_accept"
 const CMD_CHECK := "check"
 ## Passer par un passage vers une autre carte : {token}.
 const CMD_ENTER := "enter"
+## Commerce : {shop: id du PNJ ou "mj", item, qty} / {shop, uid, qty}
+const CMD_BUY := "buy"
+const CMD_SELL := "sell"
 
 # --- Événements serveur -> client ---
 const EVT_JOIN_STATUS := "join_status"
