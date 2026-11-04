@@ -31,6 +31,7 @@ func _ready() -> void:
 	_test_npc_control()
 	_test_nested_maps()
 	_test_bricks()
+	_test_net_delta()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -1162,3 +1163,61 @@ func _test_bricks() -> void:
 	s.mj_grant_passive(p.id, {"name": "Rage froide", "trigger": "on_damaged", "effects": [{"type": "stat", "stat": "Force", "amount": 2, "turns": 2, "on": "self"}]})
 	var back := CharacterData.sanitize(s.characters[p.id].duplicate(true), s.characters[p.id])
 	_expect((back.get("extra_passives", []) as Array).size() == 1 and String(back.extra_passives[0].trigger) == "on_damaged", "les passifs personnels sont gardés à la sauvegarde")
+
+
+func _test_net_delta() -> void:
+	print("\n— Réseau : envoi par différences")
+	var a := "0".repeat(6800)
+	var b := a.substr(0, 100) + "11" + a.substr(102, 4000) + "1" + a.substr(4103)
+	var d: Variant = StrDiff.diff(a, b)
+	_expect(d is Array and (d as Array).size() == 2 and StrDiff.patch(a, d) == b, "différence de chaîne : 2 plages, recollée à l'identique")
+	_expect(StrDiff.diff(a, "1".repeat(6800)) == null, "trop de changements : on renvoie tout")
+	_expect(StrDiff.diff(a, a) == [], "aucun changement : liste vide")
+	var dd: Variant = StrDiff.dict_diff({"1,1": "tree_oak", "2,2": "rock"}, {"1,1": "tree_oak", "3,3": "bench"})
+	_expect(StrDiff.dict_patch({"1,1": "tree_oak", "2,2": "rock"}, dd) == {"1,1": "tree_oak", "3,3": "bench"}, "différence de décor recollée")
+	# De bout en bout : serveur → client, sur une carte immense avec brouillard.
+	var s := _server()
+	var p := _add_player(s, "Rae")
+	s._cmd_char_create(p, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Rae"}})
+	var m := s.mj_generate_map("foret", "immense", "", 3)
+	s.mj_set_active_map(m.id)
+	s.mj_start_game("libre")
+	p.online = true
+	p.peer_id = 7
+	s._peer_to_player[7] = p.id
+	var client := SessionClient.new(func(_c, _p): pass)
+	client.map = s._remember_view(p.id, s._map_view(p.id))
+	var full_size := var_to_bytes(client.map).size()
+	var map: Dictionary = s.maps[s.active_map]
+	MapData.set_cell(map, 3, 3, "w")
+	MapData.set_decor(map, 5, 5, "bench")
+	_sent.clear()
+	s._broadcast_map()
+	var pay: Dictionary = _sent[-1][2].map
+	_expect(pay.has("cells_patch") and not pay.has("cells"), "une case peinte : seule la différence part")
+	var delta_size := var_to_bytes(pay).size()
+	client.handle_event(Protocol.EVT_MAP, {"map": pay})
+	var truth := s._map_view(p.id)
+	_expect(client.map.cells == truth.cells and client.map.decor == truth.decor, "le téléphone reconstruit exactement la carte")
+	_expect(client.map.get("fog", {}).get("explored", "") == truth.fog.explored, "et le brouillard")
+	print("    carte complète %d octets, mise à jour %d octets" % [full_size, delta_size])
+	_expect(delta_size * 3 < full_size, "la mise à jour est bien plus petite que la carte complète")
+	# Déplacement : brouillard par différences.
+	var tk := MapData.token(map, "pawn_" + p.id)
+	var dest := Vector2i(int(tk.x), int(tk.y))
+	for step in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if MapData.walkable(map, int(tk.x) + step.x, int(tk.y) + step.y, true) and MapData.token_at(map, int(tk.x) + step.x, int(tk.y) + step.y).is_empty():
+			dest = Vector2i(int(tk.x), int(tk.y)) + step
+			break
+	tk.x = dest.x
+	tk.y = dest.y
+	_sent.clear()
+	s._broadcast_tokens()
+	var tp: Dictionary = _sent[-1][2]
+	client.handle_event(Protocol.EVT_TOKENS, tp)
+	var truth2 := s._map_view(p.id)
+	_expect(client.map.fog.explored == truth2.fog.explored and client.map.fog.visible == truth2.fog.visible, "brouillard recollé après un pas")
+	_expect(not tp.fog.has("explored") or not tp.fog.has("visible"), "le brouillard part par différences")
+	# Déconnexion : le prochain envoi est complet.
+	s.on_peer_disconnected(7)
+	_expect(not s._sent.has(p.id), "un joueur déconnecté recevra tout à son retour")

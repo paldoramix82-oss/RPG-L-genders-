@@ -268,13 +268,13 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 			characters = payload.get("characters", [])
 			characters_changed.emit()
 		Protocol.EVT_MAP:
-			map = payload.get("map", {})
+			map = _merge_map(payload.get("map", {}))
 			map_changed.emit()
 		Protocol.EVT_TOKENS:
 			if String(payload.get("map_id", "")) == String(map.get("id", "")) and payload.get("tokens") is Array:
 				map["tokens"] = payload.tokens
 				if payload.get("fog") is Dictionary:
-					map["fog"] = payload.fog
+					map["fog"] = _merge_fog(payload.fog)
 				if payload.get("labels") is Array:
 					map["labels"] = payload.labels
 				map_changed.emit()
@@ -317,3 +317,31 @@ func _set_status(status: String) -> void:
 		return
 	join_status = status
 	status_changed.emit(status)
+
+
+## Carte reçue par différences : on recolle les morceaux sur la carte connue.
+func _merge_map(incoming: Variant) -> Dictionary:
+	if not incoming is Dictionary:
+		return {}
+	var m: Dictionary = incoming
+	var same := String(m.get("id", "")) == String(map.get("id", ""))
+	if m.has("cells_patch"):
+		m["cells"] = StrDiff.patch(String(map.get("cells", "")), m.cells_patch) if same else ""
+		m.erase("cells_patch")
+	if m.has("decor_patch"):
+		m["decor"] = StrDiff.dict_patch(map.get("decor", {}) if same and map.get("decor") is Dictionary else {}, m.decor_patch)
+		m.erase("decor_patch")
+	if m.get("fog") is Dictionary:
+		m["fog"] = _merge_fog(m.fog) if same else m.fog
+	return m
+
+
+func _merge_fog(f: Dictionary) -> Dictionary:
+	var old: Dictionary = map.get("fog", {}) if map.get("fog") is Dictionary else {}
+	var out := {}
+	for k in ["explored", "visible"]:
+		if f.has(k):
+			out[k] = String(f[k])
+		elif f.get(k + "_patch") is Array:
+			out[k] = StrDiff.patch(String(old.get(k, "")), f[k + "_patch"])
+	return out

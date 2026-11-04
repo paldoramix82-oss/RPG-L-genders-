@@ -98,6 +98,8 @@ func host(settings: Dictionary, saved_data: Dictionary = {}) -> String:
 	if err != OK:
 		_peer = null
 		return "Impossible d'ouvrir le port %d (déjà utilisé ?). Code Godot : %s" % [port, error_string(err)]
+	# Compression des échanges (cartes, brouillard, fiches) : moins de données en Wi-Fi.
+	_peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
 	role = Role.HOST
 	server = SessionServer.new(settings, _server_send, _server_kick, saved_data)
 	_autosave_left = AUTOSAVE_INTERVAL
@@ -194,6 +196,7 @@ func _attempt_connection() -> String:
 	if err != OK:
 		_peer = null
 		return "Impossible de créer la connexion : %s" % error_string(err)
+	_peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
 	_setup_multiplayer()
 	_set_state(State.RECONNECTING if _ever_connected else State.CONNECTING)
 	_attempt_serial += 1

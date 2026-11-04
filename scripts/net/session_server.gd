@@ -206,6 +206,7 @@ func on_peer_disconnected(peer_id: int) -> void:
 	player.peer_id = 0
 	if player.online:
 		player.online = false
+		_forget_sent(String(player.id))
 		player.disconnects += 1
 		player.last_seen = Protocol.now()
 		_log("%s est déconnecté (personnage conservé)." % player.name, "warn")
@@ -1135,14 +1136,20 @@ func _spotters(map: Dictionary, cell: Vector2i, pawn: Dictionary) -> Array:
 		return out
 	var cells := String(map.get("cells", ""))
 	var w := int(map.get("w", 0))
+	var default_r := int(Content.rule(content, "aggro_radius"))
 	for m in map.get("tokens", []):
+		# Tests bon marché d'abord : seuls les monstres proches sont examinés.
+		if String(m.get("kind", "")) != "monster" or m.get("hidden", false):
+			continue
+		var mp := Vector2i(int(m.x), int(m.y))
+		if Rules.distance(mp, cell) > maxi(int(m.get("aggro", 0)), maxi(default_r, 12)):
+			continue
 		if not _can_aggro(m):
 			continue
 		var sh := combat.sheet_of(m) if combat.has_sheet(m) else {}
 		var r := int(m.get("aggro", sh.get("aggro", 0)))
 		if r <= 0:
-			r = int(Content.rule(content, "aggro_radius"))
-		var mp := Vector2i(int(m.x), int(m.y))
+			r = default_r
 		if Rules.distance(mp, cell) <= r and Vision._line_clear(cells, w, mp, cell):
 			out.append(m)
 	return out
@@ -3792,7 +3799,7 @@ func _send_welcome(player: Dictionary) -> void:
 		"players": public_players(),
 		"messages": history,
 		"characters": characters_for(player.id),
-		"map": _map_view(player.id),
+		"map": _remember_view(String(player.id), _map_view(player.id)),
 		"phase": phase_view_for_player(player.id),
 		"music": music_view_for_player(),
 		"content": Content.for_player(content),
@@ -3871,7 +3878,7 @@ func _broadcast_characters() -> void:
 
 func _broadcast_map() -> void:
 	for player in _accepted_online():
-		_send.call(player.peer_id, Protocol.EVT_MAP, {"map": _map_view(player.id)})
+		_send.call(player.peer_id, Protocol.EVT_MAP, {"map": _compact_view(String(player.id), _map_view(player.id))})
 
 
 ## Mise à jour légère (déplacements) : pions, et brouillard s'il est actif.
@@ -3880,9 +3887,81 @@ func _broadcast_tokens() -> void:
 		var view := _map_view(player.id)
 		var payload := {"map_id": view.get("id", ""), "tokens": view.get("tokens", [])}
 		if view.has("fog"):
-			payload["fog"] = view.fog
+			payload["fog"] = _fog_delta(String(player.id), String(view.get("id", "")), view.fog)
 			payload["labels"] = view.labels
 		_send.call(player.peer_id, Protocol.EVT_TOKENS, payload)
+
+
+# ---------------------------------------------------------------------------
+# Envoi par différences : chaque joueur reçoit seulement ce qui a changé
+# depuis le dernier envoi (cases, décor, brouillard). Le dernier état envoyé
+# est gardé par joueur ; un nouvel arrivant ou un changement de carte reçoit
+# tout. Gain : une case peinte sur une carte immense = quelques octets.
+# ---------------------------------------------------------------------------
+
+var _sent := {}  # player_id -> {map_id, cells, decor, explored, visible}
+
+
+## Oublie ce qui a été envoyé à un joueur (il recevra tout la prochaine fois).
+func _forget_sent(player_id: String) -> void:
+	_sent.erase(player_id)
+
+
+## Vue complète mémorisée telle quelle (accueil d'un joueur).
+func _remember_view(player_id: String, view: Dictionary) -> Dictionary:
+	if view.is_empty():
+		_sent.erase(player_id)
+		return view
+	var rec := {"map_id": String(view.get("id", "")), "cells": String(view.get("cells", "")), "decor": (view.get("decor", {}) as Dictionary).duplicate()}
+	if view.get("fog") is Dictionary:
+		rec.explored = String(view.fog.get("explored", ""))
+		rec.visible = String(view.fog.get("visible", ""))
+	_sent[player_id] = rec
+	return view
+
+
+func _compact_view(player_id: String, view: Dictionary) -> Dictionary:
+	var prev: Dictionary = _sent.get(player_id, {})
+	if view.is_empty() or prev.is_empty() or String(prev.map_id) != String(view.get("id", "")):
+		return _remember_view(player_id, view)
+	var out := view.duplicate()
+	var cells := String(view.get("cells", ""))
+	var patch: Variant = StrDiff.diff(String(prev.cells), cells)
+	if patch != null:
+		out.erase("cells")
+		out["cells_patch"] = patch
+	prev.cells = cells
+	var decor: Dictionary = view.get("decor", {})
+	var dd: Variant = StrDiff.dict_diff(prev.decor, decor)
+	if dd != null:
+		out.erase("decor")
+		out["decor_patch"] = dd
+	prev.decor = decor.duplicate()
+	if view.get("fog") is Dictionary:
+		out["fog"] = _fog_delta(player_id, String(view.id), view.fog)
+	else:
+		prev.erase("explored")
+		prev.erase("visible")
+	return out
+
+
+func _fog_delta(player_id: String, map_id: String, fog: Dictionary) -> Dictionary:
+	var prev: Dictionary = _sent.get(player_id, {})
+	if prev.is_empty() or String(prev.get("map_id", "")) != map_id or not prev.has("explored"):
+		if not prev.is_empty() and String(prev.get("map_id", "")) == map_id:
+			prev.explored = String(fog.get("explored", ""))
+			prev.visible = String(fog.get("visible", ""))
+		return fog
+	var out := {}
+	for k in ["explored", "visible"]:
+		var now := String(fog.get(k, ""))
+		var p: Variant = StrDiff.diff(String(prev[k]), now)
+		if p == null:
+			out[k] = now
+		else:
+			out[k + "_patch"] = p
+		prev[k] = now
+	return out
 
 
 func _broadcast_settings() -> void:
