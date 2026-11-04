@@ -1813,7 +1813,9 @@ func mj_generate_map(kind: String, size_key: String, map_name: String = "", seed
 	var size: Vector2i = MapGen.SIZES.get(size_key, MapGen.SIZES.moyenne)
 	if seed_value < 0:
 		seed_value = _rng.randi()
+	var t0 := Time.get_ticks_usec()
 	var gen := MapGen.generate(kind, size.x, size.y, seed_value)
+	Perf.record("Génération de carte (%d×%d)" % [size.x, size.y], (Time.get_ticks_usec() - t0) / 1000.0)
 	var title := map_name.strip_edges() if map_name.strip_edges() != "" else String(MapGen.KINDS.get(kind, "Carte")).get_slice(" (", 0)
 	var map := MapData.blank(title, size.x, size.y)
 	map.cells = gen.cells

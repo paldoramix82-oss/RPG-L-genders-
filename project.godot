@@ -19,6 +19,7 @@ App="*res://scripts/autoload/app.gd"
 Style="*res://scripts/autoload/style.gd"
 Net="*res://scripts/autoload/net.gd"
 Music="*res://scripts/autoload/music.gd"
+Perf="*res://scripts/autoload/perf.gd"
 
 [display]
 

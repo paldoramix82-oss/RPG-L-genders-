@@ -509,6 +509,7 @@ func _build_hud() -> PanelContainer:
 			_chat_badge.position = Vector2(26, 0)
 			_chat_badge.visible = false
 			b.add_child(_chat_badge)
+	_apply_handedness.call_deferred()
 	return panel
 
 
@@ -1988,6 +1989,7 @@ func _journal_settings(body: VBoxContainer) -> void:
 			App.save_settings()
 			Style.apply_orientation())
 		UIKit.field(disp, "Orientation de l'écran", orient)
+	_display_settings(body)
 	var conn := UIKit.card(body, "Connexion")
 	var params := Net.join_params()
 	conn.add_child(UIKit.label("%s\nHôte : %s  ·  ping %s" % [Net.state_label(), params.get("ip", "?"), UIKit.ping_text(Net.get_peer_rtt(1))], "MutedLabel", true))
@@ -2247,3 +2249,46 @@ func _open_combat_menu(ap: int, busy: bool) -> void:
 		b.disabled = ap < int(spec[1]) or busy
 		b.tooltip_text = String(spec[3])
 	panel.body.add_child(UIKit.label("Se défendre : +3 Défense jusqu'à votre prochain tour. Fuir : d20 + Dextérité contre 10 (+3 par ennemi au contact) ; réussi, vous quittez ce combat.", "MutedLabel", true))
+
+
+## Réglages d'affichage communs : taille du texte, mode gaucher, performances.
+func _display_settings(body: VBoxContainer) -> void:
+	var card := UIKit.card(body, "Confort")
+	var size := OptionButton.new()
+	var cur := Style.ui_scale()
+	for spec in [[0.85, "Petit"], [1.0, "Normal"], [1.15, "Grand"], [1.3, "Très grand"]]:
+		size.add_item(spec[1])
+		size.set_item_metadata(size.item_count - 1, spec[0])
+		if absf(cur - float(spec[0])) < 0.01:
+			size.select(size.item_count - 1)
+	size.item_selected.connect(func(i):
+		App.set_setting("display", "ui_scale", float(size.get_item_metadata(i)))
+		App.save_settings()
+		Style.apply_ui_scale())
+	UIKit.field(card, "Taille du texte et des boutons", size)
+	var lefty := CheckBox.new()
+	lefty.text = "Mode gaucher (boutons Sac, Fiche, Journal à gauche)"
+	lefty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lefty.button_pressed = bool(App.get_setting("display", "left_handed", false))
+	lefty.toggled.connect(func(on):
+		App.set_setting("display", "left_handed", on)
+		App.save_settings()
+		_apply_handedness())
+	card.add_child(lefty)
+	var perf := CheckBox.new()
+	perf.text = "Afficher les performances (images par seconde, temps de dessin)"
+	perf.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	perf.button_pressed = Perf.enabled()
+	perf.toggled.connect(func(on):
+		Perf.set_enabled(on)
+		App.save_settings())
+	card.add_child(perf)
+
+
+func _apply_handedness() -> void:
+	if _hud_buttons == null or _hud_buttons.get_parent() == null:
+		return
+	var bottom := _hud_buttons.get_parent()
+	var left := bool(App.get_setting("display", "left_handed", false))
+	bottom.move_child(_hud_buttons, 0 if left else bottom.get_child_count() - 1)
+	bottom.move_child(_hud_sep, 1 if left else bottom.get_child_count() - 2)

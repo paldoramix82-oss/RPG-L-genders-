@@ -20,6 +20,20 @@ func _ready() -> void:
 		get_window().size_changed.connect(_apply_mobile_scale)
 		_apply_mobile_scale()
 		apply_orientation()
+	else:
+		apply_ui_scale()
+
+
+## Taille du texte et des boutons choisie dans les réglages (0,85 à 1,4).
+func ui_scale() -> float:
+	return clampf(float(App.get_setting("display", "ui_scale", 1.0)), 0.75, 1.5)
+
+
+func apply_ui_scale() -> void:
+	if App.is_mobile():
+		_apply_mobile_scale()
+	else:
+		get_window().content_scale_factor = ui_scale()
 
 
 ## Sur téléphone : le petit côté de l'écran fait environ 400 unités, quelle que
@@ -33,7 +47,7 @@ func _apply_mobile_scale() -> void:
 	var density := clampf(dpi / 160.0, 1.0, 4.0)
 	var short_side := float(mini(size.x, size.y))
 	var logical_short := clampf(short_side / density, 360.0, 560.0)
-	var k := logical_short / short_side
+	var k := logical_short / short_side / ui_scale()
 	get_window().content_scale_size = Vector2i(int(size.x * k), int(size.y * k))
 
 

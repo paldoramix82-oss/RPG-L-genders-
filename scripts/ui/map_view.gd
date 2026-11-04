@@ -416,6 +416,7 @@ func _draw_fog(board: Rect2) -> void:
 
 ## Recalcule la texture du terrain (au chargement et quand le MJ peint).
 func _bake() -> void:
+	var _t0 := Time.get_ticks_usec()
 	var same_map := String(map.get("id", "")) == _baked_id and _baked_size == Vector2i(int(map.w), int(map.h))
 	_baked_cells = String(map.cells)
 	_baked_size = Vector2i(int(map.w), int(map.h))
@@ -423,6 +424,7 @@ func _bake() -> void:
 	# Même carte retouchée : seuls les morceaux modifiés sont redessinés.
 	if not same_map or not _painter.refresh(map):
 		_painter.setup(map)
+	Perf.record("Préparation de la carte", (Time.get_ticks_usec() - _t0) / 1000.0)
 	await RenderingServer.frame_post_draw
 	queue_redraw()
 

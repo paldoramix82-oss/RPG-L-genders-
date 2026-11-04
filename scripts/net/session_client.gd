@@ -268,6 +268,7 @@ func handle_event(evt: Variant, payload: Variant) -> void:
 			characters = payload.get("characters", [])
 			characters_changed.emit()
 		Protocol.EVT_MAP:
+			Perf.count("Cartes reçues")
 			map = _merge_map(payload.get("map", {}))
 			map_changed.emit()
 		Protocol.EVT_TOKENS:
