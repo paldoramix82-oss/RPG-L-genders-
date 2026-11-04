@@ -810,6 +810,12 @@ func _import_npc(entry: Dictionary) -> String:
 func mj_delete_character(id: String) -> void:
 	if not characters.has(id) or players.has(id):
 		return
+	var links := []
+	for map in maps.values():
+		for t in map.tokens:
+			if t.char_id == id:
+				links.append([String(map.id), String(t.id)])
+	_to_trash("character", "Fiche « %s »" % characters[id].get("name", "?"), {"sheet": (characters[id] as Dictionary).duplicate(true), "links": links})
 	characters.erase(id)
 	for map in maps.values():
 		for t in map.tokens:
@@ -2141,6 +2147,9 @@ func mj_remove_token(map_id: String, token_id: String) -> void:
 	var map: Dictionary = maps.get(map_id, {})
 	if map.is_empty():
 		return
+	var gone := MapData.token(map, token_id)
+	if not gone.is_empty():
+		_to_trash("token", "Pion « %s »" % gone.get("name", "?"), {"map": map_id, "token": gone.duplicate(true)})
 	map.tokens = map.tokens.filter(func(t): return t.id != token_id)
 	phase.order.erase(token_id)
 	map_changed(map_id, true)
@@ -2867,6 +2876,8 @@ func mj_give_gold(char_id: String, amount: int, reason: String = "") -> void:
 	_reward_message(char_id, "%s %s %d pièce%s d'or%s." % [c.name, "reçoit" if amount > 0 else "perd", absi(amount), "s" if absi(amount) > 1 else "",
 		(" (%s)" % reason) if reason != "" else ""], [{"t": "gold", "text": "%+d or" % amount}])
 	_mj_log("Or %+d → %s" % [amount, c.name])
+	if amount > 0:
+		_to_trash("given_gold", "Don de %d or à %s (le reprendre)" % [amount, c.name], {"char": char_id, "amount": amount})
 	_mark("characters")
 	_unsaved = true
 	characters_changed.emit()
@@ -2890,6 +2901,7 @@ func mj_give_item(char_id: String, source: Variant, qty: int = 1, announce: bool
 		_reward_message(char_id, "%s reçoit %s%s." % [c.name, inst.name, (" ×%d" % qty) if qty > 1 else ""],
 			[{"t": "loot", "text": inst.name, "rarity": String(inst.get("rarity", "commun"))}])
 	_mj_log("Objet donné : %s ×%d → %s" % [inst.name, qty, c.name])
+	_to_trash("given_item", "Don de %s à %s (le reprendre)" % [inst.name, c.name], {"char": char_id, "uid": String(inst.get("uid", "")), "qty": qty})
 	_sync_pawns_for(char_id)
 	_mark("characters")
 	_unsaved = true
@@ -2902,6 +2914,7 @@ func mj_remove_item(char_id: String, uid: String) -> void:
 	var item := Inventory.find(c, uid)
 	if item.is_empty():
 		return
+	_to_trash("item", "%s (sac de %s)" % [item.name, c.name], {"char": char_id, "item": item.duplicate(true)})
 	Inventory.consume(c, uid, int(item.get("qty", 1)))
 	Rules.refresh(c, content)
 	_mj_log("Objet retiré : %s ← %s" % [item.name, c.name])
@@ -3160,6 +3173,7 @@ func mj_content_save(kind: String, data: Dictionary) -> Dictionary:
 func mj_content_delete(kind: String, id: String) -> void:
 	if not content.get(kind, {}).has(id):
 		return
+	_to_trash("content", "Catalogue « %s »" % content[kind][id].get("name", id), {"kind": kind, "entry": (content[kind][id] as Dictionary).duplicate(true)})
 	content[kind].erase(id)
 	_unsaved = true
 	if kind in Content.PLAYER_KINDS:
@@ -4447,6 +4461,7 @@ func save() -> String:
 
 
 func _load(data: Dictionary, settings: Dictionary) -> void:
+	CampaignStore.upgrade(data)
 	session = data.session
 	_apply_runtime_settings(settings)
 	universe = Universe.get_by_id(String(session.get("universe", Universe.DEFAULT_ID)))
@@ -4454,6 +4469,9 @@ func _load(data: Dictionary, settings: Dictionary) -> void:
 	if format > CampaignStore.FORMAT:
 		_log("Cette sauvegarde vient d'une version plus récente du jeu : certaines données peuvent manquer.", "warn")
 	content = Content.normalize(data.content) if data.get("content") is Dictionary else Content.default_for(String(session.universe))
+	if format == 2:
+		CampaignStore.backup(String(session.get("id", "")), "v2")
+		_log("Sauvegarde mise à niveau (portails, coffres, boutiques) ; copie de l'original : %s.json.v2." % session.get("id", ""), "warn")
 	if format < 2:
 		CampaignStore.backup(String(session.get("id", "")), "v1")
 		_log("Ancienne sauvegarde convertie au nouveau système de règles (copie de l'original : %s.json.v1)." % session.get("id", ""), "warn")
@@ -4508,3 +4526,114 @@ func _load(data: Dictionary, settings: Dictionary) -> void:
 		for key in ["turn", "round", "moves_left", "ap"]:
 			phase[key] = int(phase.get(key, 0))
 	_log("Campagne « %s » chargée." % session.name, "ok")
+
+
+# ---------------------------------------------------------------------------
+# Corbeille du MJ : annuler une suppression ou un don fait par erreur
+# ---------------------------------------------------------------------------
+
+const TRASH_MAX := 30
+var trash: Array = []  # [{id, kind, title, data, at}] du plus ancien au plus récent
+signal trash_changed
+
+
+func _to_trash(kind: String, title: String, data: Dictionary) -> void:
+	trash.append({"id": "tr_" + Protocol.random_hex(4), "kind": kind, "title": title, "data": data, "at": Protocol.now()})
+	if trash.size() > TRASH_MAX:
+		trash = trash.slice(trash.size() - TRASH_MAX)
+	trash_changed.emit()
+
+
+## Rétablit une entrée de la corbeille (la plus récente si id vide).
+func mj_restore(trash_id: String = "") -> String:
+	if trash.is_empty():
+		return "La corbeille est vide."
+	var idx := trash.size() - 1
+	if trash_id != "":
+		idx = -1
+		for i in trash.size():
+			if String(trash[i].id) == trash_id:
+				idx = i
+		if idx < 0:
+			return "Déjà rétabli."
+	var e: Dictionary = trash[idx]
+	trash.remove_at(idx)
+	var d: Dictionary = e.data
+	match String(e.kind):
+		"token":
+			var map: Dictionary = maps.get(String(d.map), {})
+			if map.is_empty():
+				return "La carte n'existe plus."
+			var t: Dictionary = d.token
+			var p := MapData.free_cell_near(map, int(t.x), int(t.y))
+			t.x = p.x
+			t.y = p.y
+			map.tokens.append(t)
+			map_changed(String(d.map), true)
+		"character":
+			var sheet: Dictionary = d.sheet
+			characters[String(sheet.id)] = sheet
+			for l in d.get("links", []):
+				var t := MapData.token(maps.get(String(l[0]), {}), String(l[1]))
+				if not t.is_empty():
+					t.char_id = String(sheet.id)
+			_mark("characters")
+			characters_changed.emit()
+		"content":
+			content[String(d.kind)][String(d.entry.id)] = d.entry
+			if String(d.kind) in Content.PLAYER_KINDS:
+				_mark("content")
+			content_changed.emit()
+		"item":
+			var c: Dictionary = characters.get(String(d.char), {})
+			if c.is_empty():
+				return "Le personnage n'existe plus."
+			Inventory.add(c, d.item)
+			Rules.refresh(c, content)
+			_mark("characters")
+			characters_changed.emit()
+		"given_item":
+			var c: Dictionary = characters.get(String(d.char), {})
+			var it := Inventory.find(c, String(d.uid)) if not c.is_empty() else {}
+			if it.is_empty():
+				# L'objet a pu être regroupé : on retire par identifiant de catalogue.
+				return "Objet introuvable (déjà utilisé ou vendu ?)."
+			Inventory.consume(c, String(d.uid), mini(int(d.qty), int(it.get("qty", 1))))
+			Rules.refresh(c, content)
+			_mark("characters")
+			characters_changed.emit()
+		"given_gold":
+			var c: Dictionary = characters.get(String(d.char), {})
+			if c.is_empty():
+				return "Le personnage n'existe plus."
+			c.gold = maxi(0, int(c.get("gold", 0)) - int(d.amount))
+			_mark("characters")
+			characters_changed.emit()
+	_mj_log("Rétabli : %s." % e.title)
+	_unsaved = true
+	trash_changed.emit()
+	return ""
+
+
+# ---------------------------------------------------------------------------
+# Bibliothèque
+# ---------------------------------------------------------------------------
+
+func mj_export_library(title: String, kinds: Array, map_ids: Array, with_npcs: bool, path: String = "") -> String:
+	var data := Library.build(self, title, kinds, map_ids, with_npcs)
+	var err := Library.save_file(data, path)
+	if err == "":
+		_mj_log("Bibliothèque « %s » exportée." % data.name)
+	return err
+
+
+func mj_import_library(path: String) -> String:
+	var data := Library.load_file(path)
+	if data.is_empty():
+		return "Fichier illisible."
+	var res := Library.merge(self, data)
+	if res.has("error"):
+		return String(res.error)
+	_unsaved = true
+	_mj_log("Bibliothèque « %s » importée : %s." % [data.get("name", "?"), Library.summary(res.counts)])
+	return "Importé : " + Library.summary(res.counts)

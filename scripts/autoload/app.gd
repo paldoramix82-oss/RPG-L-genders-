@@ -26,6 +26,7 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	_settings_path = dir + "/settings.cfg"
 	CampaignStore.dir_path = dir + "/campaigns"
+	Library.dir_path = dir + "/bibliotheque"
 	settings.load(_settings_path)
 	if device_token() == "":
 		settings.set_value("device", "token", Protocol.random_hex(16))

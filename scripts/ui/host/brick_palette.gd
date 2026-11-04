@@ -101,6 +101,83 @@ const PASSIVE_BONUS := ["Bonus permanents", "star", [
 	{"label": "Insensible à la magie ciblée", "icon": "mask", "traits": ["anti_magie"]},
 ]]
 
+## Objets : type, bonus quand équipé, effets à l'impact, effets à l'utilisation.
+const ITEM_TYPES := ["Type d'objet", "sword", [
+	{"label": "Épée", "icon": "sword", "fields": {"category": "arme", "icon": "sword", "weapon/damage": "1d8", "weapon/stat": "Force", "weapon/range": 1, "weapon/element": "physique"}},
+	{"label": "Hache lourde", "icon": "axe", "fields": {"category": "arme", "icon": "axe", "weapon/damage": "1d12", "weapon/stat": "Force", "weapon/range": 1, "weapon/element": "physique"}},
+	{"label": "Dague", "icon": "dagger", "fields": {"category": "arme", "icon": "dagger", "weapon/damage": "1d4", "weapon/stat": "Dextérité", "weapon/range": 1, "weapon/crit": 18}},
+	{"label": "Arc", "icon": "bow", "fields": {"category": "arme", "icon": "bow", "weapon/damage": "1d8", "weapon/stat": "Dextérité", "weapon/range": 8}},
+	{"label": "Bâton magique", "icon": "staff", "fields": {"category": "arme", "icon": "staff", "weapon/damage": "1d6", "weapon/stat": "Intelligence", "weapon/range": 5, "weapon/element": "magique"}},
+	{"label": "Armure", "icon": "armor", "fields": {"category": "armure", "icon": "armor"}, "mods": {"defense": 2}},
+	{"label": "Bouclier", "icon": "shield", "fields": {"category": "armure", "icon": "shield"}, "mods": {"defense": 1}},
+	{"label": "Anneau", "icon": "ring", "fields": {"category": "accessoire", "icon": "ring"}},
+	{"label": "Amulette", "icon": "amulet", "fields": {"category": "accessoire", "icon": "amulet"}},
+	{"label": "Potion", "icon": "potion", "fields": {"category": "potion", "icon": "potion"}},
+	{"label": "Parchemin", "icon": "scroll", "fields": {"category": "consommable", "icon": "scroll"}},
+]]
+const ITEM_RARITY := ["Rareté", "gem", [
+	{"label": "Commun", "icon": "coin", "fields": {"rarity": "commun", "value": 10}},
+	{"label": "Peu commun", "icon": "coin", "fields": {"rarity": "peu_commun", "value": 40}},
+	{"label": "Rare", "icon": "gem", "fields": {"rarity": "rare", "value": 120}},
+	{"label": "Épique", "icon": "gem", "fields": {"rarity": "epique", "value": 350}},
+	{"label": "Légendaire", "icon": "crown", "fields": {"rarity": "legendaire", "value": 900}},
+]]
+const ITEM_BONUS := ["Bonus quand il est équipé", "star", [
+	{"label": "+2 Défense", "icon": "shield", "mods": {"defense": 2}},
+	{"label": "+2 dégâts", "icon": "sword", "mods": {"damage": 2}},
+	{"label": "+1 au toucher", "icon": "target", "mods": {"to_hit": 1}},
+	{"label": "+10 PV max", "icon": "heart", "mods": {"hp_max": 10}},
+	{"label": "+5 mana max", "icon": "crystal", "mods": {"res_max": 5}},
+	{"label": "+1 vitesse", "icon": "boots", "mods": {"speed": 1}},
+	{"label": "+2 vision", "icon": "eye", "mods": {"vision": 2}},
+	{"label": "+1 Force", "icon": "fist", "mods": {"Force": 1}},
+	{"label": "+1 Dextérité", "icon": "bow", "mods": {"Dextérité": 1}},
+	{"label": "+1 Intelligence", "icon": "book", "mods": {"Intelligence": 1}},
+	{"label": "Permet de nager", "icon": "wave", "mods": {"nage": 1}},
+]]
+const ITEM_HIT := ["À l'impact (armes)", "bolt", [
+	{"label": "Enflammé", "icon": "fire", "effects_to": "on_hit", "effects": [{"type": "if", "cond": {"chance": 30}, "then": [{"type": "status", "status": "brulure", "turns": 2, "chance": 100, "value": 2}]}]},
+	{"label": "Glacial", "icon": "ice", "effects_to": "on_hit", "effects": [{"type": "if", "cond": {"chance": 25}, "then": [{"type": "status", "status": "gel", "turns": 1, "chance": 100}]}]},
+	{"label": "Empoisonné", "icon": "drop", "effects_to": "on_hit", "effects": [{"type": "if", "cond": {"chance": 30}, "then": [{"type": "status", "status": "poison", "turns": 3, "chance": 100, "value": 2}]}]},
+	{"label": "Vampirique", "icon": "heart", "effects_to": "on_hit", "effects": [{"type": "drain", "pct": 25}]},
+	{"label": "Assommant", "icon": "hammer", "effects_to": "on_hit", "effects": [{"type": "if", "cond": {"chance": 15}, "then": [{"type": "status", "status": "etourdi", "turns": 1, "chance": 100}]}]},
+	{"label": "Repousse", "icon": "wind", "effects_to": "on_hit", "effects": [{"type": "push", "cells": 1}]},
+]]
+const ITEM_USE := ["À l'utilisation (potions, parchemins)", "potion", [
+	{"label": "Soigne 2d4+2", "icon": "heart", "effects_to": "use", "effects": [{"type": "heal", "dice": "2d4", "bonus": 2, "on": "self"}]},
+	{"label": "Grand soin 4d4+4", "icon": "heart", "effects_to": "use", "effects": [{"type": "heal", "dice": "4d4", "bonus": 4, "on": "self"}]},
+	{"label": "Rend 6 mana", "icon": "crystal", "effects_to": "use", "effects": [{"type": "restore", "resource": "res", "amount": 6, "on": "self"}]},
+	{"label": "Purifie", "icon": "wave", "effects_to": "use", "effects": [{"type": "cleanse", "count": 3, "on": "self"}]},
+	{"label": "Force +3 (3 tours)", "icon": "fist", "effects_to": "use", "effects": [{"type": "stat", "stat": "Force", "amount": 3, "turns": 3, "on": "self"}]},
+	{"label": "Invisibilité", "icon": "spirit", "effects_to": "use", "effects": [{"type": "status", "status": "invisible", "turns": 2, "chance": 100, "on": "self"}]},
+	{"label": "Boule de feu (cible)", "icon": "fire", "effects_to": "use", "effects": [{"type": "damage", "dice": "3d6", "element": "magique"}]},
+]]
+
+## Monstres : rôle et traits qui s'ajoutent (« add ») ou multiplient (« mul »).
+const MONSTER_TRAITS := ["Traits", "paw", [
+	{"label": "Rapide", "icon": "boots", "add": {"speed": 2}},
+	{"label": "Lent", "icon": "hourglass", "add": {"speed": -2}},
+	{"label": "Coriace (+50 % PV)", "icon": "heart", "mul": {"hp": 1.5}},
+	{"label": "Fragile (−40 % PV)", "icon": "drop", "mul": {"hp": 0.6}},
+	{"label": "Cuirassé (+3 Défense)", "icon": "shield", "add": {"defense_bonus": 3}},
+	{"label": "Frappe fort (dés +1)", "icon": "hammer", "fields": {"weapon/damage": "2d8"}},
+	{"label": "Tireur (portée 6)", "icon": "bow", "fields": {"weapon/range": 6, "weapon/stat": "Dextérité"}},
+	{"label": "Magique", "icon": "sparkle", "fields": {"weapon/element": "magique", "weapon/stat": "Intelligence", "weapon/range": 5}},
+	{"label": "Vigilant (repère de loin)", "icon": "eye", "fields": {"aggro": 8}},
+	{"label": "Boss", "icon": "crown", "fields": {"boss": true}, "mul": {"hp": 2.0, "xp": 3.0}},
+	{"label": "Riche (butin)", "icon": "coin", "fields": {"loot": "coffre"}},
+	{"label": "Ami des héros", "icon": "heart", "fields": {"attitude": "allie"}},
+	{"label": "Neutre", "icon": "hand", "fields": {"attitude": "neutre"}},
+]]
+const MONSTER_SKILLS := ["Capacités", "bolt", [
+	{"label": "Morsure venimeuse", "icon": "fang", "abilities_any": ["crochet_venin", "morsure_venimeuse", "morsure"]},
+	{"label": "Invoque des squelettes", "icon": "skull", "abilities_any": ["lever_squelette", "invocation"]},
+	{"label": "Soigne ses alliés", "icon": "heart", "abilities_any": ["soin", "premiers_soins"]},
+	{"label": "Boule de feu", "icon": "fire", "abilities_any": ["boule_de_feu", "trait_feu", "souffle_feu"]},
+	{"label": "Cri effrayant", "icon": "skull", "abilities_any": ["hurlement_meute", "cri_guerre", "cri_chef"]},
+	{"label": "Charge", "icon": "boots", "abilities_any": ["charge"]},
+]]
+
 var mode := "ability"
 var last_group := ""
 
@@ -110,14 +187,19 @@ func _init(for_mode: String = "ability", open_group: String = "") -> void:
 	add_theme_constant_override("separation", 6)
 	add_child(UIKit.label("Touchez des briques pour les ajouter : elles s'empilent. Vous pouvez ensuite ajuster chaque effet plus bas.", "MutedLabel", true))
 	var groups: Array = []
-	if mode == "ability":
-		groups = [SHAPES, COSTS] + EFFECT_GROUPS
-	else:
-		groups = [TRIGGER_BRICKS, PASSIVE_BONUS] + EFFECT_GROUPS
+	match mode:
+		"ability":
+			groups = [SHAPES, COSTS] + EFFECT_GROUPS
+		"item":
+			groups = [ITEM_TYPES, ITEM_RARITY, ITEM_BONUS, ITEM_HIT, ITEM_USE]
+		"monster":
+			groups = [MONSTER_TRAITS, MONSTER_SKILLS]
+		_:
+			groups = [TRIGGER_BRICKS, PASSIVE_BONUS] + EFFECT_GROUPS
 	for g in groups:
 		# Ouvert : le dernier groupe utilisé, sinon le premier (forme / déclencheur) et « Frapper ».
 		var title := String(g[0])
-		var open: bool = title == open_group if open_group != "" else (g == groups[0] or title == "Frapper")
+		var open: bool = title == open_group if open_group != "" else (g == groups[0] or title in ["Frapper", "Capacités"])
 		var box := UIKit.fold(self, title, open, "InsetPanel")
 		var flow := HFlowContainer.new()
 		flow.add_theme_constant_override("h_separation", 6)

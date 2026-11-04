@@ -43,6 +43,7 @@ var _place_spec := {}
 var _place_title := ""
 var _place_tab := "monster"
 var _wall_code := "#"
+var _trash_box: VBoxContainer
 ## Passage en attente de sa case d'arrivée : {token, from, two_way}.
 var _pick_dest := {}
 var _paint_code := "."
@@ -1007,6 +1008,20 @@ func _build_world_tools() -> Control:
 	var shop := UIKit.card(side, "Boutique du MJ")
 	shop.add_child(UIKit.label("Vos propres objets à vendre, prix et stock : quand elle est ouverte, chaque joueur peut acheter et vendre de n'importe où (bouton « Boutique » de son menu Agir).", "MutedLabel", true))
 	shop.add_child(_small_button("Ouvrir ma boutique…", "PrimaryButton", _open_mj_shop))
+	var lib := UIKit.card(side, "Bibliothèque")
+	lib.add_child(UIKit.label("Exportez vos créations (monstres, capacités, objets, classes, PNJ, cartes) dans un fichier, pour les réutiliser dans une autre campagne ou les donner à un autre MJ.", "MutedLabel", true))
+	var lrow := HFlowContainer.new()
+	lrow.add_theme_constant_override("h_separation", 6)
+	lrow.add_theme_constant_override("v_separation", 6)
+	lib.add_child(lrow)
+	lrow.add_child(_small_button("Exporter…", "", _dialog_export_library))
+	lrow.add_child(_small_button("Importer…", "", _dialog_import_library))
+	var tr := UIKit.card(side, "Corbeille (annuler une erreur)")
+	_trash_box = VBoxContainer.new()
+	tr.add_child(_trash_box)
+	if not Net.server.trash_changed.is_connected(_refresh_trash):
+		Net.server.trash_changed.connect(_refresh_trash)
+	_refresh_trash()
 
 	_set_tool(_tool)
 	return parts[0]
@@ -2987,6 +3002,11 @@ func _open_command_palette() -> void:
 	add.call("Nouvelle carte vide", "action", _dialog_new_map)
 	add.call("Nouvelle quête", "action", func(): _open_quest_editor({}))
 	add.call("Boutique du MJ", "action", _open_mj_shop)
+	add.call("Annuler la dernière suppression ou le dernier don", "action", func():
+		var err := server.mj_restore()
+		_notifier.push(err if err != "" else "Rétabli.", "warning" if err != "" else "success"))
+	add.call("Exporter vers la bibliothèque", "action", _dialog_export_library)
+	add.call("Importer une bibliothèque", "action", _dialog_import_library)
 	add.call("Sauvegarder la campagne", "action", func(): server.save())
 	add.call("Montrer cette carte aux joueurs", "action", func(): server.mj_set_active_map(_edit_map))
 	add.call("Épreuve de groupe", "événement", _event_check)
@@ -3059,3 +3079,100 @@ func _scale_ui(delta: float) -> void:
 	App.set_setting("display", "ui_scale", clampf(Style.ui_scale() + delta, 0.75, 1.5))
 	App.save_settings()
 	Style.apply_ui_scale()
+
+
+
+# ---------------------------------------------------------------------------
+# Corbeille et bibliothèque
+# ---------------------------------------------------------------------------
+
+func _refresh_trash() -> void:
+	if _trash_box == null or not is_instance_valid(_trash_box):
+		return
+	UIKit.clear(_trash_box)
+	var list: Array = Net.server.trash
+	if list.is_empty():
+		_trash_box.add_child(UIKit.label("Vide. Un pion, une fiche, une création, un objet supprimés ou un don d'or ou d'objet arrivent ici : un clic les rétablit.", "MutedLabel", true))
+		return
+	for i in range(list.size() - 1, maxi(-1, list.size() - 9), -1):
+		var e: Dictionary = list[i]
+		var row := HBoxContainer.new()
+		_trash_box.add_child(row)
+		var l := UIKit.label(String(e.title), "", true)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		var tid := String(e.id)
+		row.add_child(_small_button("Rétablir", "", func():
+			var err := Net.server.mj_restore(tid)
+			if err != "":
+				_notifier.push(err, "warning")))
+
+
+func _dialog_export_library() -> void:
+	var server := Net.server
+	var box := VBoxContainer.new()
+	box.custom_minimum_size = Vector2(440, 0)
+	var title := UIKit.line_edit(String(server.session.name), "Nom de la bibliothèque")
+	UIKit.field(box, "Nom", title)
+	var kinds := {}
+	var names := {"monsters": "Monstres", "abilities": "Capacités", "items": "Objets", "statuses": "Effets", "classes": "Classes", "species": "Peuples", "loot": "Tables de butin"}
+	var grid := GridContainer.new()
+	grid.columns = 2
+	box.add_child(grid)
+	for k in names:
+		var c := CheckBox.new()
+		c.text = "%s (%d)" % [names[k], (server.content.get(k, {}) as Dictionary).size()]
+		c.button_pressed = k in ["monsters", "abilities", "items", "statuses", "loot"]
+		grid.add_child(c)
+		kinds[k] = c
+	var npcs := CheckBox.new()
+	npcs.text = "Toutes les fiches de PNJ"
+	box.add_child(npcs)
+	box.add_child(UIKit.label("Cartes à inclure (avec leurs pions, coffres, passages) :", "MutedLabel", true))
+	var maps_box := {}
+	for id in server.map_order:
+		var c := CheckBox.new()
+		c.text = String(server.maps[id].name)
+		c.button_pressed = id == _edit_map
+		box.add_child(c)
+		maps_box[id] = c
+	_dialog("Exporter vers la bibliothèque", box, func():
+		var ks: Array = kinds.keys().filter(func(k): return kinds[k].button_pressed)
+		var ms: Array = maps_box.keys().filter(func(k): return maps_box[k].button_pressed)
+		var err := server.mj_export_library(title.text, ks, ms, npcs.button_pressed)
+		if err != "":
+			_notifier.push(err, "warning")
+		else:
+			_notifier.push("Exporté dans %s" % ProjectSettings.globalize_path(Library.dir_path), "success"))
+
+
+func _dialog_import_library() -> void:
+	var box := VBoxContainer.new()
+	box.custom_minimum_size = Vector2(440, 0)
+	var files := Library.list_files()
+	box.add_child(UIKit.label("Fichiers de la bibliothèque (%s) :" % ProjectSettings.globalize_path(Library.dir_path), "MutedLabel", true))
+	if files.is_empty():
+		box.add_child(UIKit.label("Aucun fichier pour l'instant. Copiez un fichier « .legenders.json » dans ce dossier, ou exportez d'abord.", "MutedLabel", true))
+	var do_import := func(path: String):
+		var msg := Net.server.mj_import_library(path)
+		_notifier.push(msg, "success" if msg.begins_with("Importé") else "warning")
+		_refresh_map_select()
+		if _content_panel:
+			_content_panel.rebuild()
+	for f in files:
+		box.add_child(_small_button(String(f).get_file().trim_suffix(Library.EXT), "", func():
+			do_import.call(String(f))
+			for d in get_children():
+				if d is ConfirmationDialog:
+					d.hide()))
+	if not App.is_mobile():
+		box.add_child(_small_button("Autre fichier…", "", func():
+			var fd := FileDialog.new()
+			fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+			fd.access = FileDialog.ACCESS_FILESYSTEM
+			fd.filters = PackedStringArray(["*.json ; Bibliothèque LEGENDERS"])
+			fd.file_selected.connect(func(p): do_import.call(p))
+			fd.visibility_changed.connect(func(): if not fd.visible: fd.queue_free())
+			add_child(fd)
+			fd.popup_centered_ratio(0.7)))
+	_dialog("Importer une bibliothèque", box, func(): pass)

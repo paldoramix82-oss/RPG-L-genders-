@@ -320,7 +320,8 @@ func _effects(parent: Node, path: String, caption: String, hint: String = "") ->
 # ---------------------------------------------------------------------------
 
 func _build_item() -> void:
-	var main := _sec("Objet")
+	_bricks(self, "item", "")
+	var main := _sec("Objet", "CardPanel", true)
 	_text(main, "name", "Nom", "Ex. : Lame de lune")
 	_icon(main, "icon")
 	_enum(main, "category", "Catégorie", Content.CATEGORY_NAMES, "arme")
@@ -452,6 +453,8 @@ func _rebuild() -> void:
 			_build_class()
 		"passive":
 			_build_passive()
+		"items":
+			_build_item()
 
 
 ## Liste des apparences (sprites de personnages et de monstres).
@@ -496,6 +499,7 @@ func _build_monster() -> void:
 	_sprite_pick(quick, "sprite", "Apparence sur la carte")
 	_enum(quick, "attitude", "Attitude", ATTITUDES, "hostile")
 	quick.add_child(UIKit.label("Actuellement : %d PV, dégâts %s, %d XP." % [int(data.get("hp", 20)), String(data.get("weapon", {}).get("damage", "1d6")), int(data.get("xp", 20))], "StrongLabel", true))
+	_bricks(self, "monster", "")
 	var main := _sec("Description et pion")
 	_icon(main, "icon")
 	_color(main, "color", "Couleur du pion")
@@ -769,9 +773,22 @@ func _add_brick(brick: Dictionary, prefix: String) -> void:
 	for k in brick.get("fields", {}):
 		_set_path(data, prefix + String(k), brick.fields[k])
 	if brick.has("effects"):
-		var fx: Array = _value(prefix + "effects", []) if _value(prefix + "effects", []) is Array else []
+		var fpath := prefix + String(brick.get("effects_to", "effects"))
+		var fx: Array = _value(fpath, []) if _value(fpath, []) is Array else []
 		fx.append_array((brick.effects as Array).duplicate(true))
-		_set_path(data, prefix + "effects", fx)
+		_set_path(data, fpath, fx)
+	for k in brick.get("add", {}):
+		_set_path(data, prefix + String(k), int(_value(prefix + String(k), 0)) + int(brick.add[k]))
+	for k in brick.get("mul", {}):
+		_set_path(data, prefix + String(k), maxi(1, int(round(float(_value(prefix + String(k), 1)) * float(brick.mul[k])))))
+	if brick.has("abilities_any"):
+		var ab: Array = (_value(prefix + "abilities", []) as Array).duplicate() if _value(prefix + "abilities", []) is Array else []
+		for aid in brick.abilities_any:
+			if not Content.get_entry(content, "abilities", String(aid)).is_empty():
+				if not ab.has(String(aid)):
+					ab.append(String(aid))
+				break
+		_set_path(data, prefix + "abilities", ab)
 	if brick.has("mods"):
 		var m: Dictionary = _value(prefix + "mods", {}) if _value(prefix + "mods", {}) is Dictionary else {}
 		for k in brick.mods:
@@ -795,6 +812,9 @@ func _add_brick(brick: Dictionary, prefix: String) -> void:
 		if n != "":
 			_set_path(data, name_path, n)
 			_set_path(data, prefix + "_auto_name", n)
+	if kind in ["items", "monsters"]:
+		_rebuild()
+		return
 	var desc_path := prefix + "description"
 	var auto_desc := String(_value(prefix + "_auto_desc", ""))
 	if String(_value(desc_path, "")) == "" or String(_value(desc_path, "")) == auto_desc:

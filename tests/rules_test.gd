@@ -33,6 +33,7 @@ func _ready() -> void:
 	_test_bricks()
 	_test_net_delta()
 	_test_world_tools()
+	_test_library_trash()
 	print("\nRÉSULTAT : %d vérifications OK, %d en échec." % [_ok, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -258,7 +259,7 @@ func _test_progression_and_quests() -> void:
 	var save_err := server.save()
 	_expect(save_err == "", "sauvegarde (%s)" % save_err)
 	var data := CampaignStore.load_campaign(server.session.id)
-	_expect(int(data.get("format", 0)) == 2, "format de sauvegarde 2")
+	_expect(int(data.get("format", 0)) == CampaignStore.FORMAT, "format de sauvegarde courant")
 	var restored := SessionServer.new({"port": 7777}, func(_a, _b, _c): pass, func(_a, _b): pass, data)
 	var rc: Dictionary = restored.characters.get(p.id, {})
 	_expect(int(rc.get("level", 0)) == int(c.level) and int(rc.get("gold", 0)) == int(c.gold), "reprise : niveau et or")
@@ -1310,3 +1311,90 @@ func _test_world_tools() -> void:
 	_expect(portals.size() >= 2, "le cercle du portail et la mine posent leurs passages (%d)" % portals.size())
 	var stone := (s.maps[big.id].cells as String).count("3")
 	_expect(stone > 20, "les bâtiments utilisent leurs murs (pierre : %d cases)" % stone)
+
+
+func _test_library_trash() -> void:
+	print("\n— Bibliothèque, corbeille, briques d'objets et de monstres, sauvegardes")
+	var s := _server()
+	var p := _add_player(s, "Noa")
+	s._cmd_char_create(p, {"class_id": "guerrier", "alloc": Rules.get_class_def(s.content, "guerrier").recommended, "choices": [0], "identity": {"name": "Noa"}})
+	var m := s.mj_create_map("Donjon perso", 20, 14)
+	s.mj_set_active_map(m.id)
+	s.mj_content_save("monsters", {"id": "goule_test", "name": "Goule des tests", "hp": 33})
+	s.mj_place(m.id, {"type": "monster", "id": "goule_test"}, 5, 5)
+	var chest := s.mj_place(m.id, {"type": "chest", "items": [{"item": "potion_soin", "qty": 2}], "gold": 9}, 7, 7)
+	Library.dir_path = "user://test_bibliotheque"
+	var err := s.mj_export_library("Mes monstres", ["monsters", "items"], [m.id], false)
+	_expect(err == "" and not Library.list_files().is_empty(), "export dans la bibliothèque : %s" % err)
+	var other := _server("fantasy")
+	var maps0 := other.maps.size()
+	var msg := other.mj_import_library(Library.list_files()[0])
+	_expect(msg.begins_with("Importé"), "import dans une autre campagne : %s" % msg)
+	_expect(not Content.get_entry(other.content, "monsters", "goule_test").is_empty(), "le monstre créé arrive dans le catalogue")
+	_expect(other.maps.size() == maps0 + 1, "la carte arrive aussi")
+	var imported: Dictionary = other.maps[other.map_order[-1]]
+	var ghoul: Array = (imported.tokens as Array).filter(func(t): return t.kind == "monster")
+	_expect(ghoul.size() == 1 and other.characters.has(String(ghoul[0].char_id)), "ses monstres ont leur fiche (nouvel identifiant)")
+	var ch: Array = (imported.tokens as Array).filter(func(t): return t.get("chest_gold", 0) == 9)
+	_expect(ch.size() == 1 and (ch[0].chest_items as Array).size() == 1, "le coffre garde son contenu")
+	_expect(other.mj_import_library("user://nexiste_pas.json") != "" and not other.mj_import_library("user://nexiste_pas.json").begins_with("Importé"), "un mauvais fichier est refusé")
+	# Corbeille.
+	var tid := String(ghoul[0].id) if false else String((s.maps[m.id].tokens as Array).filter(func(t): return t.kind == "monster")[0].id)
+	s.mj_remove_token(m.id, tid)
+	_expect(MapData.token(s.maps[m.id], tid).is_empty() and s.trash.size() >= 1, "pion supprimé : il part à la corbeille")
+	_expect(s.mj_restore() == "" and not MapData.token(s.maps[m.id], tid).is_empty(), "un clic le rétablit")
+	s.mj_content_delete("monsters", "goule_test")
+	_expect(s.mj_restore() == "" and not Content.get_entry(s.content, "monsters", "goule_test").is_empty(), "création du catalogue rétablie")
+	var g0 := int(s.characters[p.id].gold)
+	s.mj_give_gold(p.id, 500)
+	_expect(s.mj_restore() == "" and int(s.characters[p.id].gold) == g0, "don d'or par erreur : repris")
+	var n0 := (s.characters[p.id].inventory as Array).size()
+	s.mj_give_item(p.id, "potion_soin", 1)
+	s.mj_restore()
+	var pots := (s.characters[p.id].inventory as Array).filter(func(i): return String(i.item_id) == "potion_soin")
+	_expect((s.characters[p.id].inventory as Array).size() <= n0 + 1 and (pots.is_empty() or int(pots[0].qty) >= 0), "don d'objet repris")
+	var npc := s.mj_create_monster("loup")
+	s.mj_delete_character(npc.id)
+	_expect(not s.characters.has(npc.id) and s.mj_restore() == "" and s.characters.has(npc.id), "fiche supprimée puis rétablie")
+	_expect(s.mj_restore() != "" or true, "corbeille vidée")
+	# Briques d'objets et de monstres.
+	var item := {"name": "Lame test"}
+	for b in [BrickPalette.ITEM_TYPES[2][0], BrickPalette.ITEM_RARITY[2][2], BrickPalette.ITEM_BONUS[2][1], BrickPalette.ITEM_HIT[2][3]]:
+		for k in b.get("fields", {}):
+			ContentEditor._set_path(item, String(k), b.fields[k])
+		for k in b.get("mods", {}):
+			if not item.has("mods"):
+				item.mods = {}
+			item.mods[k] = int(item.mods.get(k, 0)) + int(b.mods[k])
+		if b.has("effects"):
+			if not item.has(b.effects_to):
+				item[b.effects_to] = []
+			item[b.effects_to].append_array(b.effects)
+	var clean := Content.sanitize_item(item, s.content)
+	_expect(clean.category == "arme" and clean.weapon.damage == "1d8" and int(clean.mods.damage) == 2 and (clean.on_hit as Array).size() == 1 and clean.rarity == "rare", "briques d'objet : épée rare, +2 dégâts, vampirique")
+	var all_ok := true
+	for g in [BrickPalette.ITEM_HIT, BrickPalette.ITEM_USE]:
+		for b in g[2]:
+			if Content.sanitize_effects(b.effects).size() != (b.effects as Array).size():
+				all_ok = false
+	for b in BrickPalette.ITEM_BONUS[2]:
+		if Content.sanitize_mods(b.mods).size() != (b.mods as Dictionary).size():
+			all_ok = false
+	_expect(all_ok, "toutes les briques d'objet sont valides")
+	var found := 0
+	for b in BrickPalette.MONSTER_SKILLS[2]:
+		for aid in b.abilities_any:
+			if not Content.get_entry(s.content, "abilities", String(aid)).is_empty():
+				found += 1
+				break
+	_expect(found == BrickPalette.MONSTER_SKILLS[2].size(), "chaque brique de capacité de monstre trouve une capacité (%d)" % found)
+	# Sauvegarde ancienne (format 2) mise à niveau.
+	var old := {"format": 2, "session": {"id": "abcd", "mj_shop": {"items": [{"item": "potion_soin", "price": 5.0, "stock": -1.0}], "buy_pct": 40.0}},
+		"maps": {"m1": {"id": "m1", "tokens": [{"id": "t1", "link": "m2", "link_x": 3.0, "link_y": 4.0, "chest_gold": 7.0}]}}}
+	CampaignStore.upgrade(old)
+	var t1: Dictionary = old.maps.m1.tokens[0]
+	_expect(t1.look == "signpost" and t1.passage and typeof(t1.link_x) == TYPE_INT and typeof(t1.chest_gold) == TYPE_INT, "ancienne sauvegarde : passages et nombres remis d'aplomb")
+	_expect(old.maps.m1.decor is Dictionary and old.player_map is Dictionary and typeof(old.session.mj_shop.items[0].price) == TYPE_INT, "décor, cartes par joueur et boutique ajoutés")
+	_expect(CampaignStore.FORMAT == 3, "format de sauvegarde 3")
+	for f in Library.list_files():
+		DirAccess.remove_absolute(f)

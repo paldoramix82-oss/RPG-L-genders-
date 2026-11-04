@@ -5,7 +5,8 @@ extends RefCounted
 ## puis le temporaire prend sa place. En cas de fichier abîmé, le .bak est relu.
 
 ## 2 : catalogue de campagne, quêtes, coffre, fiches au nouveau système de règles.
-const FORMAT := 2
+## 3 : décor, passages, coffres au contenu choisi, boutiques, cartes par joueur.
+const FORMAT := 3
 
 ## Dossier des sauvegardes (App le place dans le profil local).
 static var dir_path := "user://campaigns"
@@ -78,3 +79,36 @@ static func backup(id: String, suffix: String) -> void:
 static func delete(id: String) -> void:
 	for suffix in [".json", ".json.bak", ".json.tmp", ".json.v1"]:
 		DirAccess.remove_absolute("%s/%s%s" % [dir_path, id, suffix])
+
+
+## Met à niveau une sauvegarde lue (JSON : les nombres arrivent en décimaux).
+## Chaque étape ne touche que ce qui manque ; une sauvegarde récente passe sans changement.
+static func upgrade(data: Dictionary) -> Dictionary:
+	var maps_in: Dictionary = data.get("maps", {}) if data.get("maps") is Dictionary else {}
+	for m in maps_in.values():
+		if not m is Dictionary:
+			continue
+		if not m.get("decor") is Dictionary:
+			m["decor"] = {}
+		for t in m.get("tokens", []):
+			for k in ["link_x", "link_y", "chest_gold"]:
+				if t.has(k):
+					t[k] = int(t[k])
+			# Format 2 : un passage était un pion objet relié, sans apparence.
+			if String(t.get("link", "")) != "" and not t.has("look"):
+				t["look"] = "signpost"
+				t["passage"] = true
+			if t.get("shop") is Dictionary:
+				for it in t.shop.get("items", []):
+					it.price = int(it.get("price", 0))
+					it.stock = int(it.get("stock", -1))
+				t.shop.buy_pct = int(t.shop.get("buy_pct", 50))
+	if not data.get("player_map") is Dictionary:
+		data["player_map"] = {}
+	var session: Dictionary = data.get("session", {}) if data.get("session") is Dictionary else {}
+	if session.get("mj_shop") is Dictionary:
+		for it in session.mj_shop.get("items", []):
+			it.price = int(it.get("price", 0))
+			it.stock = int(it.get("stock", -1))
+		session.mj_shop.buy_pct = int(session.mj_shop.get("buy_pct", 50))
+	return data
