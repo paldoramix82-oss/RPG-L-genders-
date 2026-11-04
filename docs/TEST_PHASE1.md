@@ -137,6 +137,21 @@ Cocher chaque ligne et noter les remarques.
 - [ ] O11. Téléphone : barre *Agir / Épreuves / Dés* ; en combat *Rapide / Puissante / Plus…* ; toucher *Force* sur la fiche : explication.
 - [ ] O12. Générer une carte *Immense* sur PC et sur téléphone : pas de blocage notable ; zoom et déplacement fluides.
 
+### P. Construire vite, commerce, réseau
+- [ ] P1. Carte du MJ : la barre d'outils est à gauche de la carte ; *Placer › Monstres › Loup*, toucher trois cases : trois loups.
+- [ ] P2. *Peindre › Pièce*, mur « Muraille de château », sol « Marbre » : la pièce apparaît ; un joueur ne traverse pas ces murs et ne voit pas derrière.
+- [ ] P3. *Bâtir › Cercle du portail* : le portail est posé ; inspecteur › *Mène à : cette carte* › *Choisir la case d'arrivée…* ; un joueur touche *Entrer* : il est téléporté.
+- [ ] P4. *Placer › Passages › Escalier qui descend*, relié à une autre carte : le joueur descend seul, un escalier de retour existe.
+- [ ] P5. Coffre : *Choisir le contenu…* (2 potions, 50 or) ; le joueur l'ouvre et reçoit exactement cela.
+- [ ] P6. Habitant marchand : *Commercer* ; acheter (l'or baisse), vendre (l'or monte), trop loin : refusé.
+- [ ] P7. *Monde › Boutique du MJ* ouverte : le joueur l'utilise depuis *Agir › Boutique du MJ*, où qu'il soit.
+- [ ] P8. Ctrl + K : « loup » puis Entrée : l'outil Placer est prêt avec le loup.
+- [ ] P9. Supprimer un pion puis *Corbeille › Rétablir* ; donner 500 or par erreur puis le reprendre.
+- [ ] P10. *Bibliothèque › Exporter* puis, dans une nouvelle campagne, *Importer* : monstres, objets et carte reviennent.
+- [ ] P11. PC : *Essai solo › Ouvrir une fenêtre joueur* : une fenêtre téléphone rejoint la partie.
+- [ ] P12. Réglages joueur : taille du texte « Très grand », mode gaucher, performances affichées (noter les images par seconde sur une carte immense).
+- [ ] P13. Peindre sur une carte immense pendant que trois téléphones sont connectés : pas de saccade côté téléphone.
+
 ## Rapport
 
 Merci d'indiquer, pour chaque ligne en échec : modèle de téléphone, version d'Android, type de réseau (box / partage de connexion de quel téléphone), et le message affiché. Ces informations permettent de corriger avant la phase 2.

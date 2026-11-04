@@ -255,6 +255,15 @@ Les séparations entre les zones se **déplacent à la souris** : agrandissez la
 
 **Le jeu fait le gros du travail** : les monstres attaquent et jouent seuls, les combats ne concernent que ceux qui y sont, les quêtes avancent et se terminent seules. Votre rôle : raconter, répondre aux actions, et surveiller **Combat › Combats en cours** (reprendre la main sur un combat, passer un tour, le terminer). Pour tout faire à la main, décochez *Monstres agressifs* et *Monstres automatiques* dans *Créer › Règles*.
 
+### Construire une carte en cinq minutes
+1. *Monde › Générer…* (ou Ctrl + K puis « générer »).
+2. Sur la carte, **Bâtir** : touchez un bâtiment puis la carte.
+3. **Placer** : un loup, un marchand, un coffre, un escalier… puis touchez la carte.
+4. Touchez un coffre avec **Bouger** : *Choisir le contenu…*. Touchez l'escalier : *Choisir la case d'arrivée…*.
+5. Une erreur ? **Annuler** (retouches de carte) ou la **Corbeille** (suppressions, dons).
+
+Perdu dans les menus ? **Ctrl + K** et tapez ce que vous cherchez.
+
 ### Créer vite, sans tout régler
 - **Une capacité ou un passif** : touchez des **briques** (forme, coût, feu, soin, étourdir, invoquer…) ; elles s'empilent et le nom se remplit seul. Pour un héros en particulier : *Fiche et outils › Créer une capacité bien à lui…* ou *Créer un passif spécial…*.
 - **Un monstre** : choisissez un modèle et un niveau, tout le reste est calculé.

@@ -188,3 +188,17 @@ Format 2 (`CampaignStore.FORMAT`) : session, joueurs, fiches, cartes, messages, 
 - **Passifs multiples** : `Rules.passives(sheet)` = passif de classe + `extra_passives` (passifs personnels). `Combat` (bonus conditionnels, défense, garde, déclencheurs, particularités) et `Rules.derived` parcourent la liste.
 - **Briques** : `BrickPalette` (interface du MJ) ne contient que des données — effets, champs (`target`, `radius`, `cost`, `trigger`…), bonus et particularités — fusionnées dans l'entrée par `ContentEditor._add_brick`, puis validées comme toute création (`Content.sanitize_*`). Capacités personnelles : `mj_personal_ability` (champ `owner`), passifs : `mj_grant_passive` / `mj_remove_passive`.
 
+## Réseau par différences, monde, commerce, bibliothèque
+
+- **Envoi par différences** : `SessionServer._sent[player_id]` garde le dernier état envoyé (cases, décor, brouillard). `_compact_view` / `_fog_delta` envoient `cells_patch`, `decor_patch`, `explored_patch`, `visible_patch` (format `StrDiff` : `[[début, texte], …]`, `{set, del}`), ou tout si la différence est trop grosse, la carte a changé ou le joueur revient (`_remember_view` à l'accueil, `_forget_sent` à la déconnexion). Le client recolle (`SessionClient._merge_map`, `_merge_fog`). Compression ENet `COMPRESS_RANGE_CODER` des deux côtés.
+- **Performance** : autoload `Perf` (compteur affichable, `Perf.record`, `Perf.count`) ; `Style.ui_scale()` (taille du texte).
+- **Placement** : `mj_place(map_id, spec, x, y)` (monster, npc_role, character, item, chest, passage). Passages : champ de pion `look` (sprite `props/<look>`, `PASSAGE_LOOKS`), `passage`, `link`, `link_x`, `link_y` ; `mj_set_portal` (même carte = téléportation dans `_cmd_enter`). Coffres : `chest_items`, `chest_gold`, `loot` (secrets retirés par `view_for_player`), `mj_set_chest`.
+- **Terrains** : murs `1`–`5` (`MapData.WALLS`, opaques dans `Vision.OPAQUE`), sols `6`–`9`, `e`, `i`, `j` ; `MapData.TERRAIN_GROUPS` pour la palette. Plans de bâtiments : clés `wall` et `floor`, `%` portail, `/` escalier, nouveaux meubles (`& ! = ^ * ~ < > ? : ;`).
+- **Commerce** : `Shop` (prix, stock par métier, rachat), `Trade` (achat, vente, distance, boutique du MJ `session.mj_shop`), commandes `CMD_BUY`, `CMD_SELL`, champ de pion `shop`.
+- **Corbeille** : `SessionServer._to_trash` (pions, fiches, catalogue, objets retirés, dons) et `MjTrash.restore`.
+- **Bibliothèque** : `Library.build` / `Library.merge` (nouveaux identifiants de cartes et de PNJ), fichiers `*.legenders.json` dans le profil.
+- **Sauvegardes** : format 3, `CampaignStore.upgrade` (nombres, décor, passages, boutiques ; copie `.v2`).
+- **Interface du MJ** : barre d'outils et tiroir sur la carte (`_build_map_toolbar`, `_set_tool`), `PlacePalette`, `ChestEditor`, `ShopEditor`, `CommandPalette` + `CommandEntries` (Ctrl + K), `BrickPalette` (modes ability, passive, item, monster).
+- **Essai solo** : `App.open_test_player` lance le jeu avec `-- --autojoin=127.0.0.1:port --force-mobile --profile=essaiN`.
+- **Intégration continue** : `.github/workflows/tests.yml` (compilation, règles, réseau).
+
