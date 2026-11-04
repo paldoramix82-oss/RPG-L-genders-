@@ -1,0 +1,939 @@
+{
+ "id": "legenders_shima",
+ "name": "Légenders — Mages de Shima",
+ "universe": "legenders",
+ "description": "Mages d'État et figures citées dans les documents de l'univers.",
+ "npcs": [
+  {
+   "name": "Youri",
+   "concept": "Mage d'État de rang L — Division de l'Encre",
+   "species": "Humain",
+   "origin": "RAC (Shima)",
+   "kind": "npc",
+   "hp": 60,
+   "hp_max": 60,
+   "res": 40,
+   "res_max": 40,
+   "rank": "L",
+   "magic": {
+    "category": "Création",
+    "name": "Tornades",
+    "origin": "Personnalité et environnement",
+    "description": "Crée des tornades de toutes tailles et de toutes forces. Ne peut pas contrôler une tornade naturelle : seulement en créer une nouvelle.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Tornade",
+     "description": "Une colonne de vent qui balaie tout sur son passage.",
+     "cost": "variable",
+     "range": "Zone",
+     "limits": ""
+    },
+    {
+     "name": "Maîtrise des bases",
+     "description": "Connaît les fondamentaux, sans plus.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 13
+    },
+    {
+     "name": "Agilité",
+     "value": 15
+    },
+    {
+     "name": "Endurance",
+     "value": 14
+    },
+    {
+     "name": "Intelligence",
+     "value": 14
+    },
+    {
+     "name": "Perception",
+     "value": 15
+    },
+    {
+     "name": "Charisme",
+     "value": 13
+    }
+   ],
+   "skills": [
+    {
+     "name": "Combat",
+     "value": 6
+    },
+    {
+     "name": "Magie",
+     "value": 8
+    },
+    {
+     "name": "Survie",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "Calme et sûr de lui, vitrine de Shima. Son rang est public et son salaire astronomique.",
+   "goals": "Garder la Division de l'Encre soudée.",
+   "secret": "Il sait qu'il est très loin du niveau des L+.",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#6f9fc9",
+    "symbol": "YL"
+   }
+  },
+  {
+   "name": "Midori",
+   "concept": "Mage d'État de rang I (Immortel)",
+   "species": "Humaine",
+   "origin": "RAC (Shima)",
+   "kind": "npc",
+   "hp": 50,
+   "hp_max": 50,
+   "res": 35,
+   "res_max": 35,
+   "rank": "I",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 11
+    },
+    {
+     "name": "Agilité",
+     "value": 14
+    },
+    {
+     "name": "Endurance",
+     "value": 13
+    },
+    {
+     "name": "Intelligence",
+     "value": 15
+    },
+    {
+     "name": "Perception",
+     "value": 15
+    },
+    {
+     "name": "Charisme",
+     "value": 14
+    }
+   ],
+   "skills": [
+    {
+     "name": "Magie",
+     "value": 7
+    },
+    {
+     "name": "Investigation",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "Exigeante, d'une efficacité redoutable. Comme Youri, elle n'a que les bases de la maîtrise.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#8fb28a",
+    "symbol": "MI"
+   }
+  },
+  {
+   "name": "Shiro",
+   "concept": "Métamorphe surpuissant (SS+)",
+   "species": "Humain",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 45,
+   "hp_max": 45,
+   "res": 30,
+   "res_max": 30,
+   "rank": "SS+",
+   "magic": {
+    "category": "Métamorphose",
+    "name": "Formes animales",
+    "origin": "Personnalité et environnement",
+    "description": "Polymorphe : peut prendre n'importe quelle forme animale ou hybride. Les formes plus massives l'épuisent davantage.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 16
+    },
+    {
+     "name": "Agilité",
+     "value": 14
+    },
+    {
+     "name": "Endurance",
+     "value": 15
+    },
+    {
+     "name": "Intelligence",
+     "value": 7
+    },
+    {
+     "name": "Perception",
+     "value": 11
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Combat",
+     "value": 6
+    }
+   ],
+   "appearance": "",
+   "personality": "Une puissance brute, freinée par sa bêtise et son manque de stratégie.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#e0e0d0",
+    "symbol": "SH"
+   }
+  },
+  {
+   "name": "Lisz",
+   "concept": "Faucheuse, rang S",
+   "species": "Humaine",
+   "origin": "Clan des Faucheurs",
+   "kind": "npc",
+   "hp": 32,
+   "hp_max": 32,
+   "res": 25,
+   "res_max": 25,
+   "rank": "S",
+   "magic": {
+    "category": "Spéciale",
+    "name": "Spectre (intangibilité par apnée)",
+    "origin": "Croyance collective",
+    "description": "Devient intangible tant qu'elle retient sa respiration.",
+    "limits": "Limitée par son souffle.",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 11
+    },
+    {
+     "name": "Agilité",
+     "value": 16
+    },
+    {
+     "name": "Endurance",
+     "value": 13
+    },
+    {
+     "name": "Intelligence",
+     "value": 13
+    },
+    {
+     "name": "Perception",
+     "value": 15
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Discrétion",
+     "value": 6
+    },
+    {
+     "name": "Maîtrise des bases (AEC)",
+     "value": 7
+    },
+    {
+     "name": "Combat",
+     "value": 5
+    }
+   ],
+   "appearance": "",
+   "personality": "Froide et professionnelle : maîtriser les fondamentaux était une question de survie dès l'enfance.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#2a2733",
+    "symbol": "LZ"
+   }
+  },
+  {
+   "name": "Kojiro",
+   "concept": "Mutant, rang S (évalué au combat pur)",
+   "species": "Mutant",
+   "origin": "Lidaknie",
+   "kind": "npc",
+   "hp": 40,
+   "hp_max": 40,
+   "res": 0,
+   "res_max": 0,
+   "rank": "S",
+   "magic": {
+    "category": "Mutation",
+    "name": "Physiologie modifiée",
+    "origin": "Mutation",
+    "description": "AEC + ADN animal : pas d'antenne AEC, insensible à la technologie anti-magie de Karoh.",
+    "limits": "N'a accès à aucune technique universelle de maîtrise.",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 16
+    },
+    {
+     "name": "Agilité",
+     "value": 15
+    },
+    {
+     "name": "Endurance",
+     "value": 16
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 13
+    },
+    {
+     "name": "Charisme",
+     "value": 9
+    }
+   ],
+   "skills": [
+    {
+     "name": "Combat",
+     "value": 7
+    },
+    {
+     "name": "Pistage",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#7b5a3a",
+    "symbol": "KJ"
+   }
+  },
+  {
+   "name": "Benjamin Tennyson",
+   "concept": "Invocateur des bêtes mythiques",
+   "species": "Humain",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 24,
+   "hp_max": 24,
+   "res": 30,
+   "res_max": 30,
+   "rank": "",
+   "magic": {
+    "category": "Invocation",
+    "name": "Bêtes mythiques",
+    "origin": "Personnalité et environnement",
+    "description": "Dix contrats remplis : il appelle des esprits qui existaient déjà dans le monde spirituel.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Monkey",
+     "description": "Capucin, esprit de la foudre.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Bunny",
+     "description": "Lapin transcendé par un fruit millénaire.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Minette",
+     "description": "Esprit des plantes ; peut devenir une tigresse géante.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Wolf",
+     "description": "Croc d'argent, esprit de glace.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Kitsune",
+     "description": "Renarde à cinq queues, sans doute la plus ancienne.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "19 ans, cheveux blancs.",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#d9dee4",
+    "symbol": "BT"
+   }
+  },
+  {
+   "name": "Imelda",
+   "concept": "Gardienne de la Foudre",
+   "species": "Humaine",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 30,
+   "hp_max": 30,
+   "res": 25,
+   "res_max": 25,
+   "rank": "",
+   "magic": {
+    "category": "Renforcement",
+    "name": "Foudre de Fulminis",
+    "origin": "Imposition par un Légender (Gardien)",
+    "description": "Se renforce par la foudre et peut l'appeler.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "Une décharge d'énergie permanente.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#d1a15e",
+    "symbol": "IM"
+   }
+  },
+  {
+   "name": "Kenji",
+   "concept": "Soigneur",
+   "species": "Humain",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 18,
+   "hp_max": 18,
+   "res": 20,
+   "res_max": 20,
+   "rank": "",
+   "magic": {
+    "category": "Invocation",
+    "name": "Feux follets guérisseurs",
+    "origin": "Personnalité et environnement",
+    "description": "Invoque des feux follets qui soignent.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Médecine",
+     "value": 5
+    }
+   ],
+   "appearance": "",
+   "personality": "Son premier élan est toujours de prendre soin des autres.",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#8fb28a",
+    "symbol": "KE"
+   }
+  },
+  {
+   "name": "Trenya",
+   "concept": "Éclaireuse psychique",
+   "species": "Humaine",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 18,
+   "hp_max": 18,
+   "res": 20,
+   "res_max": 20,
+   "rank": "",
+   "magic": {
+    "category": "Psychique",
+    "name": "Carte mentale",
+    "origin": "Personnalité et environnement",
+    "description": "Perçoit en temps réel une carte mentale de son environnement.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Perception",
+     "value": 6
+    },
+    {
+     "name": "Investigation",
+     "value": 4
+    }
+   ],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#a07cc9",
+    "symbol": "TR"
+   }
+  },
+  {
+   "name": "Ryo",
+   "concept": "Mage à la magie inclassable",
+   "species": "Humain",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 22,
+   "hp_max": 22,
+   "res": 25,
+   "res_max": 25,
+   "rank": "",
+   "magic": {
+    "category": "Spéciale",
+    "name": "Vitesse en pourcentage",
+    "origin": "Personnalité et environnement",
+    "description": "Accélère ou ralentit tout ce qu'il veut, en pourcentage.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#5fb3a8",
+    "symbol": "RY"
+   }
+  },
+  {
+   "name": "Kefha",
+   "concept": "L'homme d'acier",
+   "species": "Humain",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 34,
+   "hp_max": 34,
+   "res": 15,
+   "res_max": 15,
+   "rank": "",
+   "magic": {
+    "category": "Assimilation",
+    "name": "Acier",
+    "origin": "Personnalité et environnement",
+    "description": "Assimile du métal et devient un homme d'acier ; la source est détruite.",
+    "limits": "Sans métal disponible, il est à sec.",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 15
+    },
+    {
+     "name": "Agilité",
+     "value": 9
+    },
+    {
+     "name": "Endurance",
+     "value": 16
+    },
+    {
+     "name": "Intelligence",
+     "value": 9
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 9
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#9a9a9a",
+    "symbol": "KF"
+   }
+  },
+  {
+   "name": "Queen",
+   "concept": "Transformatrice",
+   "species": "Humaine",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 20,
+   "hp_max": 20,
+   "res": 20,
+   "res_max": 20,
+   "rank": "",
+   "magic": {
+    "category": "Transformation",
+    "name": "Boue",
+    "origin": "Personnalité et environnement",
+    "description": "Transforme les solides en boue (jamais elle-même).",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#7b5a3a",
+    "symbol": "QN"
+   }
+  },
+  {
+   "name": "Lax",
+   "concept": "Corps élastique",
+   "species": "Humain",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 28,
+   "hp_max": 28,
+   "res": 10,
+   "res_max": 10,
+   "rank": "",
+   "magic": {
+    "category": "Déformation",
+    "name": "Élasticité",
+    "origin": "Personnalité et environnement",
+    "description": "Son corps EST élastique, sans activation : c'est sa nature.",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#d27aa0",
+    "symbol": "LX"
+   }
+  },
+  {
+   "name": "Olivia",
+   "concept": "Beauté envoûtante",
+   "species": "Humaine",
+   "origin": "RAC",
+   "kind": "npc",
+   "hp": 16,
+   "hp_max": 16,
+   "res": 20,
+   "res_max": 20,
+   "rank": "",
+   "magic": {
+    "category": "Psychique",
+    "name": "Admiration",
+    "origin": "Personnalité et environnement",
+    "description": "Sa beauté provoque une soumission par admiration.",
+    "limits": "L'utiliser contre la liberté d'autrui est illégal.",
+    "public": true
+   },
+   "abilities": [],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Négociation",
+     "value": 6
+    }
+   ],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [],
+   "pawn": {
+    "color": "#d27aa0",
+    "symbol": "OL"
+   }
+  }
+ ]
+}

@@ -1,0 +1,1211 @@
+{
+ "id": "bestiaire",
+ "name": "Bestiaire et adversaires",
+ "universe": "*",
+ "description": "Monstres et adversaires génériques, pour tous les univers.",
+ "npcs": [
+  {
+   "name": "Loup cendré",
+   "concept": "Bête de la forêt",
+   "species": "Monstre",
+   "origin": "Forêts",
+   "kind": "monster",
+   "hp": 11,
+   "hp_max": 11,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Morsure",
+     "description": "1d6+2",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Meute",
+     "description": "+2 au toucher si un autre loup est au contact.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 13
+    },
+    {
+     "name": "Agilité",
+     "value": 15
+    },
+    {
+     "name": "Endurance",
+     "value": 12
+    },
+    {
+     "name": "Intelligence",
+     "value": 3
+    },
+    {
+     "name": "Perception",
+     "value": 14
+    },
+    {
+     "name": "Charisme",
+     "value": 6
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Morsure",
+     "category": "arme",
+     "damage": "1d6+2",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d6+2"
+    }
+   ],
+   "pawn": {
+    "color": "#8a4a3c",
+    "symbol": "LC"
+   }
+  },
+  {
+   "name": "Bandit de grand chemin",
+   "concept": "Détrousseur",
+   "species": "Humain",
+   "origin": "Routes",
+   "kind": "npc",
+   "hp": 12,
+   "hp_max": 12,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Coup de dague",
+     "description": "1d4+2",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Fuite",
+     "description": "Disparaît s'il se retrouve seul.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [
+    {
+     "name": "Discrétion",
+     "value": 3
+    }
+   ],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Coup de dague",
+     "category": "arme",
+     "damage": "1d4+2",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d4+2"
+    }
+   ],
+   "pawn": {
+    "color": "#7a6a5a",
+    "symbol": "BA"
+   }
+  },
+  {
+   "name": "Chef bandit",
+   "concept": "Meneur cruel",
+   "species": "Humain",
+   "origin": "Routes",
+   "kind": "npc",
+   "hp": 24,
+   "hp_max": 24,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Épée longue",
+     "description": "1d8+3",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Ordre",
+     "description": "Un allié rejoue immédiatement.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Épée longue",
+     "category": "arme",
+     "damage": "1d8+3",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d8+3"
+    }
+   ],
+   "pawn": {
+    "color": "#5a3a2a",
+    "symbol": "CH"
+   }
+  },
+  {
+   "name": "Gobelin",
+   "concept": "Petit pillard",
+   "species": "Gobelin",
+   "origin": "Collines",
+   "kind": "monster",
+   "hp": 7,
+   "hp_max": 7,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Fronde",
+     "description": "1d4, portée 15 m",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Esquive sournoise",
+     "description": "Se cache après avoir tiré.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Fronde",
+     "category": "arme",
+     "damage": "1d4",
+     "stat": "",
+     "crit": 20,
+     "range": 7,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d4, portée 15 m"
+    }
+   ],
+   "pawn": {
+    "color": "#6b8f3a",
+    "symbol": "GO"
+   }
+  },
+  {
+   "name": "Ogre",
+   "concept": "Brute affamée",
+   "species": "Ogre",
+   "origin": "Montagnes",
+   "kind": "monster",
+   "hp": 45,
+   "hp_max": 45,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Massue",
+     "description": "2d8+4",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Lancer de rocher",
+     "description": "1d10+4, portée 20 m",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 19
+    },
+    {
+     "name": "Agilité",
+     "value": 8
+    },
+    {
+     "name": "Endurance",
+     "value": 17
+    },
+    {
+     "name": "Intelligence",
+     "value": 5
+    },
+    {
+     "name": "Perception",
+     "value": 8
+    },
+    {
+     "name": "Charisme",
+     "value": 6
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Lancer de rocher",
+     "category": "arme",
+     "damage": "1d10+4",
+     "stat": "",
+     "crit": 20,
+     "range": 10,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d10+4, portée 20 m"
+    },
+    {
+     "name": "Massue",
+     "category": "arme",
+     "damage": "2d8+4",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "2d8+4"
+    }
+   ],
+   "pawn": {
+    "color": "#8a7a50",
+    "symbol": "OG"
+   }
+  },
+  {
+   "name": "Squelette",
+   "concept": "Mort-vivant",
+   "species": "Mort-vivant",
+   "origin": "Cryptes",
+   "kind": "monster",
+   "hp": 13,
+   "hp_max": 13,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Lame rouillée",
+     "description": "1d6+1",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Insensible",
+     "description": "Ignore la peur et le poison.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Lame rouillée",
+     "category": "arme",
+     "damage": "1d6+1",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d6+1"
+    }
+   ],
+   "pawn": {
+    "color": "#d9d4c4",
+    "symbol": "SQ"
+   }
+  },
+  {
+   "name": "Spectre",
+   "concept": "Âme tourmentée",
+   "species": "Esprit",
+   "origin": "Ruines",
+   "kind": "monster",
+   "hp": 20,
+   "hp_max": 20,
+   "res": 20,
+   "res_max": 20,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Toucher glacial",
+     "description": "1d8 et affaiblit",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Intangible",
+     "description": "Traverse murs et portes.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Toucher glacial",
+     "category": "arme",
+     "damage": "1d8",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d8 et affaiblit"
+    }
+   ],
+   "pawn": {
+    "color": "#9fc3d4",
+    "symbol": "SP"
+   }
+  },
+  {
+   "name": "Araignée géante",
+   "concept": "Prédatrice des grottes",
+   "species": "Monstre",
+   "origin": "Grottes",
+   "kind": "monster",
+   "hp": 26,
+   "hp_max": 26,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Morsure venimeuse",
+     "description": "1d8 + poison",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Toile",
+     "description": "Immobilise une cible.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Morsure venimeuse",
+     "category": "arme",
+     "damage": "1d8",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d8 + poison"
+    }
+   ],
+   "pawn": {
+    "color": "#3f3a33",
+    "symbol": "AR"
+   }
+  },
+  {
+   "name": "Golem de pierre",
+   "concept": "Gardien animé",
+   "species": "Construction",
+   "origin": "Ruines",
+   "kind": "monster",
+   "hp": 50,
+   "hp_max": 50,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Poing de pierre",
+     "description": "2d10",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Lent",
+     "description": "Agit en dernier.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 20
+    },
+    {
+     "name": "Agilité",
+     "value": 6
+    },
+    {
+     "name": "Endurance",
+     "value": 20
+    },
+    {
+     "name": "Intelligence",
+     "value": 3
+    },
+    {
+     "name": "Perception",
+     "value": 8
+    },
+    {
+     "name": "Charisme",
+     "value": 1
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Poing de pierre",
+     "category": "arme",
+     "damage": "2d10",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "2d10"
+    }
+   ],
+   "pawn": {
+    "color": "#7d7a70",
+    "symbol": "GP"
+   }
+  },
+  {
+   "name": "Dragonnet",
+   "concept": "Jeune dragon",
+   "species": "Dragon",
+   "origin": "Pics",
+   "kind": "monster",
+   "hp": 38,
+   "hp_max": 38,
+   "res": 20,
+   "res_max": 20,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Souffle de feu",
+     "description": "3d6 en cône",
+     "cost": "recharge 5-6",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Griffes",
+     "description": "1d10+3",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Griffes",
+     "category": "arme",
+     "damage": "1d10+3",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d10+3"
+    },
+    {
+     "name": "Souffle de feu",
+     "category": "arme",
+     "damage": "3d6",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "3d6 en cône"
+    }
+   ],
+   "pawn": {
+    "color": "#b0605a",
+    "symbol": "DR"
+   }
+  },
+  {
+   "name": "Slime acide",
+   "concept": "Masse gluante",
+   "species": "Monstre",
+   "origin": "Égouts",
+   "kind": "monster",
+   "hp": 22,
+   "hp_max": 22,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Engloutir",
+     "description": "1d6 d'acide par tour",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Division",
+     "description": "Se divise quand on le tranche.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Engloutir",
+     "category": "arme",
+     "damage": "1d6",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d6 d'acide par tour"
+    }
+   ],
+   "pawn": {
+    "color": "#5fb36a",
+    "symbol": "SL"
+   }
+  },
+  {
+   "name": "Élémentaire de cendre",
+   "concept": "Esprit de feu éteint",
+   "species": "Élémentaire",
+   "origin": "Champs calcinés",
+   "kind": "monster",
+   "hp": 30,
+   "hp_max": 30,
+   "res": 20,
+   "res_max": 20,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Nuée de cendres",
+     "description": "Aveugle dans un rayon de 3 cases.",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    },
+    {
+     "name": "Braise",
+     "description": "1d10 de feu",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Braise",
+     "category": "arme",
+     "damage": "1d10",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d10 de feu"
+    }
+   ],
+   "pawn": {
+    "color": "#4a4543",
+    "symbol": "EC"
+   }
+  },
+  {
+   "name": "Garde",
+   "concept": "Soldat d'une faction",
+   "species": "Humain",
+   "origin": "Ville",
+   "kind": "npc",
+   "hp": 14,
+   "hp_max": 14,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Hallebarde",
+     "description": "1d10+1, allonge",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 10
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 10
+    },
+    {
+     "name": "Intelligence",
+     "value": 10
+    },
+    {
+     "name": "Perception",
+     "value": 10
+    },
+    {
+     "name": "Charisme",
+     "value": 10
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Hallebarde",
+     "category": "arme",
+     "damage": "1d10+1",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "1d10+1, allonge"
+    }
+   ],
+   "pawn": {
+    "color": "#6f7f9a",
+    "symbol": "GA"
+   }
+  },
+  {
+   "name": "Ours des cavernes",
+   "concept": "Bête énorme",
+   "species": "Animal",
+   "origin": "Forêts",
+   "kind": "monster",
+   "hp": 34,
+   "hp_max": 34,
+   "res": 0,
+   "res_max": 0,
+   "rank": "",
+   "magic": {
+    "category": "",
+    "name": "",
+    "origin": "",
+    "description": "",
+    "limits": "",
+    "public": true
+   },
+   "abilities": [
+    {
+     "name": "Étreinte",
+     "description": "2d6+4 et saisie",
+     "cost": "",
+     "range": "",
+     "limits": ""
+    }
+   ],
+   "stats": [
+    {
+     "name": "Force",
+     "value": 18
+    },
+    {
+     "name": "Agilité",
+     "value": 10
+    },
+    {
+     "name": "Endurance",
+     "value": 16
+    },
+    {
+     "name": "Intelligence",
+     "value": 2
+    },
+    {
+     "name": "Perception",
+     "value": 12
+    },
+    {
+     "name": "Charisme",
+     "value": 6
+    }
+   ],
+   "skills": [],
+   "appearance": "",
+   "personality": "",
+   "goals": "",
+   "secret": "",
+   "relations": "",
+   "inventory": [
+    {
+     "name": "Étreinte",
+     "category": "arme",
+     "damage": "2d6+4",
+     "stat": "",
+     "crit": 20,
+     "range": 1,
+     "qty": 1,
+     "equipped": true,
+     "description": "2d6+4 et saisie"
+    }
+   ],
+   "pawn": {
+    "color": "#6b4a2a",
+    "symbol": "OU"
+   }
+  }
+ ]
+}

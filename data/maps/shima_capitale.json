@@ -1,0 +1,177 @@
+{
+ "id": "shima_capitale",
+ "name": "Shima — la capitale (grande carte)",
+ "description": "La capitale économique de la RAC : le QG de la magie au centre et les treize divisions de mages d'État en cercle.",
+ "universe": "legenders",
+ "w": 96,
+ "h": 64,
+ "rows": [
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss....pppppppppppppppppppppppppppppppppppprpppppppppppppppppppppppppppppppppppp.....",
+  "WWWWWWWWWWwwss....pRRRppbbbppbbbppbbpppRRRRpbbbbpRRRpprb...bbbppbbbppRRpppRRpppRRRppbbbppRp.....",
+  "WWWWWWWWWWwwss....pRRRppbbbppbbbppbbpppRRRyyybbbpRRRppr.....bbppbbbppRRpppRRpppRRRppbbbppRp.....",
+  "WWWWWWWWWWwwss....ppppppbbbppbbbppbbpppRRyyyyybbpRRRppr.bbb..bpppppppRRpppRRpppRRRpppppppRp.....",
+  "WWWWWWWWWWwwss....ppppppbbbpppppppppppppyybbbyybpRRRppr.bbb..bpppppppp...pRRpppppppppppppRp.....",
+  "WWWWWWWWWWwwss....ppppppppppppppppppppppyybbbyypppppppr......pppppppp.....ppppppppppppppppp...ww",
+  "WWWWWWWWWWwwss....pRRpppRRRppRRRppbbbbpRyyyyyyybpRRpppr.....Rpppbbbb..bbb..RRRpbbbbpRRpppRp.ww..",
+  "WWWWWWWWWWwwss....pRRpppRRRppRRRppbbbbpRRyyyyybbpRRppprb...RRpppbbbb..bbb..RRRpbbbbpRRpppwww....",
+  "WWWWWWWWBBBBBBBBB.pRRpppppppp...ppbbbbpRRRyyybbbpRRppprbpppRRpppbbbb.......RRRppppppRRpwwRp.....",
+  "WWWWWWWWBBBBBBBBB.pRRppppppp.....ppppppRRRppbbbrrrrrrrrrrrrrrrppppppp.....ppppppppppRRwwpRp.....",
+  "WWWWWWWWWWwwss....ppppppppp..bbb..ppppppppprrrrrrrrrrrrrrrrrrrrrrrpppp...pppppppppppppwpppp.....",
+  "WWWWWWWWWWwwss....pRRRppRRR..bbb..bbpppRRrrrrrrrpRRRRprRRRpRRrrrrrrrpbbpppRRRppRRpppRwwRpRp.....",
+  "WWWWWWWWWWwwss....pRRRppRRR.......bbppprrrrrrbbppRRRRprRRRpRRRpprrrrrrbpppRRRppRyyywwwRRpRp.....",
+  "WWWWWWWWWWwwss....pRRRppRRRp.....pbbprrrrrppbbbppppppprpppppppppppprrrrrpppppppyywwwRRRRpRp.....",
+  "WWWWWWWWWWwwss....pRRRppRRRpp...ppbbrrrrRRpppppppppppprpppppppppppppprrrrpppppwwwbbyypppppp.....",
+  "WWWWWWWWWWwwss....ppppppppppppppppprrrrppppppppppppppprppppppppppppppprrwwwwwwwybbbyypppppp.....",
+  "WWWWWWWWWWwwss....pRRRppRRRRpbbbpprrrrpRRRppRRRppRRRRprRRppRRRppRRpppbbwwrrRppyyyyyyybbbpbp.....",
+  "WWWWWWWWWWwwss....pRRR...RRRpbbbprrrbppRRRppRRRppRRRRprRRppRRRppRRpppbbpprrrpppyyyyybbbbpbp.....",
+  "WWWWWWWWWWwwss....ppp.....pppbbbrrrrpppRRRppRRRppRRRRppRRpppppppppppppppprrrrppRyyypppppppp.....",
+  "WWWWWWWWWWwwss....pp..bbb..ppppprrrppppRRRppRRRppppppppppppppppppppppppppprrrpppppppppppppp.....",
+  "WWWWWWWWWWwwss....pp..bbb..pppprrrppppppppppppppppppppppppppppppppppppppppprrrppppppppppppp.....",
+  "WWWWWWWWWWwwss....pR.......ppbbrrrRRRRpbbpppRRRppppppppppppppRRpRRRRpbbbbpbrrrpRRRRpRRRRpRp.....",
+  "WWWWWWWWWWwwss....pRR.....bppbrrrpRRRRpbbpppRRRpppppppyppppppRRpRRRRpbbbbpbbrrrRRRRpRRRRpRp.....",
+  "WWWWWWWWWWwwss....pppp...ppppprrrppppppbbpppRRRpppppyyyyypppppRppppppbbbbppprrrpppppyyyRpRp.....",
+  "WWWWWWWWBBBBBBBBB.pppppppppppprrrpppppppppppRRRppppyRRRRRypppppppppppppppppprrrppppyyyyypRp.....",
+  "WWWWWWWWBBBBBBBBB.pppppppppppprrrppppppppppppppppppyRRRRRypppppppppppppppppprrrpppyybbbyypp.....",
+  "WWWWWWWWWWwwssrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrpppyyRRaRRyypppppRRpppRRpppRRRrrbbbyybbbyyRp.....",
+  "WWWWWWWWWWwwss....pRRpppbbbbpRrrrpbbbppRRRRpbbbppppyRRRRRyppppppRRpppRRpppRRrrrbbbyyyyyyyRp.....",
+  "WWWWWWWWWWwwss....pRRpyyybbbpRrrrpbbbppRRRRppppppppyRRRRRyppppppppppppppppRRrrrppppyyyyypRp.....",
+  "WWWWWWWWWWwwss....pRRyyyyypppRrrrpppppppppppppppppppyyyyypppppppppppppppppRRrrrpppppyyyppRp.....",
+  "WWWWWWWWWWwwss....ppyybbbyyppprrrpppppppppppppppppppppyppppppppppppppppppppprrrpppppppppppp.....",
+  "WWWWWWWWWWwwss....pRyybbbyyppbbrrrRRRppRRRRpbbbppppppppppppppRppbbpppbbbppRrrrpRRRRpbbpppRp.....",
+  "WWWWWWWWWWwwss....pRyyyyyyyppbbrrrRRRppRRRRpbbbpppppppppppppRRppbbpppbbbppRrrrpRRRRpbbpppRp.....",
+  "WWWWWWWWWWwwss....pRRyyyyypppbbprrrRRppRRRRpppppppppppppppppppppbbpppppppprrrppp...pbbpppRp.....",
+  "WWWWWWWWWWwwss....pRRpyyyppppbbprrrrpppRRRRpppppppppppppppppppppbbppppppprrrrpp.....pppppRp.....",
+  "WWWWWWWWWWwwss....ppppppppppppppprrrpppppppppppppppppprpppppppppppppppppprrrpp..bbb..pppppp.....",
+  "WWWWWWWWWWwwss....pRRRRpRRRppRRppprrrrpRRRRpbbbbpRRRRprRRppRRRRpbbbppRRrrrrRRR..bbb..Rpppbp.....",
+  "WWWWWWWWWWwwss....pRRRRpRRRpp...ppRrrrrRRRRpbbbbpRRRRprRRppRRRRpbbbppRrrrrRRRR.......Rpppbp.....",
+  "WWWWWWWWWWwwss....ppppppRRRp.....pRRrrrrppppbbbbpRRRRprRRpppppppbbbpprrrrpRRRRp.....RRpppbp.....",
+  "WWWWWWWWWWwwss....ppppppppp..bbb..RRRrrrrrppbbbbpppppprRRpppppppbbbrrrrrppRRRRpp...pRRpppbp.....",
+  "WWWWWWWWBBBBBBBBB.ppppppppp..bbb..ppppprrrrrrppppppppprppppppppprrrrrrppppppppppppppppppppp.....",
+  "WWWWWWWWBBBBBBBBB.pbbpppbbb.......bbbppbbrrrrrrrpbbbbprRRppbbrrrrrrrpR...pbbpppRRpppRRpppbp.....",
+  "WWWWWWWWWWwwss....pbbpppbbbp.....pbbbppbbbprrrrrrrrrrrrrrrrrrrrrrrbpp.....bbpppRRpppRRpppbp.....",
+  "WWWWWWWWWWwwss....pbbpppbbbpp...pppppppppp...Rprrrrrrrrrrrrrrrpppppp..bbb..bppppppppRRpppbp.....",
+  "WWWWWWWWWWwwss....pbbpppbbbppRRpppppppppp.....pppppppprpyyyppppppppp..bbb..bppppppppRRppppp.....",
+  "WWWWWWWWWWwwss....pppppppppppppppppppppp..bbb..pppppppryyyyypppppppp.......pppppppppppppppp.....",
+  "WWWWWWWWWWwwss....pRRpppbbbbpRRRRpRRRRpR..bbb..ppbbbpprybbbyyRRpRRRpp.....RRRppbbbbpbbpppRp.....",
+  "WWWWWWWWWWwwss....pRRpppbbbbpRRRRpRRRRpR.......ppbbbpprybbbyyRRpRRRppR...pRRRppbbbbpbbpppRp.....",
+  "WWWWWWWWWWwwss....ppppppbbbbpRRRRpRRRRppp.....bpppppppryyyyyyRRpRRRppRRRRpRRRppbbbbpbbpppRp.....",
+  "WWWWWWWWWWwwss....pppppppppppppppppppppppp...pppppppppryyyyyRRRpRRRpppppppRRRpppppppbbpppRp.....",
+  "WWWWWWWWWWwwss....pppppppppppppppppppppppppppppppppppprpyyypppppppppppppppppppppppppppppppp.....",
+  "WWWWWWWWWWwwss....pRRpppRRpppbbpppRRRppRRpppRRRppbbbbprbbppRRRppbbbbpbbbbpRRRppRRpppRRRppRp.....",
+  "WWWWWWWWWWwwss....pppppppppppppppppppppppppppppppppppprpppppppppppppppppppppppppppppppppppp.....",
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss........................................r.........................................",
+  "WWWWWWWWWWwwss........................................r........................................."
+ ],
+ "spawn": {
+  "x": 14,
+  "y": 32
+ },
+ "labels": [
+  {
+   "x": 54,
+   "y": 29,
+   "text": "QG de la magie",
+   "hidden": false
+  },
+  {
+   "x": 12,
+   "y": 14,
+   "text": "Port",
+   "hidden": false
+  },
+  {
+   "x": 6,
+   "y": 30,
+   "text": "Mer Occidentale",
+   "hidden": false
+  },
+  {
+   "x": 85,
+   "y": 29,
+   "text": "Division 1",
+   "hidden": false
+  },
+  {
+   "x": 81,
+   "y": 39,
+   "text": "Division 2",
+   "hidden": false
+  },
+  {
+   "x": 71,
+   "y": 47,
+   "text": "Division 3",
+   "hidden": false
+  },
+  {
+   "x": 57,
+   "y": 50,
+   "text": "Division 4",
+   "hidden": false
+  },
+  {
+   "x": 43,
+   "y": 49,
+   "text": "Division 5",
+   "hidden": false
+  },
+  {
+   "x": 30,
+   "y": 43,
+   "text": "Division 6",
+   "hidden": false
+  },
+  {
+   "x": 23,
+   "y": 34,
+   "text": "Division 7",
+   "hidden": false
+  },
+  {
+   "x": 23,
+   "y": 23,
+   "text": "Division 8",
+   "hidden": false
+  },
+  {
+   "x": 30,
+   "y": 14,
+   "text": "Division 9",
+   "hidden": false
+  },
+  {
+   "x": 43,
+   "y": 8,
+   "text": "Division de l'Encre",
+   "hidden": false
+  },
+  {
+   "x": 57,
+   "y": 7,
+   "text": "Division 11",
+   "hidden": false
+  },
+  {
+   "x": 71,
+   "y": 10,
+   "text": "Division 12",
+   "hidden": false
+  },
+  {
+   "x": 81,
+   "y": 18,
+   "text": "Division 13",
+   "hidden": false
+  }
+ ],
+ "tokens": []
+}
