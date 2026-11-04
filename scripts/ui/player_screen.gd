@@ -93,6 +93,8 @@ var _combat_seen_ms := -100000
 var _was_combat := false
 ## Panneau de PNJ ouvert (rafraîchi quand ses quêtes changent) et salutations tirées.
 var _npc_panel := ""
+## Boutique ouverte : id du PNJ ou « mj ».
+var _shop_id := ""
 var _greetings := {}
 var _rng := RandomNumberGenerator.new()
 var _was_started := false
@@ -162,6 +164,8 @@ func _ready() -> void:
 	_client.map_changed.connect(_later.bind("map", _refresh_map))
 	_client.phase_changed.connect(_later.bind("phase", _refresh_phase))
 	_client.settings_changed.connect(_refresh_all)
+	_client.settings_changed.connect(func(): _refresh_overlay("shop"))
+	_client.map_changed.connect(_later.bind("shop", func(): _refresh_overlay("shop")))
 	_client.command_failed.connect(_on_command_failed)
 	_client.quests_changed.connect(_on_quests)
 	_client.loot_changed.connect(func(): _refresh_overlay("inventory"))
@@ -921,6 +925,7 @@ func _on_characters() -> void:
 	_refresh_lobby()
 	_refresh_all()
 	_refresh_hud()
+	_refresh_overlay("shop")
 	_refresh_turn_bar()
 	_refresh_timeline()
 	_refresh_overlay("sheet")
@@ -1723,6 +1728,10 @@ func _open_npc_panel(t: Dictionary, dist: int, auto_talk: bool = true) -> void:
 			_client.accept_quest(quest_id))
 		accept.disabled = not near
 		card.add_child(accept)
+	if t.get("shop") is Dictionary:
+		var trade := UIKit.button("Commercer (acheter, vendre)", "PrimaryButton", func(): _open_shop(token_id))
+		trade.disabled = not near
+		panel.body.add_child(trade)
 	if String(t.get("side", "")) == "enemies" and _can_engage(t):
 		panel.body.add_child(UIKit.button("Attaquer", "DangerButton", func():
 			_close_overlay()
@@ -1805,6 +1814,8 @@ func _refresh_overlay(kind: String) -> void:
 			_fill_inventory()
 		"journal":
 			_fill_journal()
+		"shop":
+			_fill_shop()
 
 
 func _open_sheet() -> void:
@@ -2224,6 +2235,8 @@ func _open_actions_menu() -> void:
 	_menu_button(talk, "Parler au groupe", _open_chat)
 	_menu_button(talk, "Utiliser un objet", _open_inventory.bind("bag"))
 	_menu_button(talk, "Journal des quêtes", _open_journal.bind("quests"))
+	if not (_client.session.get("mj_shop", {}) as Dictionary).is_empty():
+		_menu_button(talk, "Boutique du MJ", _open_shop.bind("mj"), true)
 
 
 func _open_dice_menu() -> void:
@@ -2292,3 +2305,85 @@ func _apply_handedness() -> void:
 	var left := bool(App.get_setting("display", "left_handed", false))
 	bottom.move_child(_hud_buttons, 0 if left else bottom.get_child_count() - 1)
 	bottom.move_child(_hud_sep, 1 if left else bottom.get_child_count() - 2)
+
+
+
+# ---------------------------------------------------------------------------
+# Commerce
+# ---------------------------------------------------------------------------
+
+func _open_shop(shop_id: String) -> void:
+	_shop_id = shop_id
+	var title := "Boutique du MJ"
+	if shop_id != "mj":
+		title = "Boutique de %s" % MapData.token(_client.map, shop_id).get("name", "?")
+	_open_overlay("shop", title, "coin")
+	_fill_shop()
+
+
+func _current_shop() -> Dictionary:
+	if _shop_id == "mj":
+		return _client.session.get("mj_shop", {})
+	var t := MapData.token(_client.map, _shop_id)
+	return t.get("shop", {}) if t.get("shop") is Dictionary else {}
+
+
+func _fill_shop() -> void:
+	if _overlay == null:
+		return
+	UIKit.clear(_overlay.body)
+	var body := _overlay.body
+	var shop := _current_shop()
+	var c := _client.my_character()
+	var gold := int(c.get("gold", 0))
+	if shop.is_empty():
+		body.add_child(UIKit.label("La boutique est fermée.", "MutedLabel", true))
+		return
+	var purse := UIKit.label("Votre bourse : %d or" % gold, "HeadingLabel")
+	purse.add_theme_color_override("font_color", Palette.GOLD)
+	body.add_child(purse)
+	var buy := UIKit.card(body, "Acheter")
+	if (shop.get("items", []) as Array).is_empty():
+		buy.add_child(UIKit.label("Rien à vendre pour l'instant.", "MutedLabel", true))
+	for line in shop.get("items", []):
+		var def := Content.get_entry(_client.content, "items", String(line.item))
+		if def.is_empty():
+			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		buy.add_child(row)
+		var slot := GameUI.item_slot(def, 44)
+		row.add_child(slot)
+		var info := VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(info)
+		info.add_child(UIKit.label(String(def.name), "StrongLabel", true))
+		var stock := int(line.get("stock", -1))
+		info.add_child(UIKit.label("%d or%s" % [int(line.price), ("  ·  reste %d" % stock) if stock >= 0 else ""], "MutedLabel"))
+		var item_id := String(line.item)
+		var btn := UIKit.button("Infos", "", func(): ConfirmBox.show_content(self, String(def.name), GameUI.item_card(def, _client.content)))
+		row.add_child(btn)
+		var b := UIKit.button("Acheter", "PrimaryButton", func(): _client.buy(_shop_id, item_id, 1))
+		b.disabled = gold < int(line.price) or stock == 0
+		row.add_child(b)
+	var pct := int(shop.get("buy_pct", 50))
+	var sell := UIKit.card(body, "Vendre (le marchand rachète à %d %%)" % pct)
+	if pct <= 0:
+		sell.add_child(UIKit.label("Ce marchand n'achète rien.", "MutedLabel", true))
+		return
+	var any := false
+	for it in c.get("inventory", []):
+		if it.get("equipped", false) or String(it.get("category", "")) == "quete":
+			continue
+		any = true
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		sell.add_child(row)
+		row.add_child(GameUI.item_slot(it, 40))
+		var l := UIKit.label("%s%s" % [it.name, (" ×%d" % int(it.qty)) if int(it.get("qty", 1)) > 1 else ""], "", true)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		var uid := String(it.uid)
+		row.add_child(UIKit.button("Vendre %d or" % Shop.sell_price(_client.content, it, pct), "", func(): _client.sell(_shop_id, uid, 1)))
+	if not any:
+		sell.add_child(UIKit.label("Rien à vendre (les objets équipés et de quête ne se vendent pas).", "MutedLabel", true))

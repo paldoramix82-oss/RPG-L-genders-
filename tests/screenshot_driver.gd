@@ -125,6 +125,30 @@ func _host() -> void:
 				ed.show_preview()
 		"monster_editor":
 			screen._open_content_editor("monsters", {"name": "Loup des neiges"})
+		"tool_place", "tool_paint", "tool_build":
+			screen._set_tool({"tool_place": "place", "tool_paint": "room", "tool_build": "buildings"}[tab])
+		"palette":
+			screen._open_command_palette()
+			await get_tree().process_frame
+			for pal in screen.find_children("*", "CommandPalette", true, false):
+				pal._search.text = "loup"
+				pal._fill()
+		"shop_edit":
+			screen._open_mj_shop()
+		"mj_shop_open":
+			var shop := server.mj_default_shop("marchand")
+			shop.open = true
+			server.mj_set_mj_shop(shop)
+		"new_buildings":
+			var m := server.mj_create_map("Chantier", 60, 40)
+			server.mj_set_active_map(m.id)
+			screen._edit_map = m.id
+			var i := 0
+			for id in ["bibliotheque", "chapelle", "salle_trone", "prison", "taverne_port", "cercle_portail", "jardin", "mine", "ecurie"]:
+				server.mj_place_prefab(m.id, id, 8 + (i % 3) * 16, 7 + (i / 3) * 12, false)
+				i += 1
+			screen._refresh_map_select()
+			screen._load_edit_map()
 		"brick_editor":
 			screen._open_content_editor("abilities", {"name": ""})
 			await get_tree().process_frame
@@ -252,6 +276,9 @@ func _player() -> void:
 			screen._open_inventory("chest")
 		"journal":
 			screen._open_journal("quests")
+		"shop":
+			await get_tree().create_timer(1.0).timeout
+			screen._open_shop("mj")
 		"help":
 			screen._open_help()
 		"chat":

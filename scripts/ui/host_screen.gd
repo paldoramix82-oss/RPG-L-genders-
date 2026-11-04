@@ -35,6 +35,16 @@ var _fog_preview: CheckBox
 var _tool := "move"
 var _tool_buttons := {}
 var _tool_options: VBoxContainer
+## Barre d'outils posée sur la carte et tiroir de réglages de l'outil.
+var _drawer: PanelContainer
+var _drawer_title: Label
+var _bar_buttons := {}
+var _place_spec := {}
+var _place_title := ""
+var _place_tab := "monster"
+var _wall_code := "#"
+## Passage en attente de sa case d'arrivée : {token, from, two_way}.
+var _pick_dest := {}
 var _paint_code := "."
 var _brush := 0
 var _stroke := false
@@ -556,6 +566,7 @@ func _build_top_bar() -> Control:
 				line.add_child(UIKit.label(s[1]))
 				box.add_child(line)
 			_show_info("Raccourcis clavier", box)))
+	row.add_child(UIKit.button("Chercher" if _narrow else "Rechercher (Ctrl + K)", "NavButton", _open_command_palette))
 	row.add_child(UIKit.button("Sauver", "", func(): Net.server.save()))
 	row.add_child(UIKit.button("Terminer" if _narrow else "Terminer la session", "DangerButton", _confirm_end))
 	return bar
@@ -735,11 +746,15 @@ func _on_saved(error: String) -> void:
 # ---------------------------------------------------------------------------
 
 func _build_map_center() -> Control:
+	var holder := Control.new()
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	holder.custom_minimum_size = Vector2(200, 260)
+	holder.clip_contents = true
 	_map_view = MapView.new()
 	_map_view.is_mj = true
-	_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_map_view.custom_minimum_size = Vector2(200, 260)
+	_map_view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(_map_view)
 	_map_view.move_requested.connect(func(id, x, y): Net.server.mj_update_token(_edit_map, id, {"x": x, "y": y}))
 	_map_view.token_selected.connect(func(_id):
 		_refresh_inspector()
@@ -757,7 +772,97 @@ func _build_map_center() -> Control:
 	_map_view.paint_finished.connect(func(): _stroke = false)
 	_map_view.cell_tapped.connect(_on_cell_tapped)
 	_map_view.target_picked.connect(_on_mj_target)
-	return _map_view
+	holder.add_child(_build_map_toolbar())
+	# Tiroir : les réglages de l'outil choisi, à côté de la barre, sur la carte.
+	_drawer = PanelContainer.new()
+	_drawer.theme_type_variation = "CardPanel"
+	_drawer.anchor_bottom = 1.0
+	_drawer.offset_left = 78
+	_drawer.offset_top = 6
+	_drawer.offset_right = 78 + (300 if _narrow else 340)
+	_drawer.offset_bottom = -6
+	holder.add_child(_drawer)
+	var dcol := VBoxContainer.new()
+	dcol.add_theme_constant_override("separation", 6)
+	_drawer.add_child(dcol)
+	var dhead := HBoxContainer.new()
+	dcol.add_child(dhead)
+	_drawer_title = UIKit.label("", "HeadingLabel")
+	_drawer_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_drawer_title.clip_text = true
+	dhead.add_child(_drawer_title)
+	dhead.add_child(_small_button("‹ Replier", "", func(): _drawer.visible = false))
+	var scroll := TouchScroll.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	dcol.add_child(scroll)
+	_tool_options = VBoxContainer.new()
+	_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tool_options.add_theme_constant_override("separation", 8)
+	scroll.add_child(_tool_options)
+	_drawer.visible = false
+	return holder
+
+
+## Barre d'outils verticale, toujours sur la carte : tout ce qu'il faut pour
+## construire un monde sans quitter la carte des yeux.
+const MAP_TOOLS := [["move", "Bouger", "hand"], ["place", "Placer", "target"], ["paint", "Peindre", "drop"], ["decor", "Décor", "leaf"],
+	["buildings", "Bâtir", "castle"], ["label", "Texte", "scroll"], ["erase", "Gomme", "cross"], ["spawn", "Départ", "star"]]
+
+
+func _build_map_toolbar() -> Control:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = "NavPanel"
+	panel.anchor_bottom = 1.0
+	panel.offset_left = 6
+	panel.offset_top = 6
+	panel.offset_right = 74
+	panel.offset_bottom = -6
+	# Défile si la carte est petite (téléphone, zones serrées).
+	var scroll := TouchScroll.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 3)
+	scroll.add_child(col)
+	var group := ButtonGroup.new()
+	_bar_buttons.clear()
+	for spec in MAP_TOOLS:
+		var b := Button.new()
+		b.toggle_mode = true
+		b.button_group = group
+		b.custom_minimum_size = Vector2(58, 44)
+		b.text = spec[1]
+		b.add_theme_font_size_override("font_size", 12)
+		b.icon = Sprites.glyph(String(spec[2]))
+		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		b.expand_icon = false
+		b.tooltip_text = spec[1]
+		b.pressed.connect(func():
+			if _tool == spec[0] or (spec[0] == "paint" and _tool in ["fill", "rect", "room"]) or (spec[0] == "buildings" and _tool == "prefab") or (spec[0] == "place" and _tool == "token"):
+				_drawer.visible = not _drawer.visible
+			else:
+				_set_tool(spec[0]))
+		col.add_child(b)
+		_bar_buttons[spec[0]] = b
+	var undo := Button.new()
+	undo.text = "Annuler"
+	undo.custom_minimum_size = Vector2(62, 40)
+	undo.add_theme_font_size_override("font_size", 12)
+	undo.tooltip_text = "Annuler la dernière retouche de la carte (Ctrl + Z)"
+	undo.pressed.connect(func():
+		if not Net.server.mj_undo(_edit_map):
+			_notifier.push("Rien à annuler sur cette carte.", "warning"))
+	col.add_child(undo)
+	var find := Button.new()
+	find.text = "Chercher"
+	find.custom_minimum_size = Vector2(62, 40)
+	find.add_theme_font_size_override("font_size", 12)
+	find.tooltip_text = "Recherche rapide (Ctrl + K)"
+	find.pressed.connect(_open_command_palette)
+	col.add_child(find)
+	return panel
 
 
 func _side_scroll() -> Array:
@@ -885,58 +990,23 @@ func _build_world_tools() -> Control:
 	fog_row.add_child(_small_button("Oublier l'exploration", "", func():
 		_confirm("Les joueurs oublient tout ce qu'ils ont exploré sur cette carte ?", func(): Net.server.mj_reset_fog(_edit_map))))
 
-	# --- Outils ---
-	var tc := UIKit.card(side, "Outils")
-	var tools := HFlowContainer.new()
-	tools.add_theme_constant_override("h_separation", 6)
-	tools.add_theme_constant_override("v_separation", 6)
-	tc.add_child(tools)
-	var group := ButtonGroup.new()
-	for spec in [["move", "Déplacer"], ["paint", "Peindre"], ["decor", "Décor"], ["fill", "Remplir"], ["rect", "Rectangle"], ["room", "Pièce"], ["token", "Pion"], ["label", "Étiquette"], ["erase", "Gomme"], ["spawn", "Départ"]]:
-		var b := _small_button(spec[1], "", _set_tool.bind(spec[0]))
-		b.toggle_mode = true
-		b.button_group = group
-		_tool_buttons[spec[0]] = b
-		tools.add_child(b)
-	var undo := _small_button("Annuler la dernière retouche", "", func():
-		if not Net.server.mj_undo(_edit_map):
-			_notifier.push("Rien à annuler sur cette carte.", "warning"))
-	undo.tooltip_text = "Ctrl + Z"
-	tc.add_child(undo)
-	_tool_options = VBoxContainer.new()
-	tc.add_child(_tool_options)
-
-	# --- Bâtiments prêts ---
-	var bc := UIKit.card(side, "Bâtiments prêts")
-	bc.add_child(UIKit.label("Choisissez, puis touchez la carte : murs, porte, meubles, nom, coffre et habitant (avec une quête prête) sont posés d'un coup.", "MutedLabel", true))
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
-	bc.add_child(grid)
-	for id in Prefabs.LIST:
-		grid.add_child(_prefab_button(String(id)))
-	var with_npc := CheckBox.new()
-	with_npc.text = "Avec son habitant (PNJ qui propose des quêtes)"
-	with_npc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	with_npc.button_pressed = _prefab_npc
-	with_npc.toggled.connect(func(on): _prefab_npc = on)
-	bc.add_child(with_npc)
-
-	# --- Habitants ---
-	var hc := UIKit.card(side, "Habitants")
-	hc.add_child(UIKit.label("Un PNJ avec un métier : il salue, propose des quêtes secondaires prêtes dès qu'on lui parle, et en invente de nouvelles. Déplacez-le ensuite avec l'outil « Déplacer ».", "MutedLabel", true))
-	var roles := HFlowContainer.new()
-	roles.add_theme_constant_override("h_separation", 6)
-	roles.add_theme_constant_override("v_separation", 6)
-	hc.add_child(roles)
-	for rid in Prefabs.ROLE_ORDER:
-		var r := QuestLibrary.role(rid)
-		var b := _small_button(String(r.title).capitalize(), "", func():
-			_role_id = rid
-			_set_tool("npc_role"))
-		b.icon = null
-		roles.add_child(b)
+	# --- Construire : les outils sont sur la carte ---
+	var tc := UIKit.card(side, "Construire")
+	tc.add_child(UIKit.label("Les outils sont sur la carte, dans la barre de gauche : Placer (monstres, habitants, PNJ, objets, coffres, passages), Peindre (sols, murs, eau…), Décor, Bâtir (bâtiments prêts), Texte, Gomme. « Chercher » (Ctrl + K) trouve tout en tapant quelques lettres.", "MutedLabel", true))
+	var trow := HFlowContainer.new()
+	trow.add_theme_constant_override("h_separation", 6)
+	trow.add_theme_constant_override("v_separation", 6)
+	tc.add_child(trow)
+	trow.add_child(_small_button("Placer…", "PrimaryButton", func():
+		_show("table")
+		_set_tool("place")))
+	trow.add_child(_small_button("Bâtir…", "", func():
+		_show("table")
+		_set_tool("buildings")))
+	trow.add_child(_small_button("Recherche rapide", "", _open_command_palette))
+	var shop := UIKit.card(side, "Boutique du MJ")
+	shop.add_child(UIKit.label("Vos propres objets à vendre, prix et stock : quand elle est ouverte, chaque joueur peut acheter et vendre de n'importe où (bouton « Boutique » de son menu Agir).", "MutedLabel", true))
+	shop.add_child(_small_button("Ouvrir ma boutique…", "PrimaryButton", _open_mj_shop))
 
 	_set_tool(_tool)
 	return parts[0]
@@ -1031,30 +1101,91 @@ func _set_tool(tool: String) -> void:
 	else:
 		for b in _tool_buttons.values():
 			b.set_pressed_no_signal(false)
+	if _tool_options == null:
+		return
 	UIKit.clear(_tool_options)
+	# Bouton de la barre correspondant (les variantes de peinture restent sur « Peindre »).
+	var bar_key: String = {"fill": "paint", "rect": "paint", "room": "paint", "prefab": "buildings", "token": "place", "npc_role": "place", "pick_dest": "move"}.get(tool, tool)
+	if _bar_buttons.has(bar_key):
+		_bar_buttons[bar_key].set_pressed_no_signal(true)
+	var titles := {"move": "", "place": "Placer", "token": "Pion libre", "paint": "Peindre", "fill": "Peindre", "rect": "Peindre", "room": "Peindre",
+		"decor": "Décor", "buildings": "Bâtir", "prefab": "Bâtir", "label": "Texte sur la carte", "erase": "Gomme", "spawn": "Point de départ", "pick_dest": "Case d'arrivée", "npc_role": "Placer"}
+	if _drawer:
+		_drawer_title.text = String(titles.get(tool, ""))
+		_drawer.visible = tool != "move"
 	match tool:
-		"prefab":
-			_tool_options.add_child(GameUI.hint("%s : touchez la carte pour le poser (centré sur la case). « Annuler la dernière retouche » le retire." % Prefabs.get_def(_prefab_id).get("name", "")))
-		"npc_role":
-			_tool_options.add_child(GameUI.hint("Touchez une case pour placer : %s." % String(QuestLibrary.role(_role_id).get("title", ""))))
+		"buildings", "prefab":
+			if tool == "prefab":
+				_tool_options.add_child(GameUI.hint("%s : touchez la carte pour le poser (centré sur la case). « Annuler » le retire." % Prefabs.get_def(_prefab_id).get("name", "")))
+			else:
+				_tool_options.add_child(GameUI.hint("Choisissez un bâtiment, puis touchez la carte : murs, porte, meubles, nom, coffre et habitant sont posés d'un coup."))
+			var grid := GridContainer.new()
+			grid.columns = 3
+			grid.add_theme_constant_override("h_separation", 6)
+			grid.add_theme_constant_override("v_separation", 6)
+			_tool_options.add_child(grid)
+			for id in Prefabs.LIST:
+				grid.add_child(_prefab_button(String(id)))
+			var with_npc := CheckBox.new()
+			with_npc.text = "Avec son habitant (PNJ qui propose des quêtes)"
+			with_npc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			with_npc.button_pressed = _prefab_npc
+			with_npc.toggled.connect(func(on): _prefab_npc = on)
+			_tool_options.add_child(with_npc)
+		"place", "npc_role":
+			_tool_options.add_child(GameUI.hint("Choisissez, puis touchez la carte autant de fois que vous voulez. Touchez ensuite le pion avec « Bouger » pour le régler (coffre, passage, boutique…)."))
+			var pal := PlacePalette.new(Net.server.content, Net.server.characters, _place_tab)
+			pal.picked.connect(func(spec, title):
+				_place_spec = spec
+				_place_title = title
+				_place_tab = pal.tab
+				_notifier.push("Touchez la carte pour poser : %s." % title, "info"))
+			_tool_options.add_child(pal)
+			_tool_options.add_child(_small_button("Pion libre (nom, couleur, PV)…", "", _set_tool.bind("token")))
+		"pick_dest":
+			_tool_options.add_child(GameUI.hint("Touchez la case où arrivent ceux qui empruntent le passage."))
+			_tool_options.add_child(_small_button("Annuler", "", func():
+				_pick_dest = {}
+				_set_tool("move")))
 		"move":
-			_tool_options.add_child(UIKit.label("Touchez un pion pour le sélectionner, puis une case pour l'y déplacer (ou glissez-le). Molette ou deux doigts : zoom.", "MutedLabel", true))
+			pass
 		"paint", "fill", "rect", "room":
+			var modes := HFlowContainer.new()
+			modes.add_theme_constant_override("h_separation", 4)
+			_tool_options.add_child(modes)
+			var mgroup := ButtonGroup.new()
+			for spec in [["paint", "Pinceau"], ["fill", "Remplir"], ["rect", "Rectangle"], ["room", "Pièce"]]:
+				var mb := _small_button(spec[1], "", _set_tool.bind(spec[0]))
+				mb.toggle_mode = true
+				mb.button_group = mgroup
+				mb.button_pressed = spec[0] == tool
+				modes.add_child(mb)
 			var hint: String = {"paint": "Glissez sur la carte pour peindre.", "fill": "Touchez une zone : elle est entièrement repeinte (même terrain, d'un seul tenant).",
 				"rect": "Touchez un coin, puis le coin opposé : le rectangle est rempli.", "room": "Touchez un coin, puis le coin opposé : une pièce (sol choisi, murs autour)."}[tool]
 			_tool_options.add_child(GameUI.hint(hint))
-			var palette := GridContainer.new()
-			palette.columns = 4
-			palette.add_theme_constant_override("h_separation", 4)
-			palette.add_theme_constant_override("v_separation", 4)
-			_tool_options.add_child(palette)
-			var pgroup := ButtonGroup.new()
-			for code in MapData.TERRAINS:
-				palette.add_child(_terrain_button(code, pgroup))
 			if tool == "paint":
 				var brush := UIKit.spin(_brush, 0, 4)
 				brush.value_changed.connect(func(v): _brush = int(v))
 				UIKit.field(_tool_options, "Taille du pinceau (0 = une case)", brush)
+			if tool == "room":
+				var wall := OptionButton.new()
+				for code in MapData.WALLS:
+					wall.add_item(String(MapData.TERRAINS[code][0]))
+					wall.set_item_metadata(wall.item_count - 1, code)
+					if code == _wall_code:
+						wall.select(wall.item_count - 1)
+				wall.item_selected.connect(func(i): _wall_code = String(wall.get_item_metadata(i)))
+				UIKit.field(_tool_options, "Murs de la pièce", wall)
+			var pgroup := ButtonGroup.new()
+			for gname in MapData.TERRAIN_GROUPS:
+				var box := UIKit.fold(_tool_options, String(gname), gname in ["Nature", "Chemins et sols", "Murs"], "InsetPanel")
+				var palette := GridContainer.new()
+				palette.columns = 4
+				palette.add_theme_constant_override("h_separation", 4)
+				palette.add_theme_constant_override("v_separation", 4)
+				box.add_child(palette)
+				for code in MapData.TERRAIN_GROUPS[gname]:
+					palette.add_child(_terrain_button(code, pgroup))
 		"token":
 			var kind := OptionButton.new()
 			for k in MapData.KINDS:
@@ -1130,7 +1261,7 @@ func _decor_palette() -> Control:
 	add.call("", null, "Gomme")
 	for group_name in ["nature", "props"]:
 		for n in Sprites.names(group_name):
-			if n != "door":
+			if not SessionServer.PASSAGE_LOOKS.has(n):
 				add.call(n, Sprites.tex(group_name, n), n.replace("_", " ").capitalize())
 	return grid
 
@@ -1201,27 +1332,138 @@ func _item_option(selected_id: String, empty_label: String) -> OptionButton:
 	return o
 
 
-## Passage vers une autre carte (entrée d'une ville, d'une grotte…).
+## Passage : porte, portail, escalier… avec pouvoir de téléportation vers une
+## autre carte (retour automatique) ou une case de la même carte.
 func _passage_box(t: Dictionary) -> Control:
 	var server := Net.server
-	var box := UIKit.fold(null, "Passage vers une autre carte", String(t.get("link", "")) != "", "InsetPanel")
-	box.add_child(UIKit.label("Un joueur à côté peut « Entrer » : il passe seul sur l'autre carte (les autres ne changent pas). Un passage de retour est créé tout seul.", "MutedLabel", true))
+	var tid := String(t.id)
+	var linked := String(t.get("link", "")) != ""
+	var box := UIKit.fold(null, "Passage et téléportation", linked or t.get("passage", false), "InsetPanel")
+	box.add_child(UIKit.label("Un joueur à côté touche « Entrer » : il est téléporté (seul) vers la destination. Changez l'apparence : porte, portail, escalier, échelle, trappe, grotte…", "MutedLabel", true))
+	var look := OptionButton.new()
+	look.fit_to_longest_item = false
+	look.add_item("Apparence automatique")
+	look.set_item_metadata(0, "")
+	for lk in SessionServer.PASSAGE_LOOKS:
+		var tx := Sprites.tex("props", String(lk))
+		if tx != null:
+			look.add_icon_item(tx, String(SessionServer.PASSAGE_LOOKS[lk]))
+		else:
+			look.add_item(String(SessionServer.PASSAGE_LOOKS[lk]))
+		look.set_item_metadata(look.item_count - 1, lk)
+		if String(lk) == String(t.get("look", "")):
+			look.select(look.item_count - 1)
+	look.item_selected.connect(func(i): server.mj_update_token(_edit_map, tid, {"look": String(look.get_item_metadata(i))}))
+	UIKit.field(box, "Apparence", look)
 	var o := OptionButton.new()
 	o.fit_to_longest_item = false
-	o.add_item("Aucun (pas un passage)")
+	o.add_item("Pas de destination")
 	o.set_item_metadata(0, "")
 	for id in server.map_order:
-		if id != _edit_map:
-			o.add_item(String(server.maps[id].name))
-			o.set_item_metadata(o.item_count - 1, String(id))
-			if String(id) == String(t.get("link", "")):
-				o.select(o.item_count - 1)
-	var tid := String(t.id)
-	o.item_selected.connect(func(i):
-		server.mj_link_maps(_edit_map, tid, String(o.get_item_metadata(i)))
-		_refresh_inspector())
-	box.add_child(o)
+		o.add_item(("Cette carte (téléportation ici)" if id == _edit_map else String(server.maps[id].name)))
+		o.set_item_metadata(o.item_count - 1, String(id))
+		if String(id) == String(t.get("link", "")):
+			o.select(o.item_count - 1)
+	UIKit.field(box, "Mène à", o)
+	var two := CheckBox.new()
+	two.text = "Créer le passage de retour"
+	two.button_pressed = true
+	box.add_child(two)
+	if linked:
+		var where := "point de départ" if int(t.get("link_x", -1)) < 0 else "case (%d, %d)" % [int(t.link_x), int(t.link_y)]
+		box.add_child(UIKit.label("Destination : %s, %s." % [t.get("link_name", "?"), where], "StrongLabel", true))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
+	box.add_child(row)
+	row.add_child(_small_button("Relier (arrivée au départ)", "", func():
+		var target := String(o.get_item_metadata(o.selected)) if o.selected >= 0 else ""
+		var err := server.mj_set_portal(_edit_map, tid, target, -1, -1, two.button_pressed)
+		if err != "":
+			_notifier.push(err, "warning")
+		_refresh_inspector()))
+	row.add_child(_small_button("Choisir la case d'arrivée…", "PrimaryButton", func():
+		var target := String(o.get_item_metadata(o.selected)) if o.selected >= 0 else ""
+		if target == "":
+			_notifier.push("Choisissez d'abord la carte de destination.", "warning")
+			return
+		_pick_dest = {"token": tid, "from": _edit_map, "two_way": two.button_pressed}
+		if target != _edit_map:
+			_edit_map = target
+			_refresh_map_select()
+			_load_edit_map()
+		_show("table")
+		_set_tool("pick_dest")))
 	return box.get_parent().get_parent()
+
+
+## Contenu d'un coffre : objets, or, butin tiré au hasard.
+func _chest_box(t: Dictionary) -> Control:
+	var tid := String(t.id)
+	var box := UIKit.fold(null, "Contenu du coffre", true, "InsetPanel")
+	var items: Array = t.get("chest_items", [])
+	var parts: PackedStringArray = []
+	for it in items:
+		parts.append("%s ×%d" % [Content.get_entry(Net.server.content, "items", String(it.item)).get("name", it.item), int(it.qty)])
+	if int(t.get("chest_gold", 0)) > 0:
+		parts.append("%d or" % int(t.chest_gold))
+	if String(t.get("loot", "")) not in ["", "-"]:
+		parts.append("butin « %s »" % Content.get_entry(Net.server.content, "loot", String(t.loot)).get("name", t.loot))
+	box.add_child(UIKit.label("Dedans : " + (", ".join(parts) if not parts.is_empty() else "rien"), "", true))
+	box.add_child(_small_button("Choisir le contenu…", "PrimaryButton", func():
+		var ed := ChestEditor.new(t, Net.server.content)
+		ed.custom_minimum_size = Vector2(460, 0)
+		_dialog("Contenu : %s" % t.name, ed, func():
+			Net.server.mj_set_chest(_edit_map, tid, ed.collect())
+			_refresh_inspector())))
+	return box.get_parent().get_parent()
+
+
+## Boutique d'un PNJ : il devient marchand (ou ne l'est plus).
+func _shop_box(t: Dictionary) -> Control:
+	var tid := String(t.id)
+	var has: bool = t.get("shop") is Dictionary
+	var box := UIKit.fold(null, "Marchand", has, "InsetPanel")
+	if has:
+		box.add_child(UIKit.label("%d objets en vente · rachète à %d %%." % [(t.shop.get("items", []) as Array).size(), int(t.shop.get("buy_pct", 50))], "", true))
+	else:
+		box.add_child(UIKit.label("Ce PNJ ne vend rien. Donnez-lui une boutique : les joueurs proches pourront acheter et vendre.", "MutedLabel", true))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
+	box.add_child(row)
+	row.add_child(_small_button("Modifier la boutique…" if has else "En faire un marchand…", "PrimaryButton", func():
+		var start: Dictionary = t.shop if has else Net.server.mj_default_shop(String(t.get("role", "marchand")))
+		_open_shop_editor("Boutique de %s" % t.name, start, false, func(shop): Net.server.mj_set_shop(_edit_map, tid, shop))))
+	if has:
+		row.add_child(_small_button("Fermer la boutique", "DangerButton", func():
+			Net.server.mj_set_shop(_edit_map, tid, {})
+			_refresh_inspector()))
+	return box.get_parent().get_parent()
+
+
+func _open_shop_editor(title: String, shop: Dictionary, show_open: bool, on_save: Callable) -> void:
+	var panel := _open_overlay("edit", title, "coin")
+	var ed := ShopEditor.new(shop, Net.server.content, show_open)
+	panel.body.add_child(ed)
+	var bar := HBoxContainer.new()
+	bar.add_child(UIKit.button("Annuler", "", _close_overlay))
+	bar.add_child(UIKit.spacer(false))
+	var save := UIKit.button("Enregistrer", "PrimaryButton", func():
+		on_save.call(ed.collect())
+		_close_overlay()
+		_refresh_inspector())
+	save.custom_minimum_size.x = 180
+	bar.add_child(save)
+	panel.set_footer(bar)
+
+
+func _open_mj_shop() -> void:
+	var cur: Dictionary = Net.server.session.get("mj_shop", {})
+	if cur.is_empty():
+		cur = Net.server.mj_default_shop("marchand")
+		cur.open = false
+	_open_shop_editor("Boutique du MJ", cur, true, func(shop): Net.server.mj_set_mj_shop(shop))
 
 
 ## Coffre ou porte : clé requise, énigme.
@@ -1426,9 +1668,10 @@ func _on_cell_tapped(x: int, y: int) -> void:
 			if _rect_start.x < 0:
 				_rect_start = Vector2i(x, y)
 				_map_status.text = "Premier coin posé (%d, %d) : touchez le coin opposé." % [x, y]
+				_notifier.push("Premier coin posé : touchez le coin opposé.", "info")
 				_map_status.add_theme_color_override("font_color", Palette.GOLD)
 			else:
-				server.mj_paint_rect(_edit_map, _rect_start, Vector2i(x, y), _paint_code, _tool == "room")
+				server.mj_paint_rect(_edit_map, _rect_start, Vector2i(x, y), _paint_code, _tool == "room", _wall_code)
 				_rect_start = Vector2i(-1, -1)
 		"token":
 			var p := Vector2i(x, y)
@@ -1457,6 +1700,32 @@ func _on_cell_tapped(x: int, y: int) -> void:
 				_map_status.add_theme_color_override("font_color", Palette.WARN)
 		"spawn":
 			server.mj_update_map(_edit_map, {"spawn_x": x, "spawn_y": y})
+		"place":
+			if _place_spec.is_empty():
+				_notifier.push("Choisissez d'abord quoi placer dans le tiroir.", "warning")
+				return
+			var placed := server.mj_place(_edit_map, _place_spec, x, y)
+			if placed.is_empty():
+				_notifier.push("Impossible de placer ici.", "warning")
+			else:
+				_map_view.selected = String(placed.id)
+				_refresh_inspector()
+		"pick_dest":
+			if not _pick_dest.is_empty():
+				var err := server.mj_set_portal(String(_pick_dest.from), String(_pick_dest.token), _edit_map, x, y, bool(_pick_dest.get("two_way", true)))
+				var back := String(_pick_dest.from)
+				var tok := String(_pick_dest.token)
+				_pick_dest = {}
+				if err != "":
+					_notifier.push(err, "warning")
+				else:
+					_notifier.push("Passage relié : arrivée en (%d, %d)." % [x, y], "success")
+				_edit_map = back
+				_refresh_map_select()
+				_load_edit_map()
+				_map_view.selected = tok
+				_refresh_inspector()
+				_set_tool("move")
 		"prefab":
 			var res := server.mj_place_prefab(_edit_map, _prefab_id, x, y, _prefab_npc)
 			if not (res.get("npc", {}) as Dictionary).is_empty():
@@ -1546,7 +1815,11 @@ func _refresh_inspector() -> void:
 	UIKit.field(_inspector, "Apparence", look)
 	if t.kind == "object":
 		_inspector.add_child(_passage_box(t))
+		if not t.get("passage", false) and not t.get("pickup", false):
+			_inspector.add_child(_chest_box(t))
 		_inspector.add_child(_lock_box(t, upd))
+	if t.kind == "npc":
+		_inspector.add_child(_shop_box(t))
 	if t.kind in ["monster", "npc"]:
 		_inspector.add_child(_npc_voice_box(t))
 		_inspector.add_child(_carries_box(t, upd))
@@ -2621,6 +2894,7 @@ func _journal_message(m: Dictionary) -> void:
 const SHORTCUTS := [
 	["Ctrl + S", "Sauvegarder"], ["F1 / F2", "Carte / Récit"], ["F5", "Tour suivant (combat)"],
 	["Ctrl + E", "Événement rapide"], ["Ctrl + Q", "Nouvelle quête"], ["Ctrl + N", "Écrire au groupe"], ["Ctrl + Z", "Annuler la dernière retouche de carte"],
+	["Ctrl + K", "Recherche rapide (tout trouver en tapant)"], ["B P D M T G", "Outils : Bouger, Peindre, Décor, Placer, Texte, Gomme"],
 	["Échap", "Fermer un panneau"],
 ]
 
@@ -2647,6 +2921,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_composer.focus_text()
 	elif k.ctrl_pressed and k.keycode == KEY_Z:
 		Net.server.mj_undo(_edit_map)
+	elif k.ctrl_pressed and k.keycode == KEY_K:
+		_open_command_palette()
+	elif not k.ctrl_pressed and not k.alt_pressed and get_viewport().gui_get_focus_owner() == null and _tool_key(k.keycode) != "":
+		_show("table")
+		_set_tool(_tool_key(k.keycode))
 	else:
 		handled = false
 	if handled:
@@ -2689,3 +2968,94 @@ func _dialog(title: String, content: Control, on_ok: Callable) -> void:
 	dialog.visibility_changed.connect(func(): if not dialog.visible: dialog.queue_free())
 	add_child(dialog)
 	dialog.popup_centered()
+
+
+# ---------------------------------------------------------------------------
+# Recherche rapide (Ctrl + K) : un seul endroit pour tout trouver
+# ---------------------------------------------------------------------------
+
+func _tool_key(code: int) -> String:
+	return {KEY_B: "move", KEY_P: "paint", KEY_D: "decor", KEY_M: "place", KEY_T: "label", KEY_G: "erase"}.get(code, "")
+
+
+func _open_command_palette() -> void:
+	var server := Net.server
+	var e: Array = []
+	var add := func(title: String, kind: String, f: Callable): e.append({"title": title, "kind": kind, "run": f})
+	# Actions courantes.
+	add.call("Générer une carte", "action", _dialog_generate_map)
+	add.call("Nouvelle carte vide", "action", _dialog_new_map)
+	add.call("Nouvelle quête", "action", func(): _open_quest_editor({}))
+	add.call("Boutique du MJ", "action", _open_mj_shop)
+	add.call("Sauvegarder la campagne", "action", func(): server.save())
+	add.call("Montrer cette carte aux joueurs", "action", func(): server.mj_set_active_map(_edit_map))
+	add.call("Épreuve de groupe", "événement", _event_check)
+	add.call("Dégâts ou soins de groupe", "événement", _event_group_hp)
+	add.call("Récompense de groupe", "événement", _event_reward)
+	add.call("Embuscade", "événement", _event_ambush)
+	add.call("Afficher / masquer les performances", "réglage", func():
+		Perf.set_enabled(not Perf.enabled())
+		App.save_settings())
+	add.call("Texte plus grand", "réglage", func(): _scale_ui(0.15))
+	add.call("Texte plus petit", "réglage", func(): _scale_ui(-0.15))
+	# Onglets et outils.
+	for spec in [["combat", "Combat"], ["world", "Monde"], ["quests", "Quêtes"], ["create", "Créer"], ["chars", "Fiches"], ["codex", "Codex"], ["net", "Réseau"], ["adventure", "Aventure"]]:
+		add.call(spec[1], "onglet", _show.bind(spec[0]))
+	for spec in MAP_TOOLS:
+		add.call(spec[1], "outil de carte", func():
+			_show("table")
+			_set_tool(spec[0]))
+	for code in MapData.TERRAINS:
+		add.call("Peindre : %s" % MapData.TERRAINS[code][0], "terrain", func():
+			_paint_code = code
+			_show("table")
+			_set_tool("paint"))
+	# Placer en un geste.
+	var place := func(spec: Dictionary, title: String, tab: String):
+		_place_spec = spec
+		_place_title = title
+		_place_tab = tab
+		_show("table")
+		_set_tool("place")
+		_notifier.push("Touchez la carte pour poser : %s." % title, "info")
+	for m in Content.list(server.content, "monsters"):
+		add.call("Placer : %s" % m.name, "monstre", place.bind({"type": "monster", "id": String(m.id)}, String(m.name), "monster"))
+		add.call("Modifier le monstre %s" % m.name, "catalogue", _open_content_editor.bind("monsters", m))
+	for rid in Prefabs.ROLE_ORDER:
+		var title := String(QuestLibrary.role(rid).get("title", rid)).capitalize()
+		add.call("Placer : %s" % title, "habitant", place.bind({"type": "npc_role", "role": rid}, title, "npc_role"))
+	for it in Content.list(server.content, "items"):
+		add.call("Placer : %s" % it.name, "objet", place.bind({"type": "item", "id": String(it.id)}, String(it.name), "item"))
+		add.call("Modifier l'objet %s" % it.name, "catalogue", _open_content_editor.bind("items", it))
+	for a in Content.list(server.content, "abilities"):
+		add.call("Modifier la capacité %s" % a.name, "catalogue", _open_content_editor.bind("abilities", a))
+	for look in SessionServer.PASSAGE_LOOKS:
+		add.call("Placer : %s" % SessionServer.PASSAGE_LOOKS[look], "passage", place.bind({"type": "passage", "look": look}, String(SessionServer.PASSAGE_LOOKS[look]), "passage"))
+	add.call("Placer : coffre", "coffre", place.bind({"type": "chest", "name": "Coffre"}, "Coffre", "chest"))
+	for id in Prefabs.LIST:
+		add.call("Bâtir : %s" % Prefabs.get_def(String(id)).name, "bâtiment", func():
+			_prefab_id = String(id)
+			_show("table")
+			_set_tool("prefab"))
+	# Personnages, cartes, quêtes.
+	for c in server.characters.values():
+		add.call("Fiche : %s" % c.name, "personnage" if String(c.get("owner", "")) != "" else "PNJ", _open_char_tools.bind(String(c.id)))
+	for id in server.map_order:
+		add.call("Carte : %s" % server.maps[id].name, "carte", func():
+			_edit_map = String(id)
+			_refresh_map_select()
+			_load_edit_map()
+			_show("table"))
+	for q in server.quests:
+		add.call("Quête : %s" % q.title, "quête", _open_quest_editor.bind(q))
+	for t in MusicLibrary.tracks():
+		add.call("Musique : %s — %s" % [t.mood, t.title], "musique", func(): server.mj_music(String(t.id), true))
+	var pal := CommandPalette.new(e)
+	var box := ConfirmBox.show_content(self, "Recherche rapide", pal)
+	pal.done.connect(func(): if is_instance_valid(box): box.queue_free())
+
+
+func _scale_ui(delta: float) -> void:
+	App.set_setting("display", "ui_scale", clampf(Style.ui_scale() + delta, 0.75, 1.5))
+	App.save_settings()
+	Style.apply_ui_scale()
