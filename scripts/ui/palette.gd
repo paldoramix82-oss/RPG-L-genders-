@@ -1,37 +1,42 @@
 class_name Palette
 extends RefCounted
-## Couleurs de la direction artistique : anthracite et noir bleuté, or doux,
-## violet désaturé (magie), blanc cassé pour le texte.
+## Couleurs de la direction artistique « Légenders » : nuit indigo, bords violets
+## lumineux, or vif pour ce qui est choisi ou important, texte blanc lavande.
 
-const BG := Color("16171d")
-const BG_DEEP := Color("0e0f14")
-const PANEL := Color("1e1f28")
-const PANEL_ALT := Color("272934")
-const BORDER := Color("3a3a49")
-const GOLD := Color("c9a96e")
-const GOLD_DIM := Color("8a7550")
-const GOLD_DEEP := Color("3a3124")
-const VIOLET := Color("7a6e93")
-const VIOLET_DIM := Color("4a4358")
-const VIOLET_DEEP := Color("2f2a3a")
-const TEXT := Color("ece6da")
-const MUTED := Color("a39c90")
-const FAINT := Color("6f6a63")
-const OK := Color("8fb28a")
-const WARN := Color("d1a15e")
-const DANGER := Color("c26b62")
-const PRIVATE := Color("b39ad8")
+const BG := Color("161038")
+const BG_DEEP := Color("0d0a26")
+const PANEL := Color("1f1752")
+const PANEL_ALT := Color("2a2068")
+const BORDER := Color("4c3aa8")
+const GOLD := Color("ffc84a")
+const GOLD_DIM := Color("c9952e")
+const GOLD_DEEP := Color("33244e")
+## Texte sombre posé sur l'or (boutons dorés, bannières).
+const ON_GOLD := Color("2a1606")
+const VIOLET := Color("8c6cff")
+const VIOLET_DIM := Color("4b38a6")
+const VIOLET_DEEP := Color("241a57")
+const TEXT := Color("f2eeff")
+const MUTED := Color("aaa2d8")
+const FAINT := Color("6d64a0")
+const OK := Color("6fe08a")
+const WARN := Color("ffb14a")
+const DANGER := Color("ff5a6e")
+const PRIVATE := Color("d9a6ff")
 
 # --- Couleurs fonctionnelles ---
 ## Dégâts, danger, PV perdus.
-const HP := Color("c9544c")
-const HP_DEEP := Color("4a2224")
+const HP := Color("ff3b4e")
+const HP_DEEP := Color("40122a")
 ## Soins, PV récupérés.
-const HEAL := Color("7fc47a")
+const HEAL := Color("6fe08a")
 ## Magie, mana et ressources.
-const MANA := Color("6f8fd9")
-const MANA_DEEP := Color("232b44")
+const MANA := Color("2fb2ff")
+const MANA_DEEP := Color("10244a")
 ## Jauge d'ultime.
-const ULT := Color("e3b55a")
+const ULT := Color("ffc84a")
 ## Expérience.
-const XP := Color("8fb2e0")
+const XP := Color("8fd0ff")
+## Ciel de l'écran titre.
+const SKY_TOP := Color("1a1250")
+const SKY_BOTTOM := Color("6a4fc8")

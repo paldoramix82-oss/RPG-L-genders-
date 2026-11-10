@@ -8,117 +8,98 @@ var _music_button: Button
 
 func _ready() -> void:
 	Music.set_menu(true)
-	add_child(Backdrop.new())
+	# Fond pixel art (tools/make_title.py) : couvre l'écran, pixels nets.
+	var bg := TextureRect.new()
+	bg.texture = load("res://assets/ui/title_bg.png")
+	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
 	var vp := get_viewport_rect().size
-	var landscape := vp.x > vp.y * 1.15 and vp.y < 640
-	var scroll := TouchScroll.new()
-	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(scroll)
-	var column := CenteredColumn.new()
-	column.max_width = 860 if landscape else 460
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.add_child(column)
-	var center := VBoxContainer.new()
-	center.alignment = BoxContainer.ALIGNMENT_CENTER
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	center.custom_minimum_size.y = vp.y - 8
-	column.add_child(center)
-	var layout: BoxContainer = HBoxContainer.new() if landscape else VBoxContainer.new()
-	layout.add_theme_constant_override("separation", 28 if landscape else 14)
-	layout.alignment = BoxContainer.ALIGNMENT_CENTER
-	center.add_child(layout)
-
-	var head := VBoxContainer.new()
-	head.alignment = BoxContainer.ALIGNMENT_CENTER
-	head.add_theme_constant_override("separation", 6)
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	layout.add_child(head)
-	var crest := Emblem.new("sword", Palette.VIOLET, 84 if not landscape else 72)
-	crest.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	head.add_child(crest)
-	var title := UIKit.label("LEGENDERS", "TitleLabel")
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_child(title)
-	var rpg := UIKit.label("R  P  G", "HeadingLabel")
-	rpg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	rpg.add_theme_color_override("font_color", Palette.VIOLET.lightened(0.25))
-	head.add_child(rpg)
-	head.add_child(GameUI.ornament())
-	var subtitle := UIKit.label("Des histoires à vivre ensemble, autour d'une même table.", "MutedLabel", true)
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_child(subtitle)
-
+	_fit_backdrop(bg, vp)
+	resized.connect(func(): _fit_backdrop(bg, get_viewport_rect().size))
+	var wide := vp.x > vp.y * 1.15
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 28 if wide else 16)
+	add_child(margin)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 10)
+	margin.add_child(col)
+	var logo := TextureRect.new()
+	logo.texture = load("res://assets/ui/title_logo.png")
+	logo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	var lw := minf(vp.x - 40, 560.0 if wide else 420.0)
+	logo.custom_minimum_size = Vector2(lw, lw * float(logo.texture.get_height()) / logo.texture.get_width())
+	logo.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if wide else Control.SIZE_SHRINK_CENTER
+	col.add_child(logo)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(spacer)
+	# Menu : liste de boutons, le choix principal en or.
 	var choices := VBoxContainer.new()
-	choices.alignment = BoxContainer.ALIGNMENT_CENTER
-	choices.add_theme_constant_override("separation", 12)
-	choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	layout.add_child(choices)
-	var host := _choice(choices, "castle", "Héberger une partie", "Sur le PC du maître du jeu : créez la partie, les joueurs la rejoignent.", func(): App.goto(App.SCENE_HOST), not App.is_mobile())
+	choices.add_theme_constant_override("separation", 8)
+	choices.custom_minimum_size.x = minf(vp.x - 32, 340.0)
+	choices.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if wide else Control.SIZE_SHRINK_CENTER
+	col.add_child(choices)
+	var mobile := App.is_mobile()
+	var host := _menu_button(choices, "Héberger une partie", "Sur le PC du MJ : créer ou reprendre une campagne.", func(): App.goto(App.SCENE_HOST), not mobile)
 	host.disabled = not App.can_host()
-	var join := _choice(choices, "person", "Rejoindre une partie", "Depuis votre téléphone, sur le même Wi-Fi que le MJ.", func(): App.goto(App.SCENE_JOIN), App.is_mobile())
-	if App.is_mobile():
+	var join := _menu_button(choices, "Rejoindre une partie", "Depuis un téléphone, sur le même Wi-Fi que le MJ.", func(): App.goto(App.SCENE_JOIN), mobile)
+	if mobile:
+		choices.move_child(join, 0)
 		join.grab_focus.call_deferred()
-
-	var bottom := HBoxContainer.new()
-	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
-	bottom.add_theme_constant_override("separation", 10)
-	choices.add_child(bottom)
-	_music_button = UIKit.button("", "NavButton", _toggle_music)
-	_music_button.custom_minimum_size = Vector2(0, 40)
-	_music_button.add_theme_font_size_override("font_size", 15)
-	_music_button.icon = _music_icon()
-	bottom.add_child(_music_button)
+	else:
+		host.grab_focus.call_deferred()
+	_music_button = _menu_button(choices, "", "", _toggle_music, false)
 	_refresh_music()
+	if not mobile:
+		_menu_button(choices, "Quitter", "", func(): get_tree().quit(), false)
 	var footer := UIKit.label("v%s  ·  protocole %d%s" % [
 		ProjectSettings.get_setting("application/config/version", "0"),
 		Protocol.VERSION,
 		"" if App.profile == "default" else "  ·  profil « %s »" % App.profile,
 	], "MutedLabel")
-	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	footer.add_theme_color_override("font_color", Palette.FAINT)
-	choices.add_child(footer)
-
-	# Entrée : le titre monte doucement, les choix apparaissent.
-	head.modulate.a = 0.0
+	footer.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+	footer.add_theme_constant_override("outline_size", 4)
+	footer.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if wide else HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(footer)
+	# Entrée : le logo descend, le menu apparaît.
+	logo.modulate.a = 0.0
 	choices.modulate.a = 0.0
 	var tw := create_tween()
-	tw.tween_property(head, "modulate:a", 1.0, 0.5)
+	tw.tween_property(logo, "modulate:a", 1.0, 0.5)
 	tw.tween_property(choices, "modulate:a", 1.0, 0.35)
 
 
-## Grand bouton de choix : icône, titre, explication en une ligne.
-func _choice(parent: Node, icon_name: String, text: String, hint: String, on_pressed: Callable, primary: bool) -> Button:
+## Fond qui couvre l'écran, centré sur le château (x = 300 sur 480) quand
+## l'écran est plus étroit que l'image (téléphone en portrait).
+func _fit_backdrop(bg: TextureRect, vp: Vector2) -> void:
+	var tw := float(bg.texture.get_width())
+	var th := float(bg.texture.get_height())
+	var k := maxf(vp.x / tw, vp.y / th)
+	var sz := Vector2(tw, th) * k
+	var x := clampf(vp.x * 0.5 - 300.0 * k, vp.x - sz.x, 0.0)
+	bg.position = Vector2(x, (vp.y - sz.y) * 0.5)
+	bg.size = sz
+
+
+## Bouton du menu titre : « › » devant le choix principal (doré).
+func _menu_button(parent: Node, text: String, hint: String, on_pressed: Callable, primary: bool) -> Button:
 	var b := Button.new()
 	b.theme_type_variation = "PrimaryButton" if primary else ""
-	b.custom_minimum_size.y = 76
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.text = ("›  " if primary else "   ") + text
+	b.tooltip_text = hint
+	b.custom_minimum_size.y = 52
+	b.add_theme_font_size_override("font_size", 20)
 	b.pressed.connect(on_pressed)
 	parent.add_child(b)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 14
-	row.offset_right = -14
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(row)
-	var badge := GameUI.icon_badge(icon_name, Palette.GOLD if primary else Palette.TEXT, 42)
-	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(badge)
-	var col := VBoxContainer.new()
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", 0)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(col)
-	var t := UIKit.label(text, "StrongLabel")
-	t.add_theme_font_size_override("font_size", 20)
-	t.add_theme_color_override("font_color", Palette.GOLD if primary else Palette.TEXT)
-	col.add_child(t)
-	var h := UIKit.label(hint, "MutedLabel", true)
-	h.add_theme_font_size_override("font_size", 14)
-	col.add_child(h)
-	for c in [t, h]:
-		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return b
 
 
@@ -128,7 +109,7 @@ func _toggle_music() -> void:
 
 
 func _refresh_music() -> void:
-	_music_button.text = "  Musique : %s" % ("activée" if Music.enabled() else "coupée")
+	_music_button.text = "   Musique : %s" % ("activée" if Music.enabled() else "coupée")
 
 
 func _music_icon() -> Texture2D:

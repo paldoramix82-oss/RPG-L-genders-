@@ -2,18 +2,23 @@ extends Node
 ## Style — construit le thème visuel commun au PC et à Android, et adapte
 ## l'échelle de l'interface à la densité de l'écran des téléphones.
 
-const FONT_BODY := preload("res://assets/fonts/AlegreyaSans-Regular.ttf")
-const FONT_BOLD := preload("res://assets/fonts/AlegreyaSans-Bold.ttf")
-const FONT_DISPLAY_FILE := preload("res://assets/fonts/Cinzel.ttf")
+const FONT_PIXEL := preload("res://assets/fonts/PixelifySans.ttf")
+## Repli pour les symboles absents de la police pixel (◆ ◇ ▲ ▼ ✦…).
+const FONT_FALLBACK := preload("res://assets/fonts/AlegreyaSans-Regular.ttf")
+const UI_DIR := "res://assets/ui/"
 
 var theme: Theme
 var font_display: FontVariation
+var FONT_BODY: FontVariation
+var FONT_BOLD: FontVariation
 
 
 func _ready() -> void:
-	font_display = FontVariation.new()
-	font_display.base_font = FONT_DISPLAY_FILE
-	font_display.variation_opentype = {"wght": 600}
+	var pixel: FontFile = FONT_PIXEL
+	pixel.fallbacks = [FONT_FALLBACK]
+	FONT_BODY = _weight(450)
+	FONT_BOLD = _weight(650)
+	font_display = _weight(700)
 	theme = _build_theme()
 	get_tree().root.theme = theme
 	if App.is_mobile():
@@ -65,10 +70,30 @@ func apply_orientation() -> void:
 			DisplayServer.screen_set_orientation(DisplayServer.SCREEN_SENSOR)
 
 
+## Police pixel (Pixelify Sans) à une graisse donnée.
+func _weight(w: int) -> FontVariation:
+	var f := FontVariation.new()
+	f.base_font = FONT_PIXEL
+	f.variation_opentype = {"wght": w}
+	return f
+
+
+## Cadre pixel en 9-patch (assets/ui, généré par tools/make_ui.py).
+func tex_box(name: String, margin: float = 14.0) -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = load(UI_DIR + name + ".png")
+	sb.set_texture_margin_all(8)
+	sb.content_margin_left = margin
+	sb.content_margin_right = margin
+	sb.content_margin_top = margin * 0.75
+	sb.content_margin_bottom = margin * 0.75
+	return sb
+
+
 func _build_theme() -> Theme:
 	var t := Theme.new()
 	t.default_font = FONT_BODY
-	t.default_font_size = 19
+	t.default_font_size = 17
 
 	# --- Textes ---
 	t.set_color("font_color", "Label", Palette.TEXT)
@@ -76,81 +101,91 @@ func _build_theme() -> Theme:
 	t.set_font("font", "TitleLabel", font_display)
 	t.set_font_size("font_size", "TitleLabel", 44)
 	t.set_color("font_color", "TitleLabel", Palette.GOLD)
-	t.set_color("font_shadow_color", "TitleLabel", Color(0, 0, 0, 0.65))
+	t.set_color("font_outline_color", "TitleLabel", Color("2a1260"))
+	t.set_constant("outline_size", "TitleLabel", 8)
+	t.set_color("font_shadow_color", "TitleLabel", Color(0, 0, 0, 0.6))
 	t.set_constant("shadow_offset_x", "TitleLabel", 0)
-	t.set_constant("shadow_offset_y", "TitleLabel", 2)
+	t.set_constant("shadow_offset_y", "TitleLabel", 3)
 	_variation(t, "HeadingLabel", "Label")
 	t.set_font("font", "HeadingLabel", font_display)
-	t.set_font_size("font_size", "HeadingLabel", 21)
-	t.set_color("font_color", "HeadingLabel", Palette.GOLD)
+	t.set_font_size("font_size", "HeadingLabel", 20)
+	t.set_color("font_color", "HeadingLabel", Palette.TEXT)
+	t.set_color("font_shadow_color", "HeadingLabel", Color(0, 0, 0, 0.5))
+	t.set_constant("shadow_offset_y", "HeadingLabel", 2)
 	_variation(t, "StrongLabel", "Label")
 	t.set_font("font", "StrongLabel", FONT_BOLD)
 	_variation(t, "MutedLabel", "Label")
 	t.set_color("font_color", "MutedLabel", Palette.MUTED)
-	t.set_font_size("font_size", "MutedLabel", 16)
+	t.set_font_size("font_size", "MutedLabel", 15)
 	_variation(t, "CodeLabel", "Label")
 	t.set_font("font", "CodeLabel", font_display)
 	t.set_font_size("font_size", "CodeLabel", 40)
-	t.set_color("font_color", "CodeLabel", Palette.TEXT)
+	t.set_color("font_color", "CodeLabel", Palette.GOLD)
+	_variation(t, "OnGoldLabel", "Label")
+	t.set_font("font", "OnGoldLabel", FONT_BOLD)
+	t.set_color("font_color", "OnGoldLabel", Palette.ON_GOLD)
 
 	t.set_color("default_color", "RichTextLabel", Palette.TEXT)
 	t.set_font("normal_font", "RichTextLabel", FONT_BODY)
 	t.set_font("bold_font", "RichTextLabel", FONT_BOLD)
-	t.set_font_size("normal_font_size", "RichTextLabel", 19)
-	t.set_font_size("bold_font_size", "RichTextLabel", 19)
+	t.set_font_size("normal_font_size", "RichTextLabel", 17)
+	t.set_font_size("bold_font_size", "RichTextLabel", 17)
 
-	# --- Panneaux ---
-	# Cartes : coins biseautés, dégradé discret, équerres dorées.
-	var card := OrnateStyle.make(Palette.PANEL.lightened(0.04), Palette.PANEL.darkened(0.18), Palette.BORDER, Color(Palette.GOLD_DIM, 0.85), 8, 18)
-	card.inner_line = true
+	# --- Panneaux : cadres pixel ---
+	var card := tex_box("panel", 16)
 	t.set_stylebox("panel", "PanelContainer", card)
 	_variation(t, "CardPanel", "PanelContainer")
 	t.set_stylebox("panel", "CardPanel", card)
 	_variation(t, "InsetPanel", "PanelContainer")
-	t.set_stylebox("panel", "InsetPanel", OrnateStyle.make(Palette.BG_DEEP.lightened(0.02), Palette.BG_DEEP, Palette.BORDER.darkened(0.15), Color(0, 0, 0, 0), 5, 12))
+	t.set_stylebox("panel", "InsetPanel", tex_box("panel_inset", 12))
 	_variation(t, "HighlightPanel", "PanelContainer")
-	var hl := OrnateStyle.make(Palette.GOLD_DEEP.lightened(0.06), Palette.GOLD_DEEP.darkened(0.45), Palette.GOLD_DIM, Palette.GOLD, 8, 16)
-	hl.inner_line = true
-	t.set_stylebox("panel", "HighlightPanel", hl)
+	t.set_stylebox("panel", "HighlightPanel", tex_box("panel_gold", 16))
 	_variation(t, "MagicPanel", "PanelContainer")
-	var mg := OrnateStyle.make(Palette.VIOLET_DEEP.lightened(0.05), Palette.VIOLET_DEEP.darkened(0.4), Palette.VIOLET_DIM, Palette.VIOLET.lightened(0.3), 8, 16)
-	mg.inner_line = true
-	t.set_stylebox("panel", "MagicPanel", mg)
+	t.set_stylebox("panel", "MagicPanel", tex_box("panel_magic", 16))
 	_variation(t, "DangerPanel", "PanelContainer")
-	t.set_stylebox("panel", "DangerPanel", OrnateStyle.make(Color("3a2023"), Color("221416"), Palette.DANGER.darkened(0.3), Palette.DANGER, 8, 16))
+	t.set_stylebox("panel", "DangerPanel", tex_box("panel_danger", 16))
+	_variation(t, "GoldBanner", "PanelContainer")
+	t.set_stylebox("panel", "GoldBanner", tex_box("banner_gold", 14))
+	_variation(t, "NameTag", "PanelContainer")
+	t.set_stylebox("panel", "NameTag", tex_box("name_tag", 10))
+	_variation(t, "SlotPanel", "PanelContainer")
+	t.set_stylebox("panel", "SlotPanel", tex_box("slot", 4))
+	_variation(t, "SlotSelected", "PanelContainer")
+	t.set_stylebox("panel", "SlotSelected", tex_box("slot_selected", 4))
 	_variation(t, "BarPanel", "PanelContainer")
-	var bar := _box(Palette.BG_DEEP, Color(Palette.GOLD_DIM, 0.5), 0, 0, 12)
-	bar.border_width_bottom = 1
-	t.set_stylebox("panel", "BarPanel", bar)
+	t.set_stylebox("panel", "BarPanel", tex_box("bar", 12))
 	_variation(t, "NavPanel", "PanelContainer")
-	var nav := _box(Palette.BG_DEEP, Color(Palette.GOLD_DIM, 0.6), 0, 0, 6)
-	nav.border_width_top = 1
-	nav.shadow_color = Color(0, 0, 0, 0.45)
-	nav.shadow_size = 10
-	t.set_stylebox("panel", "NavPanel", nav)
+	t.set_stylebox("panel", "NavPanel", tex_box("bar", 8))
 	_variation(t, "BubbleMine", "PanelContainer")
-	t.set_stylebox("panel", "BubbleMine", _box(Palette.VIOLET_DEEP, Palette.VIOLET_DIM, 1, 8, 10))
+	t.set_stylebox("panel", "BubbleMine", tex_box("panel_magic", 12))
 	_variation(t, "BubbleOther", "PanelContainer")
-	t.set_stylebox("panel", "BubbleOther", _box(Palette.PANEL_ALT, Palette.BORDER, 1, 8, 10))
+	t.set_stylebox("panel", "BubbleOther", tex_box("panel_inset", 12))
 	_variation(t, "BubbleMJ", "PanelContainer")
-	t.set_stylebox("panel", "BubbleMJ", _box(Palette.GOLD_DEEP, Palette.GOLD_DIM, 1, 8, 10))
+	t.set_stylebox("panel", "BubbleMJ", tex_box("panel_gold", 12))
 	_variation(t, "BubblePrivate", "PanelContainer")
-	t.set_stylebox("panel", "BubblePrivate", _box(Color("2a2338"), Palette.PRIVATE.darkened(0.35), 1, 8, 10))
+	t.set_stylebox("panel", "BubblePrivate", tex_box("panel_magic", 12))
 
-	# --- Boutons ---
-	_button_styles(t, "Button", Palette.PANEL_ALT, Palette.BORDER, Palette.TEXT)
+	# --- Boutons : indigo, et or pour le choix en cours ---
+	_tex_buttons(t, "Button", "button", "button_hover", Palette.TEXT)
 	_variation(t, "PrimaryButton", "Button")
-	_button_styles(t, "PrimaryButton", Palette.GOLD_DEEP, Palette.GOLD_DIM, Palette.GOLD)
+	_tex_buttons(t, "PrimaryButton", "button_gold", "button_gold_hover", Palette.ON_GOLD)
 	t.set_font("font", "PrimaryButton", FONT_BOLD)
 	_variation(t, "DangerButton", "Button")
-	_button_styles(t, "DangerButton", Color("3a2425"), Palette.DANGER.darkened(0.35), Palette.DANGER.lightened(0.2))
+	_tex_buttons(t, "DangerButton", "button_danger", "button_danger", Color("ffd0d6"))
 	_variation(t, "NavButton", "Button")
-	_button_styles(t, "NavButton", Color(0, 0, 0, 0), Color(0, 0, 0, 0), Palette.MUTED)
-	var nav_on := OrnateStyle.make(Palette.VIOLET_DEEP.lightened(0.05), Palette.VIOLET_DEEP.darkened(0.2), Palette.GOLD_DIM, Color(0, 0, 0, 0), 5, 10)
-	t.set_stylebox("pressed", "NavButton", nav_on)
-	t.set_stylebox("hover_pressed", "NavButton", nav_on)
-	t.set_color("font_pressed_color", "NavButton", Palette.GOLD)
-	t.set_font_size("font_size", "NavButton", 17)
+	var none := StyleBoxEmpty.new()
+	none.content_margin_left = 12
+	none.content_margin_right = 12
+	none.content_margin_top = 8
+	none.content_margin_bottom = 8
+	_tex_buttons(t, "NavButton", "", "button", Palette.MUTED)
+	t.set_stylebox("normal", "NavButton", none)
+	t.set_font_size("font_size", "NavButton", 16)
+	# Menu en liste (Menu principal) : ligne transparente, dorée quand choisie.
+	_variation(t, "MenuItem", "Button")
+	_tex_buttons(t, "MenuItem", "", "button", Palette.TEXT)
+	t.set_stylebox("normal", "MenuItem", none)
+	t.set_font_size("font_size", "MenuItem", 19)
 
 	t.set_color("font_color", "CheckBox", Palette.TEXT)
 	t.set_color("font_hover_color", "CheckBox", Palette.GOLD)
@@ -165,38 +200,62 @@ func _build_theme() -> Theme:
 
 	# --- Champs de saisie ---
 	for type in ["LineEdit", "TextEdit"]:
-		t.set_stylebox("normal", type, OrnateStyle.make(Palette.BG_DEEP, Palette.BG_DEEP.lightened(0.03), Palette.BORDER, Color(0, 0, 0, 0), 5, 12))
-		var focus_edit := OrnateStyle.make(Color(0, 0, 0, 0), Color(0, 0, 0, 0), Palette.GOLD_DIM, Color(0, 0, 0, 0), 5, 12)
-		t.set_stylebox("focus", type, focus_edit)
-		t.set_stylebox("read_only", type, OrnateStyle.make(Palette.BG, Palette.BG, Palette.BORDER, Color(0, 0, 0, 0), 5, 12))
+		t.set_stylebox("normal", type, tex_box("field", 12))
+		t.set_stylebox("focus", type, tex_box("field_focus", 12))
+		t.set_stylebox("read_only", type, tex_box("panel_inset", 12))
 		t.set_color("font_color", type, Palette.TEXT)
 		t.set_color("font_placeholder_color", type, Palette.FAINT)
 		t.set_color("caret_color", type, Palette.GOLD)
 		t.set_color("selection_color", type, Palette.VIOLET_DIM)
+	for s in ["normal", "hover", "pressed", "focus", "disabled", "hover_pressed"]:
+		t.set_stylebox(s, "OptionButton", tex_box({"hover": "button_hover", "disabled": "button_disabled"}.get(s, "button"), 12))
+	t.set_stylebox("up", "SpinBox", StyleBoxEmpty.new())
 
 	# --- Listes déroulantes et menus ---
-	t.set_stylebox("panel", "PopupMenu", OrnateStyle.make(Palette.PANEL_ALT, Palette.PANEL, Palette.GOLD_DIM, Color(0, 0, 0, 0), 6, 8))
-	t.set_stylebox("hover", "PopupMenu", _box(Palette.VIOLET_DIM, Color(0, 0, 0, 0), 0, 4, 6))
+	t.set_stylebox("panel", "PopupMenu", tex_box("panel", 10))
+	t.set_stylebox("hover", "PopupMenu", tex_box("button_gold", 6))
 	t.set_color("font_color", "PopupMenu", Palette.TEXT)
-	t.set_color("font_hover_color", "PopupMenu", Palette.GOLD)
+	t.set_color("font_hover_color", "PopupMenu", Palette.ON_GOLD)
 	t.set_constant("v_separation", "PopupMenu", 12)
+	t.set_stylebox("panel", "PopupPanel", tex_box("panel", 10))
 
-	# --- Barres de défilement fines ---
-	# Sur téléphone, barres plus larges pour être attrapées au doigt.
+	# --- Barres de défilement ---
 	var bar_margin := 8.0 if App.is_mobile() else 3.0
 	for type in ["VScrollBar", "HScrollBar"]:
-		t.set_stylebox("scroll", type, _box(Color(1, 1, 1, 0.04), Color(0, 0, 0, 0), 0, 6, bar_margin))
-		t.set_stylebox("grabber", type, _box(Palette.VIOLET_DIM, Color(0, 0, 0, 0), 0, 6, bar_margin))
-		t.set_stylebox("grabber_highlight", type, _box(Palette.VIOLET, Color(0, 0, 0, 0), 0, 6, bar_margin))
-		t.set_stylebox("grabber_pressed", type, _box(Palette.GOLD_DIM, Color(0, 0, 0, 0), 0, 6, bar_margin))
+		t.set_stylebox("scroll", type, _box(Color(0, 0, 0, 0.25), Color(0, 0, 0, 0), 0, 2, bar_margin))
+		t.set_stylebox("grabber", type, _box(Palette.VIOLET_DIM, Color(0, 0, 0, 0), 0, 2, bar_margin))
+		t.set_stylebox("grabber_highlight", type, _box(Palette.VIOLET, Color(0, 0, 0, 0), 0, 2, bar_margin))
+		t.set_stylebox("grabber_pressed", type, _box(Palette.GOLD, Color(0, 0, 0, 0), 0, 2, bar_margin))
 
 	t.set_stylebox("separator", "HSeparator", _line(Palette.BORDER))
 	t.set_constant("separation", "HSeparator", 12)
 	t.set_constant("separation", "VBoxContainer", 10)
 	t.set_constant("separation", "HBoxContainer", 10)
-	t.set_stylebox("panel", "TooltipPanel", OrnateStyle.make(Palette.PANEL_ALT, Palette.PANEL, Palette.GOLD_DIM, Color(0, 0, 0, 0), 5, 8))
+	t.set_stylebox("panel", "TooltipPanel", tex_box("panel_inset", 8))
 	t.set_color("font_color", "TooltipLabel", Palette.TEXT)
+	t.set_stylebox("panel", "Window", tex_box("panel", 12))
+	t.set_stylebox("embedded_border", "Window", tex_box("panel", 12))
+	t.set_stylebox("panel", "AcceptDialog", tex_box("panel", 14))
 	return t
+
+
+## Boutons à cadre pixel : normal / survol, or quand enfoncé (choix en cours).
+func _tex_buttons(t: Theme, type: String, normal: String, hover: String, fg: Color) -> void:
+	if normal != "":
+		t.set_stylebox("normal", type, tex_box(normal, 14))
+	t.set_stylebox("hover", type, tex_box(hover, 14))
+	t.set_stylebox("pressed", type, tex_box("button_gold_pressed", 14))
+	t.set_stylebox("hover_pressed", type, tex_box("button_gold", 14))
+	t.set_stylebox("disabled", type, tex_box("button_disabled", 14))
+	var focus := StyleBoxEmpty.new()
+	t.set_stylebox("focus", type, focus)
+	t.set_color("font_color", type, fg)
+	t.set_color("font_hover_color", type, fg.lightened(0.15) if fg != Palette.ON_GOLD else fg)
+	t.set_color("font_pressed_color", type, Palette.ON_GOLD)
+	t.set_color("font_hover_pressed_color", type, Palette.ON_GOLD)
+	t.set_color("font_focus_color", type, fg)
+	t.set_color("font_disabled_color", type, Palette.FAINT)
+	t.set_color("icon_pressed_color", type, Palette.ON_GOLD)
 
 
 func _variation(t: Theme, name: StringName, base: StringName) -> void:
