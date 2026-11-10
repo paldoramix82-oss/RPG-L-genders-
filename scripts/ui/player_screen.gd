@@ -885,7 +885,7 @@ func _on_welcomed() -> void:
 	_last_level = int(_client.my_character().get("level", 0))
 	_prev_sheet = _client.my_character().duplicate(true)
 	for q in _client.quests:
-		_known_quests[q.id] = q.status
+		_known_quests[q.id] = _quest_sig(q)
 	_refresh_map()
 	_refresh_phase()
 	_refresh_hud()
@@ -1052,8 +1052,8 @@ func _show_loot(items: Array, gold: int) -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	panel.add_child(col)
-	var title := UIKit.label("Butin !", "TitleLabel")
-	title.add_theme_font_size_override("font_size", 28)
+	var title := UIKit.label("Vous avez obtenu :", "HeadingLabel")
+	title.add_theme_font_size_override("font_size", 22)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
 	col.add_child(GameUI.ornament(16))
@@ -1118,7 +1118,19 @@ func _show_loot(items: Array, gold: int) -> void:
 
 func _on_quests() -> void:
 	for q in _client.quests:
-		_known_quests[q.id] = q.status
+		# Bannière dorée quand une quête démarre, avance ou se termine.
+		var sig := _quest_sig(q)
+		var prev := String(_known_quests.get(q.id, ""))
+		if prev != sig and String(q.status) != "offer" and _client.game_started():
+			var head := "Quête mise à jour !"
+			if prev == "" or prev.begins_with("offer"):
+				head = "Nouvelle quête !"
+			if String(q.status) == "done":
+				head = "Quête réussie !"
+			elif String(q.status) == "failed":
+				head = "Quête échouée"
+			_notifier.push_banner(head, String(q.title))
+		_known_quests[q.id] = sig
 	if _overlay_kind == "npc" and _npc_panel != "":
 		var t := MapData.token(_client.map, _npc_panel)
 		var me := _client.my_token()
@@ -1750,9 +1762,7 @@ func _open_npc_panel(t: Dictionary, dist: int, auto_talk: bool = true) -> void:
 		if not _greetings.has(token_id):
 			# Répliques écrites par le MJ d'abord, sinon celles du métier.
 			_greetings[token_id] = String(lines[_rng.randi_range(0, lines.size() - 1)]) if not lines.is_empty() else QuestLibrary.greeting(role, _rng)
-		var g := UIKit.label("« %s »" % _greetings[token_id], "", true)
-		g.add_theme_color_override("font_color", Palette.GOLD.lightened(0.2))
-		panel.body.add_child(g)
+		panel.body.add_child(_dialogue_box(t, String(_greetings[token_id])))
 	if String(t.get("description", "")) != "":
 		panel.body.add_child(UIKit.label(String(t.description), "", true))
 	if not near:
@@ -2636,3 +2646,48 @@ func _main_menu_go(key: String) -> void:
 			_open_journal("codex")
 		"Système":
 			_open_journal("settings")
+
+
+
+func _quest_sig(q: Dictionary) -> String:
+	var done := (q.get("objectives", []) as Array).filter(func(o): return o.get("done", false)).size()
+	return "%s:%d" % [q.get("status", ""), done]
+
+
+
+## Boîte de dialogue : portrait encadré, étiquette de nom, réplique, « ▼ ».
+func _dialogue_box(t: Dictionary, text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 0)
+	var frame := PanelContainer.new()
+	frame.theme_type_variation = "CardPanel"
+	frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var sheet := {}
+	for c in _client.characters:
+		if String(c.get("id", "")) == String(t.get("char_id", "")):
+			sheet = c
+	var face: Dictionary = sheet.get("portrait", {}) if not (sheet.get("portrait", {}) as Dictionary).is_empty() else Portrait.from_seed(String(t.get("name", "")))
+	frame.add_child(Portrait.new(face, Color(String(t.get("color", "#7a6e93"))), 92))
+	row.add_child(frame)
+	var bubble := PanelContainer.new()
+	bubble.theme_type_variation = "CardPanel"
+	bubble.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(bubble)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	bubble.add_child(col)
+	var tag := PanelContainer.new()
+	tag.theme_type_variation = "NameTag"
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var n := UIKit.label(String(t.get("name", "PNJ")), "StrongLabel")
+	tag.add_child(n)
+	col.add_child(tag)
+	col.add_child(UIKit.label(text, "", true))
+	var more := UIKit.label("▼", "StrongLabel")
+	more.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	more.add_theme_color_override("font_color", Palette.TEXT)
+	col.add_child(more)
+	var tw := more.create_tween().set_loops()
+	tw.tween_property(more, "modulate:a", 0.3, 0.5)
+	tw.tween_property(more, "modulate:a", 1.0, 0.5)
+	return row

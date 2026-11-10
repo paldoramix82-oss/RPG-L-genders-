@@ -52,8 +52,7 @@ func push(text: String, kind: String = "info", icon_name: String = "") -> void:
 	var spec: Array = KINDS.get(kind, KINDS.info)
 	var col: Color = spec[0]
 	var panel := PanelContainer.new()
-	var sb := OrnateStyle.make(Color(Palette.PANEL_ALT, 0.97), Color(Palette.BG_DEEP, 0.97), col.darkened(0.25), Color(0, 0, 0, 0), 6, 10)
-	panel.add_theme_stylebox_override("panel", sb)
+	panel.theme_type_variation = "CardPanel"
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
@@ -98,3 +97,49 @@ func _dismiss(panel: Control) -> void:
 	var tw := panel.create_tween()
 	tw.tween_property(panel, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(panel.queue_free)
+
+
+
+## Bannière dorée (comme « Quête mise à jour ! · Le test de magie ») : un « ! »
+## dans un rond, un titre sombre sur or et le nom de la quête dessous.
+func push_banner(title: String, subtitle: String) -> void:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = "GoldBanner"
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	panel.add_child(row)
+	var mark := Control.new()
+	mark.custom_minimum_size = Vector2(34, 34)
+	mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	mark.draw.connect(func():
+		var c := mark.size * 0.5
+		mark.draw_circle(c, 16, Palette.ON_GOLD)
+		mark.draw_circle(c, 13, Palette.GOLD.lightened(0.2))
+		var f := get_theme_font("font", "StrongLabel")
+		mark.draw_string(f, c + Vector2(-4, 8), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Palette.ON_GOLD))
+	row.add_child(mark)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 0)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(col)
+	var t := UIKit.label(title, "OnGoldLabel")
+	t.add_theme_font_size_override("font_size", 19)
+	col.add_child(t)
+	var s := UIKit.label(subtitle, "OnGoldLabel", true)
+	s.add_theme_font_size_override("font_size", 16)
+	s.add_theme_color_override("font_color", Color("5a3208"))
+	col.add_child(s)
+	panel.gui_input.connect(func(e):
+		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed):
+			_dismiss(panel))
+	add_child(panel)
+	while get_child_count() > MAX:
+		var old := get_child(0)
+		remove_child(old)
+		old.queue_free()
+	panel.modulate.a = 0.0
+	var tw := panel.create_tween()
+	tw.tween_property(panel, "modulate:a", 1.0, 0.18)
+	tw.tween_interval(DURATION + 1.2)
+	tw.tween_callback(_dismiss.bind(panel))

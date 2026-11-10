@@ -283,6 +283,17 @@ func _player() -> void:
 		"shop":
 			await get_tree().create_timer(1.0).timeout
 			screen._open_shop("mj")
+		"npc_talk":
+			screen._show_view("map")
+			var map: Dictionary = c.map
+			for t in map.get("tokens", []):
+				if String(t.get("kind", "")) == "npc":
+					screen._greetings[String(t.id)] = "Hé ! On avance ? Ça commence à être sérieux, là !"
+					screen._open_npc_panel(t, 1, false)
+					break
+		"banner":
+			screen._show_view("map")
+			screen._notifier.push_banner("Quête mise à jour !", "Le test de la magie")
 		"main_menu":
 			screen._show_view("map")
 			screen._open_main_menu()

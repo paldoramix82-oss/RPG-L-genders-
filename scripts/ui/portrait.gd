@@ -12,11 +12,24 @@ const EYE_NAMES := ["Calmes", "Perçants", "Fermés", "Lumineux"]
 const BEARD_NAMES := ["Aucune", "Courte", "Longue", "Moustache"]
 const MARK_NAMES := ["Aucune", "Cicatrice", "Tatouage", "Peinture de guerre"]
 
+## Rendu pixel art : le buste est dessiné en petit (≈ 2,5 px écran par pixel)
+## dans une vue hors écran, puis agrandi sans lissage.
+static var pixel_mode := true
+
 var data := {}
 var tint := Palette.VIOLET
 var icon := ""
-var ko := false
-var active := false
+var ko := false:
+	set(v):
+		ko = v
+		_sync()
+var active := false:
+	set(v):
+		active = v
+		_sync()
+var _vp: SubViewport
+var _inner: Portrait
+var _flat := false
 
 
 func _init(portrait: Dictionary = {}, background: Color = Palette.VIOLET, px: float = 64.0, fallback_icon: String = "") -> void:
@@ -25,6 +38,43 @@ func _init(portrait: Dictionary = {}, background: Color = Palette.VIOLET, px: fl
 	icon = fallback_icon
 	custom_minimum_size = Vector2(px, px)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _ready() -> void:
+	if not pixel_mode or _flat:
+		return
+	var res := clampi(int(round(custom_minimum_size.x / 2.5)), 22, 48)
+	_vp = SubViewport.new()
+	_vp.size = Vector2i(res, res)
+	_vp.transparent_bg = true
+	_vp.disable_3d = true
+	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	_inner = Portrait.new(data, tint, res, icon)
+	_inner._flat = true
+	_inner.size = Vector2(res, res)
+	_vp.add_child(_inner)
+	add_child(_vp)
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_sync()
+
+
+## Recopie l'état dans le petit dessin et le refait une fois.
+func _sync() -> void:
+	if _inner != null:
+		_inner.data = data
+		_inner.tint = tint
+		_inner.icon = icon
+		_inner.ko = ko
+		_inner.queue_redraw()
+		_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	queue_redraw()
+
+
+## Visage tiré d'un nom (PNJ sans fiche) : toujours le même pour le même nom.
+static func from_seed(seed_text: String) -> Dictionary:
+	var h := absi(hash(seed_text))
+	return {"face": h % 4, "skin": (h / 4) % SKINS.size(), "hair": (h / 24) % HAIR_NAMES.size(), "hair_color": (h / 192) % HAIR_COLORS.size(),
+		"eyes": (h / 1536) % 4, "beard": (h / 6144) % 4 if (h / 24576) % 2 == 0 else 0, "mark": 0}
 
 
 ## Portrait d'une fiche (ou d'un pion sans fiche).
@@ -43,10 +93,17 @@ static func for_sheet(sheet: Dictionary, content: Dictionary, px: float = 64.0) 
 func set_data(portrait: Dictionary, background: Color) -> void:
 	data = portrait
 	tint = background
-	queue_redraw()
+	_sync()
 
 
 func _draw() -> void:
+	if _vp != null:
+		var sq := minf(size.x, size.y)
+		var off := (size - Vector2(sq, sq)) * 0.5
+		draw_texture_rect(_vp.get_texture(), Rect2(off, Vector2(sq, sq)), false)
+		if active:
+			draw_rect(Rect2(off, Vector2(sq, sq)), Palette.GOLD, false, 3.0)
+		return
 	var s := minf(size.x, size.y)
 	var o := (size - Vector2(s, s)) * 0.5
 	var c := o + Vector2(s, s) * 0.5
