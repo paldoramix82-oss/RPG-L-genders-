@@ -60,35 +60,33 @@ func _set_flash(x: float) -> void:
 
 
 func _draw() -> void:
-	var r := Rect2(Vector2.ZERO, size)
-	var radius := minf(6.0, size.y * 0.4)
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = color.darkened(0.78)
-	bg.set_corner_radius_all(int(radius))
-	bg.border_color = Palette.BORDER
-	bg.set_border_width_all(1)
-	draw_style_box(bg, r)
+	# Jauge pixel : contour noir, fond sombre, remplissage en deux tons avec un
+	# reflet, graduations tous les 10 %, texte « HP  120 / 120 » avec contour.
+	var r := Rect2(Vector2.ZERO, size).grow(-1)
+	draw_rect(Rect2(Vector2.ZERO, size), Color("0b0720"))
+	draw_rect(r, color.darkened(0.82))
+	var w := r.size.x
 	if ghost > shown:
-		var g := StyleBoxFlat.new()
-		g.bg_color = Color(1, 1, 1, 0.35)
-		g.set_corner_radius_all(int(radius))
-		draw_style_box(g, Rect2(Vector2.ZERO, Vector2(size.x * ghost, size.y)))
+		draw_rect(Rect2(r.position, Vector2(w * ghost, r.size.y)), Color(1, 1, 1, 0.35))
 	if shown > 0.0:
-		var f := StyleBoxFlat.new()
-		f.bg_color = color.lerp(Color.WHITE, flash * 0.35)
-		f.set_corner_radius_all(int(radius))
-		draw_style_box(f, Rect2(Vector2.ZERO, Vector2(maxf(size.x * shown, radius * 2), size.y)))
-		var hl := StyleBoxFlat.new()
-		hl.bg_color = Color(1, 1, 1, 0.12)
-		hl.set_corner_radius_all(int(radius))
-		draw_style_box(hl, Rect2(Vector2(0, 1), Vector2(maxf(size.x * shown, radius * 2), size.y * 0.42)))
-	if show_text:
+		var fill := Rect2(r.position, Vector2(maxf(2.0, w * shown), r.size.y))
+		var c := color.lerp(Color.WHITE, flash * 0.35)
+		draw_rect(fill, c.darkened(0.18))
+		draw_rect(Rect2(fill.position, Vector2(fill.size.x, ceilf(fill.size.y * 0.55))), c)
+		draw_rect(Rect2(fill.position + Vector2(0, 1), Vector2(fill.size.x, maxf(1.0, floorf(fill.size.y * 0.18)))), c.lightened(0.35))
+	if size.y >= 10:
+		for k in range(1, 10):
+			var x := r.position.x + roundf(w * k / 10.0)
+			draw_line(Vector2(x, r.position.y), Vector2(x, r.end.y), Color(0, 0, 0, 0.18), 1.0)
+	if show_text and size.y >= 12:
 		var font := get_theme_font("font", "StrongLabel")
-		var fs := int(clampf(size.y * 0.7, 11, 22))
-		var text := "%d / %d" % [value, max_value]
+		var fs := int(clampf(size.y * 0.78, 11, 20))
+		var y := size.y * 0.5 + fs * 0.36
+		var value_text := "%d / %d" % [value, max_value]
+		var vw := font.get_string_size(value_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		if caption != "":
-			text = "%s  %s" % [caption, text]
-		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var pos := Vector2((size.x - tw) * 0.5, size.y * 0.5 + fs * 0.36)
-		draw_string(font, pos + Vector2(1, 1), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, 0.7))
-		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Palette.TEXT)
+			draw_string_outline(font, Vector2(6, y), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0, 0, 0, 0.85))
+			draw_string(font, Vector2(6, y), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Palette.TEXT)
+		var vx := size.x - vw - 6 if caption != "" else (size.x - vw) * 0.5
+		draw_string_outline(font, Vector2(vx, y), value_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0, 0, 0, 0.85))
+		draw_string(font, Vector2(vx, y), value_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Palette.TEXT)

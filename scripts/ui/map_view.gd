@@ -18,6 +18,8 @@ signal target_picked(token_id: String)
 const CELL := 32.0
 const TAP_SLOP := 10.0
 
+## Boutons de zoom en bas à gauche (écran joueur) plutôt qu'en haut à droite.
+var controls_bottom_left := false
 var map := {}
 var is_mj := false
 var my_id := ""
@@ -84,8 +86,13 @@ func _ready() -> void:
 	add_child(_painter)
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 6)
-	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 8)
-	bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	if controls_bottom_left:
+		# Écran joueur : coin haut libre pour le statut et la mini-carte.
+		bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 8)
+		bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	else:
+		bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 8)
+		bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	add_child(bar)
 	for spec in [["−", func(): zoom_at(size * 0.5, 1.0 / 1.25)], ["+", func(): zoom_at(size * 0.5, 1.25)], ["Recentrer", recenter]]:
 		var b := UIKit.button(spec[0], "", spec[1])

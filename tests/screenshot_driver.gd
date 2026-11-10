@@ -283,6 +283,9 @@ func _player() -> void:
 		"shop":
 			await get_tree().create_timer(1.0).timeout
 			screen._open_shop("mj")
+		"main_menu":
+			screen._show_view("map")
+			screen._open_main_menu()
 		"help":
 			screen._open_help()
 		"chat":

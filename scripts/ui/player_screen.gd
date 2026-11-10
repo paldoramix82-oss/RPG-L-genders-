@@ -56,6 +56,13 @@ var _timeline_scroll: ScrollContainer
 var _turn_bar: VBoxContainer
 var _turn_panel: PanelContainer
 var _map_row: HBoxContainer
+## Calques posés sur la carte : statut, groupe, mini-carte, action contextuelle.
+var _map_stack: Control
+var _status_card: PanelContainer
+var _party_box: VBoxContainer
+var _mini_map: MiniMap
+var _context_button: Button
+var _context_token := ""
 var _view := "story"
 var _unread := false
 
@@ -410,14 +417,55 @@ func _build_map_page() -> VBoxContainer:
 	_map_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map_row.add_theme_constant_override("separation", 6)
 	page.add_child(_map_row)
+	_map_stack = Control.new()
+	_map_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_map_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_map_stack.custom_minimum_size.y = 160
+	_map_stack.clip_contents = true
+	_map_row.add_child(_map_stack)
 	_map_view = MapView.new()
-	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_map_view.custom_minimum_size.y = 160
+	_map_view.controls_bottom_left = true
+	_map_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_map_view.move_requested.connect(func(id, x, y): _client.move_pawn(id, x, y))
 	_map_view.target_picked.connect(_on_target_picked)
 	_map_view.token_selected.connect(_on_token_selected)
-	_map_row.add_child(_map_view)
+	_map_stack.add_child(_map_view)
+	# Colonne de gauche : statut (placé par _build_hud) puis le groupe.
+	var left := VBoxContainer.new()
+	left.name = "LeftOverlay"
+	left.position = Vector2(6, 6)
+	left.add_theme_constant_override("separation", 6)
+	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_map_stack.add_child(left)
+	_party_box = VBoxContainer.new()
+	_party_box.add_theme_constant_override("separation", 4)
+	_party_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_child(_party_box)
+	# Mini-carte en haut à droite, sous les boutons de zoom de la carte.
+	_mini_map = MiniMap.new()
+	_mini_map.anchor_left = 1.0
+	_mini_map.anchor_right = 1.0
+	_mini_map.offset_left = -140
+	_mini_map.offset_right = -6
+	_mini_map.offset_top = 6
+	_mini_map.tapped.connect(func(): _map_view.recenter())
+	_map_stack.add_child(_mini_map)
+	# Action contextuelle en bas à droite : Parler, Ouvrir, Entrer, Attaquer…
+	_context_button = UIKit.button("", "PrimaryButton", func():
+		if _context_token != "":
+			_on_token_selected(_context_token))
+	_context_button.anchor_left = 1.0
+	_context_button.anchor_right = 1.0
+	_context_button.anchor_top = 1.0
+	_context_button.anchor_bottom = 1.0
+	_context_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_context_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_context_button.offset_right = -8
+	_context_button.offset_bottom = -8
+	_context_button.custom_minimum_size = Vector2(120, 48)
+	_context_button.add_theme_font_size_override("font_size", 19)
+	_context_button.visible = false
+	_map_stack.add_child(_context_button)
 	_turn_panel = PanelContainer.new()
 	_turn_panel.theme_type_variation = "InsetPanel"
 	page.add_child(_turn_panel)
@@ -435,14 +483,20 @@ func _build_hud() -> PanelContainer:
 	col.add_theme_constant_override("separation", 6)
 	panel.add_child(col)
 	_hud_col = col
+	# Carte de statut : posée sur la carte, en haut à gauche (comme un jeu vidéo).
+	_status_card = PanelContainer.new()
+	_status_card.theme_type_variation = "CardPanel"
+	_status_card.custom_minimum_size.x = 210
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 8)
-	col.add_child(top)
+	_status_card.add_child(top)
+	(_map_stack.get_node("LeftOverlay") as VBoxContainer).add_child(_status_card)
+	(_map_stack.get_node("LeftOverlay") as VBoxContainer).move_child(_status_card, 0)
 	var pbtn := Button.new()
 	pbtn.flat = true
-	pbtn.custom_minimum_size = Vector2(60, 60)
+	pbtn.custom_minimum_size = Vector2(54, 54)
 	pbtn.tooltip_text = "Ma fiche"
-	_portrait = Portrait.new({}, Palette.VIOLET, 60)
+	_portrait = Portrait.new({}, Palette.VIOLET, 54)
 	_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pbtn.add_child(_portrait)
 	_sheet_badge = Control.new()
@@ -469,18 +523,27 @@ func _build_hud() -> PanelContainer:
 	_hud_turn = UIKit.label("", "StrongLabel")
 	_hud_turn.add_theme_font_size_override("font_size", 14)
 	_hud_turn.visible = false
-	name_row.add_child(_hud_turn)
-	name_row.add_child(Icons.new("coin", Palette.GOLD, 18))
-	_gold_label = UIKit.label("0", "StrongLabel")
-	_gold_label.add_theme_color_override("font_color", Palette.GOLD)
-	name_row.add_child(_gold_label)
-	_hp_bar = ResourceBar.new("PV", Palette.HP, 22)
+	_hp_bar = ResourceBar.new("HP", Palette.HP, 18)
 	bars.add_child(_hp_bar)
 	_res_bar = ResourceBar.new("", Palette.MANA, 16)
 	bars.add_child(_res_bar)
-	_ult_bar = ResourceBar.new("Ultime", Palette.ULT, 8)
+	_ult_bar = ResourceBar.new("Ultime", Palette.ULT, 6)
 	_ult_bar.show_text = false
 	bars.add_child(_ult_bar)
+	# Ligne d'infos : tour en cours, bourse.
+	var info := HBoxContainer.new()
+	info.add_theme_constant_override("separation", 4)
+	bars.add_child(info)
+	_hud_turn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_child(_hud_turn)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_child(spacer)
+	info.add_child(Icons.new("coin", Palette.GOLD, 16))
+	_gold_label = UIKit.label("0", "StrongLabel")
+	_gold_label.add_theme_font_size_override("font_size", 14)
+	_gold_label.add_theme_color_override("font_color", Palette.GOLD)
+	info.add_child(_gold_label)
 	var bottom := HBoxContainer.new()
 	bottom.add_theme_constant_override("separation", 6)
 	col.add_child(bottom)
@@ -496,7 +559,7 @@ func _build_hud() -> PanelContainer:
 	_hud_buttons.add_theme_constant_override("separation", 4)
 	_hud_buttons.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bottom.add_child(_hud_buttons)
-	for spec in [["bag", "Sac", _open_inventory.bind("bag")], ["person", "Fiche", _open_sheet], ["journal", "Journal", _open_journal.bind("quests")], ["chat", "Discuter", _open_chat]]:
+	for spec in [["bag", "Sac", _open_inventory.bind("bag")], ["star", "Menu", _open_main_menu], ["chat", "Discuter", _open_chat]]:
 		var b := _icon_button(spec[0], spec[1], spec[2])
 		_hud_buttons.add_child(b)
 		if spec[0] == "chat":
@@ -926,6 +989,7 @@ func _on_characters() -> void:
 	_refresh_all()
 	_refresh_hud()
 	_refresh_overlay("shop")
+	_refresh_overlays()
 	_refresh_turn_bar()
 	_refresh_timeline()
 	_refresh_overlay("sheet")
@@ -1097,6 +1161,7 @@ func _refresh_map() -> void:
 	_refresh_header()
 	_refresh_reachable()
 	_refresh_timeline()
+	_refresh_overlays()
 
 
 ## Même règle que l'hôte : Dextérité suffisante ou bonus « nage ».
@@ -1341,7 +1406,7 @@ func _refresh_hud() -> void:
 	var cls := Rules.get_class_def(content, String(sheet.get("class_id", "")))
 	_portrait.set_data(sheet.get("portrait", {}), Color(String(cls.get("color", sheet.get("pawn", {}).get("color", "#7a6e93")))))
 	_portrait.ko = int(sheet.get("hp", 1)) <= 0
-	_name_label.text = "%s  ·  niv. %d" % [sheet.get("name", ""), int(sheet.get("level", 1))]
+	_name_label.text = "%s   Nv. %d" % [sheet.get("name", ""), int(sheet.get("level", 1))]
 	_gold_label.text = str(int(sheet.get("gold", 0)))
 	_hp_bar.set_values(int(sheet.get("hp", 0)), int(sheet.get("hp_max", 1)))
 	_res_bar.caption = String(sheet.get("res_name", "Énergie"))
@@ -2387,3 +2452,187 @@ func _fill_shop() -> void:
 		row.add_child(UIKit.button("Vendre %d or" % Shop.sell_price(_client.content, it, pct), "", func(): _client.sell(_shop_id, uid, 1)))
 	if not any:
 		sell.add_child(UIKit.label("Rien à vendre (les objets équipés et de quête ne se vendent pas).", "MutedLabel", true))
+
+
+
+# ---------------------------------------------------------------------------
+# Calques de la carte : groupe, mini-carte, action contextuelle
+# ---------------------------------------------------------------------------
+
+func _refresh_overlays() -> void:
+	if _mini_map == null:
+		return
+	var map := _client.map
+	_mini_map.set_map(map, _map_view.my_id)
+	_mini_map.visible = not map.is_empty() and get_viewport_rect().size.x >= 360
+	_refresh_party()
+	_refresh_context()
+
+
+## Le groupe : les autres héros présents sur la carte (portrait, PV, ressource).
+func _refresh_party() -> void:
+	UIKit.clear(_party_box)
+	if _timeline_scroll.visible:
+		return  # en combat, la frise des tours montre déjà tout le monde
+	var by_id := {}
+	for c in _client.characters:
+		by_id[String(c.get("id", ""))] = c
+	var shown := 0
+	for t in _client.map.get("tokens", []):
+		if String(t.get("kind", "")) != "pc" or String(t.get("owner", "")) == _map_view.my_id or shown >= 4:
+			continue
+		var c: Dictionary = by_id.get(String(t.get("owner", "")), {})
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var frame := PanelContainer.new()
+		frame.theme_type_variation = "SlotPanel"
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var p := Portrait.new(c.get("portrait", {}), Color(String(c.get("pawn", {}).get("color", t.get("color", "#7a6e93")))), 34)
+		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.ko = int(t.get("hp", 1)) <= 0 and int(t.get("hp_max", 0)) > 0
+		frame.add_child(p)
+		row.add_child(frame)
+		var bars := VBoxContainer.new()
+		bars.add_theme_constant_override("separation", 2)
+		bars.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bars.custom_minimum_size.x = 46
+		bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var hp := ResourceBar.new("", Palette.HP, 6)
+		hp.show_text = false
+		hp.set_values(int(t.get("hp", c.get("hp", 0))), int(t.get("hp_max", c.get("hp_max", 1))), false)
+		bars.add_child(hp)
+		if int(c.get("res_max", 0)) > 0:
+			var res := ResourceBar.new("", Palette.MANA, 6)
+			res.show_text = false
+			res.set_values(int(c.get("res", 0)), int(c.res_max), false)
+			bars.add_child(res)
+		row.add_child(bars)
+		row.tooltip_text = String(t.get("name", ""))
+		_party_box.add_child(row)
+		shown += 1
+
+
+## Ce qu'on peut faire juste à côté : le bouton doré en bas à droite de la carte.
+func _refresh_context() -> void:
+	var me := _client.my_token()
+	_context_token = ""
+	if me.is_empty() or not _pending.is_empty():
+		_context_button.visible = false
+		return
+	var here := Vector2i(int(me.x), int(me.y))
+	var best := {}
+	var best_rank := 99
+	for t in _client.map.get("tokens", []):
+		if String(t.id) == String(me.id):
+			continue
+		var d := Rules.distance(here, Vector2i(int(t.x), int(t.y)))
+		var label := ""
+		var rank := 99
+		match String(t.get("kind", "")):
+			"npc":
+				if d <= 2:
+					label = "Commercer" if t.get("shop") is Dictionary else "Parler"
+					rank = 1
+			"object":
+				if d <= 1:
+					if String(t.get("link", "")) != "":
+						label = "Entrer"
+						rank = 0
+					elif t.get("pickup", false):
+						label = "Ramasser"
+						rank = 2
+					elif String(t.get("loot", "")) != "" or t.get("door", false) or String(t.get("key", "")) != "":
+						label = "Ouvrir"
+						rank = 2
+			"monster":
+				if d <= 1 and String(t.get("disposition", "enemies")) == "enemies" and int(t.get("hp", 1)) > 0:
+					label = "Attaquer"
+					rank = 3
+				elif d <= 2 and String(t.get("disposition", "")) != "enemies":
+					label = "Parler"
+					rank = 1
+		if label != "" and rank < best_rank:
+			best_rank = rank
+			best = {"id": String(t.id), "label": label}
+	_context_button.visible = not best.is_empty()
+	if not best.is_empty():
+		_context_token = String(best.id)
+		_context_button.text = "Ⓐ  " + String(best.label)
+		_context_button.theme_type_variation = "DangerButton" if best.label == "Attaquer" else "PrimaryButton"
+
+
+# ---------------------------------------------------------------------------
+# Menu principal (liste, choix en or, description en bas)
+# ---------------------------------------------------------------------------
+
+const MAIN_MENU := [
+	["bag", "Inventaire", "Voir vos objets."],
+	["bolt", "Compétences", "Vos capacités, votre passif et vos caractéristiques."],
+	["sword", "Équipement", "Ce que vous portez : armes, armures, accessoires."],
+	["map", "Carte", "Revenir à la carte et à votre position."],
+	["scroll", "Quêtes", "Le journal des quêtes en cours et terminées."],
+	["heart", "Groupe", "Les autres héros de la partie."],
+	["book", "Codex", "L'univers, ses lieux et ses peuples."],
+	["gear", "Système", "Musique, affichage, connexion, aide."],
+]
+
+
+func _open_main_menu() -> void:
+	var panel := _open_overlay("main_menu", "Menu principal", "star")
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 4)
+	panel.body.add_child(list)
+	var hint_box := PanelContainer.new()
+	hint_box.theme_type_variation = "InsetPanel"
+	var hint := UIKit.label(String(MAIN_MENU[0][2]), "", true)
+	hint_box.add_child(hint)
+	var first: Button = null
+	for spec in MAIN_MENU:
+		var b := Button.new()
+		b.theme_type_variation = "MenuItem"
+		b.toggle_mode = true
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.text = "  " + String(spec[1])
+		b.icon = Sprites.glyph(String(spec[0])) if Sprites.glyph(String(spec[0])) != null else Sprites.item(String(spec[0]))
+		b.expand_icon = true
+		b.add_theme_constant_override("icon_max_width", 28)
+		b.add_theme_color_override("icon_pressed_color", Color.WHITE)
+		b.add_theme_color_override("icon_hover_pressed_color", Color.WHITE)
+		b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		b.custom_minimum_size.y = 50
+		var key := String(spec[1])
+		var desc := String(spec[2])
+		var show_hint := func():
+			hint.text = desc
+			for o in list.get_children():
+				o.set_pressed_no_signal(o == b)
+		b.mouse_entered.connect(show_hint)
+		b.focus_entered.connect(show_hint)
+		b.pressed.connect(func(): _main_menu_go(key))
+		list.add_child(b)
+		if first == null:
+			first = b
+	first.set_pressed_no_signal(true)
+	panel.body.add_child(hint_box)
+
+
+func _main_menu_go(key: String) -> void:
+	match key:
+		"Inventaire":
+			_open_inventory("bag")
+		"Compétences":
+			_open_sheet()
+		"Équipement":
+			_open_inventory("equip")
+		"Carte":
+			_close_overlay()
+			_show_view("map")
+		"Quêtes":
+			_open_journal("quests")
+		"Groupe":
+			_open_journal("group")
+		"Codex":
+			_open_journal("codex")
+		"Système":
+			_open_journal("settings")

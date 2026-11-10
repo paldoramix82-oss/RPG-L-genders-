@@ -39,125 +39,160 @@ func _emit(action: String, data: Dictionary) -> void:
 		act.call(action, data)
 
 
+## Onglets du sac (comme un jeu vidéo) : catégories d'objets par onglet.
+const TABS := [["bag", "Objets"], ["equip", "Équipement"], ["treasure", "Trésors"]]
+const TAB_CATS := {"equip": ["arme", "armure", "accessoire"], "treasure": ["quete", "unique", "materiau", "livre"]}
+
+
+func _tab_of(item: Dictionary) -> String:
+	var cat := String(item.get("category", "unique"))
+	for k in TAB_CATS:
+		if cat in TAB_CATS[k]:
+			return k
+	return "bag"
+
+
 func _build() -> void:
 	UIKit.clear(self)
+	var tabs := HFlowContainer.new()
+	tabs.add_theme_constant_override("h_separation", 6)
+	tabs.add_theme_constant_override("v_separation", 6)
+	add_child(tabs)
+	var specs: Array = TABS.duplicate()
 	if not mj:
-		var tabs := HBoxContainer.new()
-		add_child(tabs)
-		for spec in [["bag", "Mon sac"], ["chest", "Coffre du groupe (%d)" % loot.size()]]:
-			var b := UIKit.button(spec[1], "PrimaryButton" if _tab == spec[0] else "", func():
-				_tab = spec[0]
-				_selected = ""
-				_build())
-			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			tabs.add_child(b)
+		specs.append(["chest", "Coffre (%d)" % loot.size()])
+	for spec in specs:
+		var b := UIKit.button(spec[1], "PrimaryButton" if _tab == spec[0] else "", func():
+			_tab = spec[0]
+			_selected = ""
+			_build())
+		b.custom_minimum_size.y = 40
+		tabs.add_child(b)
 	if _tab == "chest" and not mj:
 		_chest()
 		return
-	var top := HBoxContainer.new()
-	add_child(top)
-	top.add_child(Icons.new("coin", Palette.GOLD, 26))
-	top.add_child(UIKit.label("%d pièces d'or" % int(sheet.get("gold", 0)), "StrongLabel"))
-	# Emplacements équipés.
-	var slots := GameUI.section(self, "Équipé", "armor")
+	var purse := HBoxContainer.new()
+	add_child(purse)
+	purse.add_child(Icons.new("coin", Palette.GOLD, 22))
+	var g := UIKit.label("%d pièces d'or" % int(sheet.get("gold", 0)), "StrongLabel")
+	g.add_theme_color_override("font_color", Palette.GOLD)
+	purse.add_child(g)
+	if _tab == "equip":
+		_equipped_row()
+	var items: Array = (sheet.get("inventory", []) as Array).filter(func(it): return _tab_of(it) == _tab)
+	# Grille de cases (4 colonnes, au moins 3 rangées : les cases vides restent visibles).
+	var frame := PanelContainer.new()
+	frame.theme_type_variation = "InsetPanel"
+	add_child(frame)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	frame.add_child(grid)
+	if _selected == "" and not items.is_empty():
+		_selected = String(items[0].get("uid", ""))
+	var count := maxi(12, int(ceil(items.size() / 4.0)) * 4)
+	for k in count:
+		grid.add_child(_cell(items[k] if k < items.size() else {}))
+	# Description de l'objet choisi, en bas (comme « Potion de soin · Restaure 50 HP. »).
+	var chosen := Inventory.find(sheet, _selected) if _selected != "" else {}
+	var foot := PanelContainer.new()
+	foot.theme_type_variation = "CardPanel"
+	add_child(foot)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	foot.add_child(row)
+	if chosen.is_empty():
+		row.add_child(UIKit.label("Rien dans cet onglet." if items.is_empty() else "Touchez un objet.", "MutedLabel", true))
+		return
+	var icon := TextureRect.new()
+	icon.texture = Sprites.item(String(chosen.get("icon", "bag")))
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(44, 44)
+	row.add_child(icon)
+	var info := VBoxContainer.new()
+	info.add_theme_constant_override("separation", 2)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(info)
+	var n := UIKit.label(String(chosen.get("name", "?")), "StrongLabel", true)
+	n.add_theme_color_override("font_color", Content.rarity_color(String(chosen.get("rarity", "commun"))).lightened(0.25))
+	info.add_child(n)
+	var desc := String(chosen.get("description", ""))
+	if desc == "":
+		desc = Inventory.describe(chosen, content)
+	info.add_child(UIKit.label(desc, "", true))
+	row.add_child(UIKit.button("Actions", "PrimaryButton", _show_detail))
+
+
+## Emplacements portés : arme, armure, deux accessoires.
+func _equipped_row() -> void:
 	var srow := HFlowContainer.new()
 	srow.add_theme_constant_override("h_separation", 10)
 	srow.add_theme_constant_override("v_separation", 10)
-	slots.add_child(srow)
-	for spec in [["arme", "Arme", 1], ["armure", "Armure", 1], ["accessoire", "Accessoires", 2]]:
+	add_child(srow)
+	for spec in [["arme", "Arme", 1], ["armure", "Armure", 1], ["accessoire", "Accessoire", 2]]:
 		var items := Inventory.slot_items(sheet, spec[0])
 		for i in int(spec[2]):
 			var box := VBoxContainer.new()
 			box.add_theme_constant_override("separation", 2)
 			srow.add_child(box)
-			if i < items.size():
-				box.add_child(_slot_button(items[i], 60))
-			else:
-				var empty := Control.new()
-				empty.custom_minimum_size = Vector2(60, 60)
-				empty.draw.connect(func():
-					var sb := StyleBoxFlat.new()
-					sb.bg_color = Palette.BG_DEEP
-					sb.border_color = Palette.BORDER
-					sb.set_border_width_all(1)
-					sb.set_corner_radius_all(8)
-					empty.draw_style_box(sb, Rect2(Vector2.ZERO, empty.size)))
-				box.add_child(empty)
-			var cap := UIKit.label(spec[1] if i == 0 else "", "MutedLabel")
+			box.add_child(_cell(items[i] if i < items.size() else {}, 60))
+			var cap := UIKit.label(String(spec[1]), "MutedLabel")
 			cap.add_theme_font_size_override("font_size", 12)
+			cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			box.add_child(cap)
-	# Sac, filtrable par catégorie (seulement celles réellement présentes).
-	var all_items: Array = sheet.get("inventory", [])
-	var bag := GameUI.section(self, "Sac (%d)" % all_items.size(), "bag")
-	var present: Array = []
-	for item in all_items:
-		var cat := String(item.get("category", "unique"))
-		if not present.has(cat):
-			present.append(cat)
-	if present.size() > 1:
-		var chips := HFlowContainer.new()
-		chips.add_theme_constant_override("h_separation", 4)
-		chips.add_theme_constant_override("v_separation", 4)
-		bag.add_child(chips)
-		var group := ButtonGroup.new()
-		for cat in ["all"] + Content.CATEGORIES.filter(func(c): return present.has(c)):
-			var key := String(cat)
-			var b := UIKit.button("Tout" if key == "all" else String(Content.CATEGORY_NAMES.get(key, key)) + "s", "NavButton")
-			b.toggle_mode = true
-			b.button_group = group
-			b.button_pressed = _filter == key
-			b.custom_minimum_size.y = 34
-			b.add_theme_font_size_override("font_size", 14)
-			b.pressed.connect(func():
-				_filter = key
-				_build())
-			chips.add_child(b)
-	if _filter != "all" and not present.has(_filter):
-		_filter = "all"
-	_grid = HFlowContainer.new()
-	_grid.add_theme_constant_override("h_separation", 8)
-	_grid.add_theme_constant_override("v_separation", 10)
-	bag.add_child(_grid)
-	if all_items.is_empty():
-		bag.add_child(UIKit.label("Votre sac est vide.", "MutedLabel", true))
-	for item in all_items:
-		if _filter == "all" or String(item.get("category", "")) == _filter:
-			_grid.add_child(_item_tile(item))
-	bag.add_child(UIKit.label("Touchez un objet pour le voir en détail, l'équiper ou l'utiliser.", "MutedLabel", true))
 
 
-## Case de sac : icône sur fond de rareté et nom dessous.
-func _item_tile(item: Dictionary) -> Control:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
-	box.custom_minimum_size.x = 72
-	var b := _slot_button(item, 64)
-	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	box.add_child(b)
-	var n := UIKit.label(String(item.get("name", "?")), "MutedLabel")
-	n.add_theme_font_size_override("font_size", 12)
-	n.add_theme_color_override("font_color", Content.rarity_color(String(item.get("rarity", "commun"))).lightened(0.1))
-	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	n.custom_minimum_size.x = 72
-	n.clip_text = true
-	n.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(n)
-	return box
-
-
-func _slot_button(item: Dictionary, px: float) -> Control:
+## Case d'inventaire : cadre pixel (doré si choisie), sprite, quantité « ×5 ».
+func _cell(item: Dictionary, px: float = 64.0) -> Control:
+	var uid := String(item.get("uid", ""))
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = "SlotSelected" if uid != "" and uid == _selected else "SlotPanel"
+	panel.custom_minimum_size = Vector2(px, px)
+	if item.is_empty():
+		return panel
 	var b := Button.new()
 	b.flat = true
-	b.custom_minimum_size = Vector2(px, px)
 	b.tooltip_text = String(item.get("name", ""))
-	var slot := GameUI.item_slot(item, px)
-	slot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	b.add_child(slot)
-	var uid := String(item.get("uid", ""))
+	b.focus_mode = Control.FOCUS_NONE
+	panel.add_child(b)
+	var tex := TextureRect.new()
+	tex.texture = Sprites.item(String(item.get("icon", "bag")))
+	tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
+	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(tex)
+	if int(item.get("qty", 1)) > 1:
+		var q := UIKit.label("×%d" % int(item.qty), "StrongLabel")
+		q.add_theme_font_size_override("font_size", 13)
+		q.add_theme_constant_override("outline_size", 4)
+		q.add_theme_color_override("font_outline_color", Color.BLACK)
+		q.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
+		q.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		q.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		q.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(q)
+	if item.get("equipped", false):
+		var e := UIKit.label("É", "StrongLabel")
+		e.add_theme_font_size_override("font_size", 12)
+		e.add_theme_color_override("font_color", Palette.GOLD)
+		e.add_theme_constant_override("outline_size", 4)
+		e.add_theme_color_override("font_outline_color", Color.BLACK)
+		e.position = Vector2(4, 0)
+		e.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(e)
+	# Premier toucher : choisir ; second toucher : actions.
 	b.pressed.connect(func():
-		_selected = uid
-		_show_detail())
-	return b
+		if _selected == uid:
+			_show_detail()
+		else:
+			_selected = uid
+			_build())
+	return panel
 
 
 ## Détail d'un objet dans un panneau superposé (la liste garde sa position).

@@ -62,7 +62,7 @@ func _build() -> void:
 		b.button_pressed = _tab == spec[0]
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.custom_minimum_size.y = 40
-		b.add_theme_font_size_override("font_size", 14)
+		b.add_theme_font_size_override("font_size", 12)
 		b.clip_text = true
 		var key: String = spec[0]
 		b.pressed.connect(func():
@@ -87,63 +87,114 @@ func _build() -> void:
 
 func _header(c: Dictionary, public: bool, d: Dictionary) -> void:
 	var cls := Rules.get_class_def(content, String(c.get("class_id", "")))
-	var head := UIKit.card(self, "", "HighlightPanel")
+	var head := UIKit.card(self, "", "CardPanel")
+	# Titre : emblème, nom, et la classe à droite.
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	head.add_child(top)
+	top.add_child(GameUI.icon_badge(String(cls.get("emblem", "sword")) if not cls.is_empty() else "person", Color(String(cls.get("color", "#ff8a3a"))), 30))
+	var name_label := UIKit.label(String(c.get("name", "Sans nom")), "HeadingLabel")
+	name_label.add_theme_font_size_override("font_size", 24)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.clip_text = true
+	top.add_child(name_label)
+	var role := String(cls.get("name", c.get("concept", "")))
+	if role != "":
+		top.add_child(UIKit.label(role, "MutedLabel"))
+	# Corps : grand portrait encadré, et les valeurs à côté.
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 12)
 	head.add_child(row)
-	var portrait := Portrait.for_sheet(c, content, 96)
-	portrait.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	row.add_child(portrait)
-	var titles := VBoxContainer.new()
-	titles.add_theme_constant_override("separation", 2)
-	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(titles)
-	var name_label := UIKit.label(String(c.get("name", "Sans nom")), "TitleLabel", true)
-	name_label.add_theme_font_size_override("font_size", 28)
-	titles.add_child(name_label)
-	var sub: PackedStringArray = []
-	if not cls.is_empty():
-		sub.append(String(cls.name))
-	elif String(c.get("concept", "")) != "":
-		sub.append(String(c.concept))
-	for key in ["species", "origin"]:
-		if String(c.get(key, "")) != "":
-			sub.append(String(c[key]))
-	sub.append("Niveau %d" % int(c.get("level", 1)))
-	titles.add_child(UIKit.label("  ·  ".join(sub), "StrongLabel", true))
-	if not cls.is_empty() and String(cls.get("description", "")) != "":
-		titles.add_child(UIKit.label(String(cls.description), "MutedLabel", true))
+	var frame := PanelContainer.new()
+	frame.theme_type_variation = "SlotPanel"
+	frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var portrait := Portrait.for_sheet(c, content, 112)
+	frame.add_child(portrait)
+	row.add_child(frame)
+	var stats := VBoxContainer.new()
+	stats.add_theme_constant_override("separation", 4)
+	stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(stats)
+	_stat_line(stats, "star", "Nv.", str(int(c.get("level", 1))), Palette.GOLD)
+	var hp := ResourceBar.new("HP", Palette.HP, 20)
+	hp.set_values(int(c.get("hp", 0)), int(c.get("hp_max", 1)), false)
+	stats.add_child(hp)
+	if int(c.get("res_max", 0)) > 0:
+		var res := ResourceBar.new(String(c.get("res_name", d.get("res_name", "MP"))).substr(0, 4), Palette.MANA, 18)
+		res.set_values(int(c.get("res", 0)), int(c.res_max), false)
+		stats.add_child(res)
+	if not public and _has_ultimate():
+		var ult := ResourceBar.new("Ultime", Palette.ULT, 12)
+		ult.show_text = false
+		ult.set_values(int(c.get("ult", 0)), 100, false)
+		stats.add_child(ult)
+	if not public and not d.is_empty():
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 14)
+		grid.add_theme_constant_override("v_separation", 2)
+		stats.add_child(grid)
+		_stat_line(grid, "sword", "ATQ", "%+d" % int(d.get("to_hit", 0)), Palette.TEXT)
+		_stat_line(grid, "ward", "DÉF", str(int(d.get("defense", 0))), Palette.TEXT)
+		_stat_line(grid, "sparkle", "MAG", str(Rules.stat(c, "Intelligence", content)), Palette.TEXT)
+		_stat_line(grid, "wind", "RAP", str(int(d.get("speed", 0))), Palette.TEXT)
+	# Présentation (comme « Un jeune Gardien au cœur brûlant… »).
+	var bio := String(c.get("concept", ""))
+	if bio == "" or bio == role:
+		bio = ""
+	if bio == "":
+		bio = String(c.get("appearance", ""))
+	if bio == "" and not cls.is_empty():
+		bio = String(cls.get("tagline", cls.get("description", "")))
+	if bio != "":
+		var box := PanelContainer.new()
+		box.theme_type_variation = "InsetPanel"
+		box.add_child(UIKit.label(bio, "", true))
+		head.add_child(box)
 	if not public:
 		var lp := Rules.level_progress(c, content)
-		var xp := ResourceBar.new("XP", Palette.XP, 14)
+		var xp := ResourceBar.new("XP", Palette.XP, 12)
 		xp.show_text = false
 		xp.set_values(int(lp.xp) - int(lp.from), maxi(1, int(lp.to) - int(lp.from)), false)
-		titles.add_child(xp)
+		head.add_child(xp)
 		var money := HBoxContainer.new()
 		money.add_theme_constant_override("separation", 6)
 		var xl := UIKit.label("%d / %d XP" % [int(lp.xp), int(lp.to)], "MutedLabel")
 		xl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		money.add_child(xl)
-		money.add_child(Icons.new("coin", Palette.GOLD, 20))
+		money.add_child(Icons.new("coin", Palette.GOLD, 18))
 		var gl := UIKit.label("%d or" % int(c.get("gold", 0)), "StrongLabel")
 		gl.add_theme_color_override("font_color", Palette.GOLD)
 		money.add_child(gl)
-		titles.add_child(money)
-	# Ressources.
-	var hp := ResourceBar.new("PV", Palette.HP, 24)
-	hp.set_values(int(c.get("hp", 0)), int(c.get("hp_max", 1)), false)
-	head.add_child(hp)
-	if int(c.get("res_max", 0)) > 0:
-		var res := ResourceBar.new(String(c.get("res_name", d.get("res_name", "Énergie"))), Palette.MANA, 20)
-		res.set_values(int(c.get("res", 0)), int(c.res_max), false)
-		head.add_child(res)
-	if not public and _has_ultimate():
-		var ult := ResourceBar.new("Ultime", Palette.ULT, 14)
-		ult.set_values(int(c.get("ult", 0)), 100, false)
-		head.add_child(ult)
+		head.add_child(money)
 	var effects: Array = c.get("effects", [])
 	if not effects.is_empty():
 		head.add_child(GameUI.status_row(effects, 22))
+
+
+## Ligne de valeur : petite icône, sigle, valeur alignée à droite.
+func _stat_line(parent: Node, icon_name: String, caption: String, value: String, color: Color) -> void:
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 6)
+	parent.add_child(line)
+	var tex := Sprites.glyph(icon_name)
+	if tex != null:
+		var ic := TextureRect.new()
+		ic.texture = tex
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.custom_minimum_size = Vector2(18, 18)
+		ic.modulate = Palette.VIOLET.lightened(0.4)
+		line.add_child(ic)
+	var l := UIKit.label(caption, "StrongLabel")
+	l.custom_minimum_size.x = 40
+	line.add_child(l)
+	var v := UIKit.label(value, "StrongLabel")
+	v.add_theme_color_override("font_color", color)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	line.add_child(v)
 
 
 func _effects(c: Dictionary) -> void:
