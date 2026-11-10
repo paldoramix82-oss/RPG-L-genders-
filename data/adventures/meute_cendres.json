@@ -1,0 +1,164 @@
+{
+ "id": "meute_cendres",
+ "universe": "fantasy",
+ "map": "foret_cendres",
+ "music": "foret_monde",
+ "name": "La meute des Cendres",
+ "length": "1 séance · 2 à 4 joueurs · niveau 1-2",
+ "tagline": "Des loups au pelage gris de cendre attaquent les voyageurs.",
+ "description": "Une chasse en forêt : suivre des traces, choisir sa route, affronter la meute et son alpha dans la clairière. Beaucoup de combat, un mystère en bonus.",
+ "npcs": [
+  {
+   "pack": "bestiaire",
+   "name": "Garde",
+   "x": 2,
+   "y": 15,
+   "hidden": false,
+   "note": "Survivant de la dernière attaque, blessé.",
+   "role": "garde"
+  }
+ ],
+ "monsters": [
+  {
+   "id": "loup",
+   "x": 21,
+   "y": 12,
+   "hidden": true
+  },
+  {
+   "id": "loup",
+   "x": 24,
+   "y": 16,
+   "hidden": true
+  },
+  {
+   "id": "loup_alpha",
+   "x": 16,
+   "y": 9,
+   "hidden": true
+  },
+  {
+   "id": "araignee",
+   "x": 27,
+   "y": 3,
+   "hidden": true
+  }
+ ],
+ "chests": [
+  {
+   "name": "Sac d'un chasseur disparu",
+   "x": 9,
+   "y": 18,
+   "loot": "coffre",
+   "hidden": false
+  },
+  {
+   "name": "Nid de l'araignée",
+   "x": 28,
+   "y": 2,
+   "loot": "bete",
+   "hidden": true
+  }
+ ],
+ "labels": [
+  {
+   "x": 8,
+   "y": 17,
+   "text": "Traces de lutte",
+   "hidden": false
+  }
+ ],
+ "quests": [
+  {
+   "title": "La meute des Cendres",
+   "kind": "main",
+   "giver": "Garde",
+   "description": "Trois voyageurs ont disparu sur la route. Les survivants parlent de loups gris comme la cendre.",
+   "objectives": [
+    {
+     "text": "Suivre les traces jusqu'à la clairière",
+     "kind": "reach",
+     "x": 16,
+     "y": 9,
+     "radius": 3
+    },
+    {
+     "text": "Vaincre 2 loups",
+     "kind": "kill",
+     "target": "loup",
+     "count": 2
+    },
+    {
+     "text": "Vaincre le loup alpha",
+     "kind": "kill",
+     "target": "loup_alpha",
+     "count": 1
+    }
+   ],
+   "rewards": {
+    "xp": 250,
+    "gold": 40,
+    "items": [
+     {
+      "item": "bottes_vent",
+      "qty": 1
+     }
+    ]
+   }
+  },
+  {
+   "title": "Le cristal noirci",
+   "kind": "side",
+   "giver": "Garde",
+   "description": "Une pierre levée porte un cristal noirci. Est-ce lui qui rend les loups si féroces ?",
+   "objectives": [
+    {
+     "text": "Examiner la pierre levée",
+     "kind": "reach",
+     "x": 16,
+     "y": 11,
+     "radius": 1
+    },
+    {
+     "text": "Rapporter un fragment à un érudit (le MJ coche)"
+    }
+   ],
+   "rewards": {
+    "xp": 120,
+    "gold": 0,
+    "items": [
+     {
+      "item": "gemme_brute",
+      "qty": 1
+     }
+    ]
+   }
+  }
+ ],
+ "scenes": [
+  {
+   "title": "La lisière",
+   "narration": "Les arbres sont gris, l'air sent la fumée froide. Sur le sentier, des traces de pattes, beaucoup trop grandes, et une besace déchirée.",
+   "tips": "Laissez les joueurs fouiller (sac du chasseur au sud-ouest). Épreuve de Dextérité 12 pour suivre les traces sans bruit.",
+   "action": {
+    "type": "group_check",
+    "stat": "Dextérité",
+    "difficulty": 12,
+    "title": "Suivre les traces"
+   }
+  },
+  {
+   "title": "Hurlements",
+   "narration": "Un hurlement, puis un autre, tout proches. Des silhouettes grises glissent entre les troncs.",
+   "tips": "Les loups sont révélés : ils attaquent dès qu'un personnage entre dans leur périmètre.",
+   "action": {
+    "type": "reveal_combat"
+   }
+  },
+  {
+   "title": "La clairière",
+   "narration": "Au centre de la clairière, une pierre levée porte un cristal noirci. Devant elle, un loup énorme vous fixe sans bouger.",
+   "tips": "Le loup alpha garde la pierre. S'il tombe, les autres fuient (à vous de voir)."
+  }
+ ]
+}

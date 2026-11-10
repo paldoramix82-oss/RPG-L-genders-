@@ -1,0 +1,80 @@
+{
+ "id": "ile_test",
+ "name": "Île du test de survie",
+ "description": "L'île hostile de la 2e épreuve du test de la magie : atteindre le rendez-vous caché.",
+ "universe": "legenders",
+ "w": 36,
+ "h": 24,
+ "rows": [
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWwWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWwwWswwWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWwWwwwsswswswWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWsswssFFsfswwWWWWWWWWWWW",
+  "WWWWWWWWWWwswfsfFffsffsFwsWWWWWWWWWW",
+  "WWWWWWWWWwwssfsffffffFssfswwWWWWWWWW",
+  "WWWWWWWWWwwwsFfFffFfffFffswWWWWWWWWW",
+  "WWWWWWWWWWsssfFfffmmmmFfssswWWWWWWWW",
+  "WWWWWWWWWssfffffFfmmmmmFfsswWWWWWWWW",
+  "WWWWWWWWwssFfFFFfFmmnmmFFffsWWWWWWWW",
+  "WWWWWWWwswssrrrrfFmmmmmffFssWWWWWWWW",
+  "WWWWWWWWwrrrffffrrrmmmfrrrrswWWWWWWW",
+  "WWWWWWWwwssfFfFffFfrrrrfFfswwWWWWWWW",
+  "WWWWWWWWWsskkkFfffFfFfffFsssWWWWWWWW",
+  "WWWWWWWWwwskkkfffFFfFFffFwwwWWWWWWWW",
+  "WWWWWWWWwwwkkkfFffFfFFffwwwwWWWWWWWW",
+  "WWWWWWWWWwswssffffFFFffsfwsWWWWWWWWW",
+  "WWWWWWWWWWwwssfffFffffFsssswWWWWWWWW",
+  "WWWWWWWWWWWwsssfffFfffsswswWWWWWWWWW",
+  "WWWWWWWWWWWWwssssfssfsswwwWWWWWWWWWW",
+  "WWWWWWWWWWWWWwwssssswwwWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWwWWWwwWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWwWWWWWWWWWWWWWWWWWW"
+ ],
+ "spawn": {
+  "x": 9,
+  "y": 12
+ },
+ "labels": [
+  {
+   "x": 10,
+   "y": 12,
+   "text": "Point d'arrivée aléatoire",
+   "hidden": false
+  },
+  {
+   "x": 20,
+   "y": 9,
+   "text": "Pic central",
+   "hidden": false
+  },
+  {
+   "x": 25,
+   "y": 15,
+   "text": "Point de rendez-vous (10 jours max)",
+   "hidden": true
+  }
+ ],
+ "tokens": [
+  {
+   "name": "Ombré chapardeur",
+   "kind": "npc",
+   "x": 14,
+   "y": 14,
+   "color": "#2a2733",
+   "hp": 6,
+   "hp_max": 6,
+   "hidden": true
+  },
+  {
+   "name": "Bête de l'île",
+   "kind": "monster",
+   "x": 22,
+   "y": 15,
+   "color": "#7b5a3a",
+   "hp": 25,
+   "hp_max": 25,
+   "hidden": true
+  }
+ ]
+}

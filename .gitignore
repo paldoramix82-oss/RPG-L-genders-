@@ -1,0 +1,11 @@
+# Godot
+.godot/
+*.import.tmp
+/android/
+/build/
+*.apk
+*.aab
+*.exe
+*.pck
+export_credentials.cfg
+*.keystore

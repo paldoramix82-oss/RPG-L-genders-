@@ -1,0 +1,63 @@
+{
+ "id": "shima_encre",
+ "name": "Shima — Division de l'Encre",
+ "description": "Quartier de Shima (RAC) : le QG de la magie et le terrain d'entraînement d'une division.",
+ "universe": "legenders",
+ "w": 34,
+ "h": 22,
+ "rows": [
+  "wwwwwsppppppppppppprpppppppppppppp",
+  "wwwwwsppbbbbppbbbbprbbbbppbbbbpppp",
+  "wwwwwsppbbbbppbbbbprbbbbppbbbbpppp",
+  "wwwwwsppbbbbppbbbbprbbbbppbbbbpppp",
+  "wwwwwsppppppppppppprpppppppppppppp",
+  "wwwwwsppbbbbppbbbbprbbbbppbbbbpppp",
+  "wwwwwsppbbbbppbbbbprbbbbppbbbbpppp",
+  "wwwwwsppbbbbppbbbbprbbbbppbbbbpppp",
+  "wwwwwsppppppppppppprpppppppppppppp",
+  "wwwwwsppbbbbppbbbbprbbbbppbbbbpppp",
+  "wwwwwsrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+  "wwwwwsppbbbbppbbbbprbbbbppbbbbpppp",
+  "wwwwwsppppppppppppprpp####.#####pp",
+  "wwwwwsppbbbbpbbbbbprbb#ff.f....#pp",
+  "wwwwwsppbbbbpbaaabprbb#.ssssss.#pp",
+  "wwwwwsppbbbbpbaaabprbb#.ssssssf#pp",
+  "wwwwwspppppppbbbbbprpp#.ssssss.#pp",
+  "wwwwwsppbbbbppbbbbprbb#.ssssss.#pp",
+  "wwwwwsppbbbbppbbbbprbb#.ssssss.#pp",
+  "wwwwwsppbbbbppbbbbprbb#...ff...#pp",
+  "wwwwwsppppppppppppprpp##########pp",
+  "wwwwwsppppppppppppprpppppppppppppp"
+ ],
+ "spawn": {
+  "x": 6,
+  "y": 10
+ },
+ "labels": [
+  {
+   "x": 15,
+   "y": 14,
+   "text": "QG de la magie",
+   "hidden": false
+  },
+  {
+   "x": 26,
+   "y": 13,
+   "text": "Terrain d'entraînement — Division de l'Encre",
+   "hidden": false
+  },
+  {
+   "x": 2,
+   "y": 10,
+   "text": "Mer Occidentale",
+   "hidden": false
+  },
+  {
+   "x": 19,
+   "y": 0,
+   "text": "Vers les autres divisions",
+   "hidden": false
+  }
+ ],
+ "tokens": []
+}

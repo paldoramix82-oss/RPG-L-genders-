@@ -1,0 +1,131 @@
+{
+ "id": "fantasy",
+ "name": "Fantasy classique",
+ "tagline": "Royaumes, magie ancienne et mystères — Les Cendres de Valombre",
+ "description": "Un univers de fantasy médiévale générique, idéal pour la campagne de démonstration « Les Cendres de Valombre ».",
+ "character": {
+  "species": [
+   "Humain",
+   "Elfe",
+   "Nain",
+   "Halfelin",
+   "Gnome",
+   "Demi-orc",
+   "Tieffelin",
+   "Autre"
+  ],
+  "origins": [
+   "Valombre",
+   "Capitale du royaume",
+   "Montagnes du nord",
+   "Forêts profondes",
+   "Côte marchande",
+   "Terres lointaines",
+   "Autre"
+  ],
+  "stats": [
+   "Force",
+   "Agilité",
+   "Endurance",
+   "Intelligence",
+   "Perception",
+   "Charisme"
+  ],
+  "skills": [
+   "Combat",
+   "Discrétion",
+   "Survie",
+   "Médecine",
+   "Alchimie",
+   "Artisanat",
+   "Investigation",
+   "Négociation",
+   "Intimidation",
+   "Marchandage",
+   "Magie",
+   "Pistage"
+  ],
+  "magic_title": "Magie",
+  "magic_categories": [
+   {
+    "name": "Arcanes",
+    "hint": "Magie savante, étudiée dans les grimoires."
+   },
+   {
+    "name": "Divine",
+    "hint": "Pouvoir accordé par une divinité ou une foi."
+   },
+   {
+    "name": "Nature",
+    "hint": "Druidique : bêtes, plantes, saisons."
+   },
+   {
+    "name": "Élémentaire",
+    "hint": "Feu, eau, air, terre."
+   },
+   {
+    "name": "Ombre",
+    "hint": "Illusions, malédictions, secrets."
+   },
+   {
+    "name": "Runes",
+    "hint": "Pouvoirs gravés dans les objets."
+   },
+   {
+    "name": "Aucune",
+    "hint": "Pas de magie : talents, ruse et acier."
+   }
+  ],
+  "magic_origins": [
+   "Étude",
+   "Don de naissance",
+   "Pacte",
+   "Foi",
+   "Objet",
+   "Inconnue"
+  ],
+  "ranks": [],
+  "rank_title": "Rang",
+  "resource_name": "Mana",
+  "hp_default": 20,
+  "resource_default": 10
+ },
+ "codex": [
+  {
+   "category": "Valombre",
+   "title": "La ville de Valombre",
+   "text": "Un bourg fluvial en lisière de forêt, traversé par une rivière et un pont de pierre. On y trouve la taverne du Corbeau Rieur, le temple aux cloches, la forge et la maison du bourgmestre. Depuis trois jours, une fine pluie de cendres tombe sur la ville et les cloches du temple se sont tues.",
+   "mj_only": false
+  },
+  {
+   "category": "Valombre",
+   "title": "La forêt des Cendres",
+   "text": "Une forêt dense à l'est de la ville. Les bûcherons parlent d'une clairière brûlée apparue en une nuit, sans que personne n'ait vu de flammes.",
+   "mj_only": false
+  },
+  {
+   "category": "Valombre",
+   "title": "Les ruines de l'ancien temple",
+   "text": "Les restes d'un temple plus ancien que la ville, envahis par la végétation. Les anciens disent qu'on y vénérait « celui qui garde la braise ».",
+   "mj_only": false
+  },
+  {
+   "category": "Valombre",
+   "title": "Le Cercle de la Braise",
+   "text": "Une confrérie locale qui prétend protéger la ville. Ses membres portent une spirale brûlée sur la main.",
+   "mj_only": true
+  },
+  {
+   "category": "Valombre",
+   "title": "Le secret des cendres",
+   "text": "Les cendres proviennent d'un cristal noirci enterré sous la pierre levée de la clairière : le Cercle de la Braise tente de réveiller ce qui dort sous les ruines du temple. Le tavernier Bertrand en fait partie à contrecœur.",
+   "mj_only": true
+  },
+  {
+   "category": "Pour le MJ",
+   "title": "Utiliser l'univers",
+   "text": "Rien n'est obligatoire : modifiez ou ignorez ces éléments. Les entrées marquées « MJ » ne sont jamais envoyées aux téléphones des joueurs.",
+   "mj_only": true
+  }
+ ]
+}

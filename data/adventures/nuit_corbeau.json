@@ -1,0 +1,134 @@
+{
+ "id": "nuit_corbeau",
+ "universe": "fantasy",
+ "map": "taverne_corbeau",
+ "music": "taverne",
+ "name": "Une nuit au Corbeau Rieur",
+ "length": "1 courte séance · 2 à 5 joueurs · niveau 1",
+ "tagline": "Une soirée à la taverne qui tourne mal.",
+ "description": "Une aventure très courte pour apprendre : parler aux PNJ, déclarer des actions libres, lancer des dés, puis une petite bagarre à la cave.",
+ "npcs": [],
+ "monsters": [
+  {
+   "id": "bandit",
+   "x": 16,
+   "y": 12,
+   "hidden": true
+  },
+  {
+   "id": "bandit",
+   "x": 18,
+   "y": 13,
+   "hidden": true
+  },
+  {
+   "id": "chef_bandit",
+   "x": 19,
+   "y": 11,
+   "hidden": true
+  }
+ ],
+ "chests": [
+  {
+   "name": "Butin des contrebandiers",
+   "x": 20,
+   "y": 13,
+   "loot": "brigand",
+   "hidden": true
+  }
+ ],
+ "labels": [],
+ "quests": [
+  {
+   "title": "La trappe sous le tonneau",
+   "kind": "main",
+   "giver": "Bertrand le tavernier",
+   "description": "Des bruits montent de la cave chaque nuit. Bertrand jure qu'il n'y a que des tonneaux en bas.",
+   "objectives": [
+    {
+     "text": "Écouter Bertrand",
+     "kind": "talk",
+     "target": "Bertrand le tavernier"
+    },
+    {
+     "text": "Descendre à la cave",
+     "kind": "reach",
+     "x": 17,
+     "y": 13,
+     "radius": 2
+    },
+    {
+     "text": "Chasser les contrebandiers",
+     "kind": "kill",
+     "target": "bandit",
+     "count": 2
+    },
+    {
+     "text": "Vaincre leur chef",
+     "kind": "kill",
+     "target": "chef_bandit",
+     "count": 1
+    }
+   ],
+   "rewards": {
+    "xp": 150,
+    "gold": 30,
+    "items": [
+     {
+      "item": "potion_soin",
+      "qty": 2
+     }
+    ]
+   }
+  },
+  {
+   "title": "Le message du voyageur",
+   "kind": "side",
+   "giver": "Voyageur encapuchonné",
+   "description": "Le voyageur vous confie une lettre scellée à porter au temple de Valombre. Il insiste : ne l'ouvrez pas.",
+   "objectives": [
+    {
+     "text": "Remettre la lettre à Sœur Aveline (à Valombre)",
+     "kind": "talk",
+     "target": "Sœur Aveline"
+    }
+   ],
+   "rewards": {
+    "xp": 60,
+    "gold": 20,
+    "items": [
+     {
+      "item": "lettre_scellee",
+      "qty": 1
+     }
+    ]
+   }
+  }
+ ],
+ "scenes": [
+  {
+   "title": "Une soirée ordinaire",
+   "narration": "Le feu crépite, un barde joue faux, et Bertrand essuie le même verre depuis dix minutes. Dans un coin, un voyageur encapuchonné ne touche pas à sa bière.",
+   "tips": "Faites parler les joueurs : c'est le moment d'essayer « Parler à… », « Examiner », les messages privés au MJ."
+  },
+  {
+   "title": "Des bruits dans la cave",
+   "narration": "Un choc sourd sous le plancher. Puis un autre. Bertrand pâlit : « Encore… »",
+   "tips": "Donnez la quête principale. Épreuve d'Esprit 12 pour repérer la trappe sous le tonneau.",
+   "action": {
+    "type": "group_check",
+    "stat": "Esprit",
+    "difficulty": 12,
+    "title": "Fouiller la cave"
+   }
+  },
+  {
+   "title": "Les contrebandiers",
+   "narration": "Sous la trappe, trois hommes déchargent des caisses à la lueur d'une lanterne. Leur chef dégaine : « Mauvaise soirée pour être curieux. »",
+   "tips": "Les bandits sont révélés : ils attaquent ceux qui descendent à la cave.",
+   "action": {
+    "type": "reveal_combat"
+   }
+  }
+ ]
+}

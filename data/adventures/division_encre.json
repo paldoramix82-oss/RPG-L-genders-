@@ -1,0 +1,173 @@
+{
+ "id": "division_encre",
+ "universe": "legenders",
+ "map": "shima_encre",
+ "music": "shima",
+ "name": "Premier jour à la Division de l'Encre",
+ "length": "1 séance · 2 à 5 joueurs · niveau 1",
+ "tagline": "Nouvelles recrues, premier entraînement… et un trafic d'AEC noir.",
+ "description": "Rencontres avec des mages d'État, entraînement contre un golem, puis une petite enquête sur de l'AEC noir qui circule dans la division.",
+ "npcs": [
+  {
+   "pack": "legenders_shima",
+   "name": "Youri",
+   "x": 15,
+   "y": 13,
+   "hidden": false,
+   "note": "",
+   "role": "habitant"
+  },
+  {
+   "pack": "legenders_shima",
+   "name": "Midori",
+   "x": 26,
+   "y": 12,
+   "hidden": false,
+   "note": "",
+   "role": "habitant"
+  },
+  {
+   "pack": "legenders_shima",
+   "name": "Kenji",
+   "x": 14,
+   "y": 15,
+   "hidden": false,
+   "note": "",
+   "role": "habitant"
+  },
+  {
+   "pack": "legenders_monde",
+   "name": "Sabbas",
+   "x": 30,
+   "y": 18,
+   "hidden": true,
+   "note": "Contrebandier d'AEC noir caché près du terrain."
+  }
+ ],
+ "monsters": [
+  {
+   "id": "golem",
+   "x": 27,
+   "y": 14,
+   "hidden": false
+  },
+  {
+   "id": "cultiste",
+   "x": 31,
+   "y": 17,
+   "hidden": true
+  },
+  {
+   "id": "cultiste",
+   "x": 29,
+   "y": 19,
+   "hidden": true
+  }
+ ],
+ "chests": [
+  {
+   "name": "Caisse d'AEC noir",
+   "x": 31,
+   "y": 19,
+   "loot": "magique",
+   "hidden": true
+  }
+ ],
+ "labels": [
+  {
+   "x": 30,
+   "y": 18,
+   "text": "Odeur de cristal brûlé",
+   "hidden": true
+  }
+ ],
+ "quests": [
+  {
+   "title": "Bienvenue à la Division de l'Encre",
+   "kind": "main",
+   "giver": "Youri",
+   "description": "Youri accueille les recrues : présentations, puis entraînement contre le golem.",
+   "objectives": [
+    {
+     "text": "Se présenter à Youri",
+     "kind": "talk",
+     "target": "Youri"
+    },
+    {
+     "text": "Battre le golem d'entraînement",
+     "kind": "kill",
+     "target": "golem",
+     "count": 1
+    }
+   ],
+   "rewards": {
+    "xp": 200,
+    "gold": 40,
+    "items": [
+     {
+      "item": "talisman_garde",
+      "qty": 1
+     }
+    ]
+   }
+  },
+  {
+   "title": "L'AEC noir",
+   "kind": "side",
+   "giver": "Midori",
+   "description": "Des cristaux d'AEC noir circulent dans la division. Midori veut savoir qui les fait entrer.",
+   "objectives": [
+    {
+     "text": "Interroger Kenji",
+     "kind": "talk",
+     "target": "Kenji"
+    },
+    {
+     "text": "Trouver la cachette derrière le terrain",
+     "kind": "reach",
+     "x": 30,
+     "y": 18,
+     "radius": 2
+    },
+    {
+     "text": "Arrêter le contrebandier",
+     "kind": "kill",
+     "target": "Sabbas",
+     "count": 1
+    }
+   ],
+   "rewards": {
+    "xp": 180,
+    "gold": 60,
+    "items": []
+   }
+  }
+ ],
+ "scenes": [
+  {
+   "title": "L'appel",
+   "narration": "Le QG de la magie bourdonne. Un homme aux cheveux en bataille vous attend, un carnet couvert d'encre à la main : « Bienvenue à la Division de l'Encre. Ici, on écrit notre légende. »",
+   "tips": "Youri donne la quête principale.",
+   "action": {
+    "type": "give_quest",
+    "quest": 0
+   }
+  },
+  {
+   "title": "Le golem",
+   "narration": "Sur le terrain d'entraînement, un golem de pierre se redresse. Midori sourit : « Ne vous inquiétez pas. Il ne tape qu'à moitié. »",
+   "tips": "Combat d'entraînement : le golem attaque ceux qui approchent (ou un joueur l'engage en le touchant).",
+   "action": {
+    "type": "start_combat"
+   }
+  },
+  {
+   "title": "L'odeur du cristal brûlé",
+   "narration": "Derrière le terrain, une odeur âcre. Des éclats de cristal noir traînent entre les rochers.",
+   "tips": "Les complices de Sabbas sont révélés et attaquent ceux qui s'approchent. Sabbas lui-même est un PNJ : on l'arrête en l'engageant (le toucher › Attaquer).",
+   "action": {
+    "type": "reveal_combat"
+   }
+  }
+ ]
+}

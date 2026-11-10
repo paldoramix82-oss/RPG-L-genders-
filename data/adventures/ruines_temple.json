@@ -1,0 +1,121 @@
+{
+ "id": "ruines_temple",
+ "universe": "fantasy",
+ "map": "ruines_temple",
+ "music": "valombre",
+ "name": "Les ruines du temple oublié",
+ "length": "1 à 2 séances · 3 à 5 joueurs · niveau 2-3",
+ "tagline": "Un temple effondré, un gardien de pierre et un culte qui prie en secret.",
+ "description": "Exploration de donjon : salles, pièges racontés, cultistes et golem. Parfait pour montrer le brouillard de guerre (la vision limitée rend chaque couloir inquiétant).",
+ "npcs": [],
+ "monsters": [
+  {
+   "id": "cultiste",
+   "x": 10,
+   "y": 9,
+   "hidden": true
+  },
+  {
+   "id": "cultiste",
+   "x": 18,
+   "y": 9,
+   "hidden": true
+  },
+  {
+   "id": "squelette",
+   "x": 12,
+   "y": 14,
+   "hidden": true
+  },
+  {
+   "id": "squelette",
+   "x": 16,
+   "y": 15,
+   "hidden": true
+  }
+ ],
+ "chests": [
+  {
+   "name": "Reliquaire de l'autel",
+   "x": 15,
+   "y": 6,
+   "loot": "magique",
+   "hidden": false
+  },
+  {
+   "name": "Trésor de la crypte",
+   "x": 14,
+   "y": 17,
+   "loot": "boss",
+   "hidden": true,
+   "lock": 16
+  }
+ ],
+ "labels": [],
+ "quests": [
+  {
+   "title": "Le cœur du temple",
+   "kind": "main",
+   "giver": "",
+   "description": "On dit qu'une relique dort sous l'autel. Des cultistes pensent la même chose.",
+   "objectives": [
+    {
+     "text": "Franchir le portail effondré",
+     "kind": "reach",
+     "x": 14,
+     "y": 3,
+     "radius": 2
+    },
+    {
+     "text": "Chasser les cultistes",
+     "kind": "kill",
+     "target": "cultiste",
+     "count": 2
+    },
+    {
+     "text": "Vaincre le gardien de pierre",
+     "kind": "kill",
+     "target": "Gardien de pierre",
+     "count": 1
+    },
+    {
+     "text": "Trouver la relique (au fond de la crypte)",
+     "kind": "reach",
+     "x": 14,
+     "y": 17,
+     "radius": 2
+    }
+   ],
+   "rewards": {
+    "xp": 400,
+    "gold": 80,
+    "items": [
+     {
+      "item": "lame_runique",
+      "qty": 1
+     }
+    ]
+   }
+  }
+ ],
+ "scenes": [
+  {
+   "title": "Le portail",
+   "narration": "Le portail du temple s'est effondré il y a des siècles. Entre les pierres, une lueur de torche… quelqu'un est déjà là.",
+   "tips": "Brouillard : les joueurs ne voient que leur zone. Faites-les avancer pièce par pièce."
+  },
+  {
+   "title": "Les cultistes",
+   "narration": "Des silhouettes en robe psalmodient devant l'autel fendu. L'une d'elles se retourne : « Vous n'auriez pas dû venir. »",
+   "tips": "Les cultistes et squelettes sont révélés : ils attaquent ceux qui s'approchent.",
+   "action": {
+    "type": "reveal_combat"
+   }
+  },
+  {
+   "title": "La crypte",
+   "narration": "L'escalier de la crypte descend dans une salle où dort un gardien de pierre. Ses yeux s'allument.",
+   "tips": "Le Gardien de pierre est déjà sur la carte. Le trésor de la crypte est caché derrière lui."
+  }
+ ]
+}

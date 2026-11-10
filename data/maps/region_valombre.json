@@ -1,0 +1,153 @@
+{
+ "id": "region_valombre",
+ "name": "Région de Valombre (grande carte)",
+ "description": "La ville, ses campagnes, la forêt des Cendres, les ruines, le lac et les montagnes : de quoi tenir une longue campagne.",
+ "universe": "*",
+ "w": 96,
+ "h": 64,
+ "rows": [
+  "..y..........mmmmmmmmmnnnnnnwwwnnnnnnnnnnnnnnnnmmmmmffff.....y........y...............yy........",
+  ".............mmmmmmmmmnnnnnnwwwwnnnnnnnnnnnnnnnmmmmmfffff................................y......",
+  "............mmmmmmmmmnnnnnnnwwwwnnnnnnnnnnnnnnnnmmmmmFfff..........y...........y..........y.....",
+  "...........mmmmmmmmmnnnnnnnnnwwwwnnnnnnnnnnnnnnnmmmmmmFfff......................................",
+  "...........mmmmmmmmnnnnnnnnnnwwwwnnnnnnnnnnnnnnnmmmmuuufff..............y................y.....y",
+  "..........mmmmmmmmnnnnnnnnnnnwwwwnnnnnnnnnnnnnnnmmmmuuufff..................y....y.........y....",
+  "...y..........hhhmmmmmmmmmmwwwwwwmmmmmmmmmmmmmmmmhhhfuff........................................",
+  "..............hhhmmmmmmmmmmwwwwwmmmmmmmmmmmmmmmmhhhhffff..................y.....................",
+  "...y.........yhhqhmmmmmmrmwwwwwmmmmmmmmmmmmmmmmmhhhffffff....y................####x##x##x##....y",
+  "hh..............hhhhmmmmrmmwwwmmmmmmmmmmmmmmmmmhhhhffffffff...................#oooooooooxo#.....",
+  "hhhh.............hhhqmmrmmwwwwmmmmmmmmmmmmmmmhhhhhfffffff.....................#ooooooxooox#.....",
+  "hhhhhhhh...........hhhmrmmmwwwwmmmmmmmmmmhhhhhhhh...........................y.#oooovvvxoxx#.....",
+  ".......................r...wwww.y......y....................................y.#xxoovvvoooo#.....",
+  ".......................r...wwww.....y.............y..y.y......................#oxoooxooxxo#.....",
+  ".y....................r....wwww..y...y.......y................................#xoooxoooooo#.....",
+  "......................r....wwww...............................................#oooooxoooxox...y.",
+  "......................r....wwww................y..............................##xx#x##x####.....",
+  "...............y.....r.....wwww...................y........y....................................",
+  "..........zzzzzz.....r.....wwwwww.....zzzzzz...........................y........................",
+  "..........zzzzzz.....r......wwwwww....zzzzzz............................y..........y............",
+  "..........zzzzzz.....r.......wwwww..y.zzzzzz................................................rrrr",
+  "..y.......zzzzzzffffrffffff....www....zzzzzz........................................rrrrrrrr....",
+  "...y........ffpppppprppppppp..wwww..zzz...y...........................y........rrrrr............",
+  "............ffpRRppRRRpbbbpp..wwww..zzz......y....................y..........rr...........y.....",
+  "............ffpRRppRRRpbbbpp..wwww..zzz................y..................rrr.........y.........",
+  ".y..........ffpRRppppppbbbpp..wwwwwwzzz.......y....................y....rr................y.....",
+  "fff.........ffpppppppppppppp..wwwwwwzzz..y................y..........rrr........................",
+  "fffff...ffff..pbbbpppppRRRpp...wwwwwzzz............................rr............yy.............",
+  "rrrrrrrrrrrrrrrbbbppappRRRprrrrrrrrrzzz.........................rrr........y....................",
+  "ffffff..y.....pppppppppppppp..wwww..rrrrrrrrrrrrrrrr..y.........................................",
+  "ffffff........pppppppppppppp..wwww..zzz.y...........rrrrrrrrr...c.........y...................y.",
+  "fffffff.......pRRRpRRRpRRRpp.fwwww..zzz........................ccc..............................",
+  "ffffffff......pRRRpRRRpRRRpp.fwwww..zzz........y..............ccacc.....y.......................",
+  "fffffffff.....pppppRRRpRRRppf..www..zzz........................ccc..............................",
+  "fffffffff.y...pppppprpppppppf.wwwwf.zzz.........................c............y.....y........y...",
+  "fffffffffff........yrffffffffwwwwwf.............................................................",
+  "..ffffffzzzzzzffffffrf...fffwwwwwwf.y..................................y........................",
+  "..ffffffzzzzzzffffffr.....ffwwwwfff.............................................................",
+  "...fffffzzzzzzffffffr..y..ffwwwwfff.y.........y..............y.........y....................y...",
+  "...fffffzzzzzzfffffffr...fffwwwwwf..............................y...............................",
+  "....fffffffffffffffffr..ffffwwwwwww........y........y........................ff.................",
+  "...ffffffffffffffffffr...fffffwwwww........................fff.....w....w...ffffff..............",
+  "....ffff..fffffffffffr....ffff.wwww.......................ffff.......wwwww..fffffff.............",
+  "..........ffffffffff.r..........www.......................ffff....wwwwWwwww...fffff.............",
+  "...........fffffffff.r..........www.......................fff.....wwWWWWWw.....fffff............",
+  "............ffffffffyr..........www.........R.R.R...kkkkkkkkkkkkkkwwWWWWWwww....fffff...........",
+  "...y....y.....ffffff..r.........wwww................kkkkffkkkkkkkkwWWWWWWWwwy...fffff........y..",
+  ".................ff...r.....y...wwwww...............kkkfffffkkkkkwwwWWWWWwwwfffffffff...........",
+  "......y...............r..ffffff.wwwwwww..............ffffff.kkkkkkwwWWWWWwwffffff..fffff...y....",
+  ".................y....r.ffffffffffwwwww...........fffffffff..kkkkkwwwwWwww..ffff.....ff.........",
+  "..................y..frrffffffffffwwwww..........f...ffffffffkkkkkkwwwwwww...y............y.....",
+  ".....................fffrrrffffff.wwwww....f.....f.y..ffffffffkkkkkkkw.w............y...........",
+  ".....................ffffffrrffff.wwww.....ffff..ff.....fffffffkkkkkkk..........................",
+  "...y....R.R.R....ffffffffffffrrrffwwwww.....f....ff......ffffffkkkkkk................y..........",
+  "................ffffffffffffffffrrrwwww..........ff.y......ffff..fkkk.......................y...",
+  ".......y.......ffffffffffffffffffffrrrwf..y......ff..........ffffff.................y..........y",
+  "...............ffffffffffffffffffwwwwwrr.........y........y..ffffff.............................",
+  "...............ffffff...fffffffffwwwwwffrrr..................ffffff.......................y.....",
+  "........................ffffffffwwwwwfff...rrr.y..........y.ffffff........y...........y.........",
+  "........................ffffffffwwwwfff.......rrr.......y.ffffffffy..y....ykkk................y.",
+  "k.......................ffffffffwwwwwfff.........rrrr.y..fffffffff.......kkkkkkk...........y....",
+  "kk................y......ffffffffwwwwfff.............rrr.ffffff..ff....kkkkkkkkk................",
+  "fff.....................ffff..fffwwwwffff...............rrrfff..ffff.y.kkkkkkkkkk...............",
+  "fffffffkkk.....y....ffffff.y.....fwwwfff..y...........y....rr..ffff...kkkkkkkkkk............ff.."
+ ],
+ "spawn": {
+  "x": 2,
+  "y": 28
+ },
+ "labels": [
+  {
+   "x": 20,
+   "y": 21,
+   "text": "Valombre",
+   "hidden": false
+  },
+  {
+   "x": 20,
+   "y": 30,
+   "text": "Place du puits",
+   "hidden": false
+  },
+  {
+   "x": 64,
+   "y": 28,
+   "text": "Clairière des cendres",
+   "hidden": false
+  },
+  {
+   "x": 84,
+   "y": 7,
+   "text": "Ruines de l'ancien temple",
+   "hidden": false
+  },
+  {
+   "x": 84,
+   "y": 12,
+   "text": "Crypte",
+   "hidden": true
+  },
+  {
+   "x": 53,
+   "y": 3,
+   "text": "Grotte du Murmure",
+   "hidden": false
+  },
+  {
+   "x": 70,
+   "y": 41,
+   "text": "Lac Gris",
+   "hidden": false
+  },
+  {
+   "x": 46,
+   "y": 43,
+   "text": "Hameau des Saules",
+   "hidden": false
+  },
+  {
+   "x": 10,
+   "y": 51,
+   "text": "Les Tourbières",
+   "hidden": false
+  },
+  {
+   "x": 64,
+   "y": 33,
+   "text": "Pierre levée — cristal noirci",
+   "hidden": true
+  },
+  {
+   "x": 30,
+   "y": 12,
+   "text": "Moulin abandonné",
+   "hidden": false
+  },
+  {
+   "x": 8,
+   "y": 26,
+   "text": "Route de la capitale",
+   "hidden": false
+  }
+ ],
+ "tokens": []
+}

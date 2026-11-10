@@ -1,0 +1,104 @@
+{
+ "id": "valombre_ville",
+ "name": "Valombre — la petite ville",
+ "description": "Bourg fluvial sous une pluie de cendres. Taverne, temple, forge, place du puits.",
+ "universe": "*",
+ "w": 34,
+ "h": 22,
+ "rows": [
+  "ffff.ffffff.fffffffwww.ff.ff.fffff",
+  "ffff.fff.fffffffff.wwwffffffffff..",
+  "fff.ff..ff.fff..ff.wwwffffffffffff",
+  "........y.fry.....wwwwff.....f....",
+  "....f......r..ff..wwww.y..xxccccf.",
+  "y........f.r......www...y.cxccxc..",
+  "....ppppppprppppppwwwy....ccxcxc.f",
+  "f...pRRRRRRrpbbbbpwwww..f.cxcccc..",
+  "y...pRRRRRRrpbbbbpwwww....xxcxcx..",
+  "....pRRRRpprpbbbbp.wwww......f....",
+  "....pppppppppppppp.wwwww.y..y.....",
+  "rrrrrrrrrrpaprrrrrBBBBBBrrrrrrrrrr",
+  "....pppppppppppppp.wwwww..f.......",
+  "....pRRRRRprpRRRRp.wwww..f........",
+  "....pRRRRRprpRRRRp.wwww.y.kkkkk...",
+  "....pRRRRRprpRRRRp.www....kkkkk...",
+  "...yppppppprpppppp.www....kkkkk...",
+  "..f........r.......wwww.f.kkkkk...",
+  "...........r.......wwww..f........",
+  "fff.f.ffff.rfyffff.fwwwwff.fffffff",
+  "fffffffffff.ffffffffwwww.fffffffff",
+  "fff.yf.f..ffffff..fffwwwf..ff.fff."
+ ],
+ "spawn": {
+  "x": 2,
+  "y": 11
+ },
+ "labels": [
+  {
+   "x": 6,
+   "y": 8,
+   "text": "Taverne du Corbeau Rieur",
+   "hidden": false
+  },
+  {
+   "x": 14,
+   "y": 8,
+   "text": "Temple aux cloches",
+   "hidden": false
+  },
+  {
+   "x": 7,
+   "y": 14,
+   "text": "Forge",
+   "hidden": false
+  },
+  {
+   "x": 14,
+   "y": 14,
+   "text": "Maison du bourgmestre",
+   "hidden": false
+  },
+  {
+   "x": 11,
+   "y": 12,
+   "text": "Place du puits",
+   "hidden": false
+  },
+  {
+   "x": 28,
+   "y": 6,
+   "text": "Champ calciné",
+   "hidden": false
+  },
+  {
+   "x": 28,
+   "y": 15,
+   "text": "Marais",
+   "hidden": false
+  },
+  {
+   "x": 31,
+   "y": 11,
+   "text": "Vers la forêt",
+   "hidden": false
+  },
+  {
+   "x": 28,
+   "y": 5,
+   "text": "Cendres encore tièdes : quelque chose a brûlé ici sans flammes",
+   "hidden": true
+  }
+ ],
+ "tokens": [
+  {
+   "name": "Garde de Valombre",
+   "kind": "npc",
+   "x": 3,
+   "y": 11,
+   "color": "#6f7f9a",
+   "hp": 12,
+   "hp_max": 12,
+   "hidden": false
+  }
+ ]
+}

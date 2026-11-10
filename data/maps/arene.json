@@ -1,0 +1,51 @@
+{
+ "id": "arene",
+ "name": "Arène",
+ "description": "Arène circulaire pour les combats, quatre piliers.",
+ "universe": "*",
+ "w": 22,
+ "h": 22,
+ "rows": [
+  "vvvvvvvvvvvvvvvvvvvvvv",
+  "vvvvvvv###oo###vvvvvvv",
+  "vvvvv##ssssssss##vvvvv",
+  "vvvv##ssssssssss##vvvv",
+  "vvv#ssssssssssssss#vvv",
+  "vv##ssssssssssssss##vv",
+  "vv#ssssssssssssssss#vv",
+  "v#sssss#ssssss#sssss#v",
+  "v#ssssssssssssssssss#v",
+  "v#ssssssssssssssssss#v",
+  "v#ssssssssssssssssss#v",
+  "v#ssssssssssssssssss#v",
+  "v#ssssssssssssssssss#v",
+  "v#ssssssssssssssssss#v",
+  "v#sssss#ssssss#sssss#v",
+  "vv#ssssssssssssssss#vv",
+  "vv##ssssssssssssss##vv",
+  "vvv#ssssssssssssss#vvv",
+  "vvvv##ssssssssss##vvvv",
+  "vvvvv##ssssssss##vvvvv",
+  "vvvvvvv###oo###vvvvvvv",
+  "vvvvvvvvvvvvvvvvvvvvvv"
+ ],
+ "spawn": {
+  "x": 10,
+  "y": 18
+ },
+ "labels": [
+  {
+   "x": 10,
+   "y": 1,
+   "text": "Porte nord",
+   "hidden": false
+  },
+  {
+   "x": 10,
+   "y": 20,
+   "text": "Porte sud",
+   "hidden": false
+  }
+ ],
+ "tokens": []
+}

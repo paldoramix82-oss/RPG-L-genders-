@@ -1,0 +1,185 @@
+{
+ "id": "test_magie",
+ "universe": "legenders",
+ "map": "ile_test",
+ "music": "test_de_la_magie",
+ "name": "Le test de la magie",
+ "length": "1 à 2 séances · 2 à 5 joueurs · niveau 1",
+ "tagline": "Dix jours sur une île pour devenir mage d'État.",
+ "description": "Les candidats sont téléportés au hasard sur une île sauvage. Il faut survivre, retrouver les autres et rejoindre le point de rendez-vous. Exploration (avec le brouillard), rencontres et combat.",
+ "npcs": [
+  {
+   "pack": "legenders_monde",
+   "name": "Examinateur Dorrow",
+   "x": 9,
+   "y": 11,
+   "hidden": false,
+   "note": "Observe tout, n'aide personne… officiellement."
+  },
+  {
+   "pack": "legenders_monde",
+   "name": "Nib",
+   "x": 14,
+   "y": 15,
+   "hidden": true,
+   "note": ""
+  }
+ ],
+ "monsters": [
+  {
+   "id": "loup",
+   "x": 18,
+   "y": 8,
+   "hidden": true
+  },
+  {
+   "id": "loup",
+   "x": 19,
+   "y": 9,
+   "hidden": true
+  },
+  {
+   "id": "ours",
+   "x": 25,
+   "y": 14,
+   "hidden": true
+  },
+  {
+   "id": "araignee",
+   "x": 6,
+   "y": 19,
+   "hidden": true
+  }
+ ],
+ "chests": [
+  {
+   "name": "Ravitaillement largué",
+   "x": 20,
+   "y": 10,
+   "loot": "coffre",
+   "hidden": false
+  },
+  {
+   "name": "Cache d'un ancien candidat",
+   "x": 26,
+   "y": 16,
+   "loot": "magique",
+   "hidden": true,
+   "lock": 13
+  }
+ ],
+ "labels": [],
+ "quests": [
+  {
+   "title": "Survivre dix jours",
+   "kind": "main",
+   "giver": "Examinateur Dorrow",
+   "description": "Atteindre le point de rendez-vous avant la fin du test.",
+   "objectives": [
+    {
+     "text": "Trouver de l'eau douce (le MJ coche)"
+    },
+    {
+     "text": "Rejoindre le pic central",
+     "kind": "reach",
+     "x": 20,
+     "y": 9,
+     "radius": 2
+    },
+    {
+     "text": "Survivre aux loups de l'île",
+     "kind": "kill",
+     "target": "loup",
+     "count": 2
+    },
+    {
+     "text": "Atteindre le point de rendez-vous",
+     "kind": "reach",
+     "x": 25,
+     "y": 15,
+     "radius": 2
+    }
+   ],
+   "rewards": {
+    "xp": 300,
+    "gold": 50,
+    "items": [
+     {
+      "item": "amulette_vie",
+      "qty": 1
+     }
+    ]
+   }
+  },
+  {
+   "title": "Le candidat disparu",
+   "kind": "side",
+   "giver": "Examinateur Dorrow",
+   "description": "Mako, un candidat, n'a pas répondu à l'appel du deuxième jour. Il aurait laissé une cache près du rendez-vous.",
+   "objectives": [
+    {
+     "text": "Trouver la cache de Mako",
+     "kind": "reach",
+     "x": 26,
+     "y": 16,
+     "radius": 1
+    }
+   ],
+   "rewards": {
+    "xp": 80,
+    "gold": 0,
+    "items": []
+   }
+  },
+  {
+   "title": "Le chapardeur",
+   "kind": "side",
+   "giver": "",
+   "description": "Quelqu'un vole les provisions la nuit. Des petites traces de pas, et une odeur d'ombre.",
+   "objectives": [
+    {
+     "text": "Prendre le voleur sur le fait (parler à Nib)",
+     "kind": "talk",
+     "target": "Nib"
+    },
+    {
+     "text": "Décider de son sort (le MJ coche)"
+    }
+   ],
+   "rewards": {
+    "xp": 60,
+    "gold": 0,
+    "items": [
+     {
+      "item": "bombe_fumee",
+      "qty": 2
+     }
+    ]
+   }
+  }
+ ],
+ "scenes": [
+  {
+   "title": "La téléportation",
+   "narration": "Une lumière blanche, un bruit de verre brisé… et le sable. Vous êtes seul, sur une plage inconnue. Dans votre poche, une carte qui indique un seul point : le rendez-vous, dans dix jours.",
+   "tips": "Donnez la quête principale. Chacun commence seul : la vision ne montre que les environs immédiats."
+  },
+  {
+   "title": "Les loups de l'île",
+   "narration": "Des yeux brillent dans les fourrés. L'île n'est pas déserte.",
+   "tips": "Les bêtes de l'île sont révélées : elles attaquent quiconque s'approche.",
+   "action": {
+    "type": "reveal_combat"
+   }
+  },
+  {
+   "title": "La nuit",
+   "narration": "Le feu crépite. Au matin, la moitié des provisions a disparu, et de petites traces s'éloignent vers la forêt.",
+   "tips": "Quête « Le chapardeur » : Nib est caché près d'ici.",
+   "action": {
+    "type": "give_quest",
+    "quest": 2
+   }
+  }
+ ]
+}
