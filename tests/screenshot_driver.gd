@@ -148,7 +148,7 @@ func _host() -> void:
 			server.mj_set_active_map(m.id)
 			screen._edit_map = m.id
 			var i := 0
-			for id in ["bibliotheque", "chapelle", "salle_trone", "prison", "taverne_port", "cercle_portail", "jardin", "mine", "ecurie"]:
+			for id in ["place_cristal", "chapelle", "salle_trone", "prison", "taverne_port", "cercle_portail", "jardin", "bibliotheque", "ecurie"]:
 				server.mj_place_prefab(m.id, id, 8 + (i % 3) * 16, 7 + (i / 3) * 12, false)
 				i += 1
 			screen._refresh_map_select()

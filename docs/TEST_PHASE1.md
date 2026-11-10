@@ -152,6 +152,15 @@ Cocher chaque ligne et noter les remarques.
 - [ ] P12. Réglages joueur : taille du texte « Très grand », mode gaucher, performances affichées (noter les images par seconde sur une carte immense).
 - [ ] P13. Peindre sur une carte immense pendant que trois téléphones sont connectés : pas de saccade côté téléphone.
 
+### Q. Nouveau style
+- [ ] Q1. Écran titre : logo, château flottant, menu ; sur téléphone le château est centré et les boutons ne sortent pas de l'écran.
+- [ ] Q2. Textes lisibles partout avec la police pixel (accents, « œ », guillemets) ; sinon augmenter la taille dans Réglages › Confort.
+- [ ] Q3. Carte du joueur : statut en haut à gauche, mini-carte en haut à droite, zoom en bas à gauche ; rien ne cache votre pion de façon gênante.
+- [ ] Q4. Approchez un PNJ : le bouton doré « Ⓐ Parler » apparaît ; un coffre : « Ouvrir » ; un passage : « Entrer ».
+- [ ] Q5. Menu › Inventaire : onglets, quantités, case dorée, description en bas.
+- [ ] Q6. Accepter une quête : bannière dorée « Nouvelle quête ! ».
+- [ ] Q7. MJ : les écrans restent lisibles en 1366 × 768 (rien de coupé dans la barre du haut).
+
 ## Rapport
 
 Merci d'indiquer, pour chaque ligne en échec : modèle de téléphone, version d'Android, type de réseau (box / partage de connexion de quel téléphone), et le message affiché. Ces informations permettent de corriger avant la phase 2.

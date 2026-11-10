@@ -280,6 +280,15 @@ L'écran est organisé en quatre zones, séparées par des **barres déplaçable
 
 ## Graphismes
 
+**Nouveau style « Légenders »** : police pixel (Pixelify Sans), nuit indigo, cadres pixel à bords violets lumineux et coins ornés, **or pour le choix en cours** (bouton doré, onglet doré, case dorée). Écran titre en pixel art : logo LEGENDERS, ciel étoilé, îles flottantes, château de cristal et son rayon de lumière ; menu en liste.
+
+**Écran du joueur** : sur la carte, en haut à gauche la **carte de statut** (portrait, nom, niveau, jauges HP et ressource, tour, bourse) et le **groupe** dessous ; en haut à droite la **mini-carte** (nom du lieu, brouillard, héros, monstres, passages ; la toucher recentre) ; en bas à droite le **bouton doré d'action** (Parler, Commercer, Entrer, Ouvrir, Ramasser, Attaquer) quand quelque chose est à portée ; zoom en bas à gauche. En bas : capacités, **Sac**, **Menu** (Menu principal : Inventaire, Compétences, Équipement, Carte, Quêtes, Groupe, Codex, Système, avec la description du choix en bas) et **Discuter**.
+
+**Inventaire** en grille avec onglets *Objets*, *Équipement*, *Trésors*, *Coffre* : quantités sur les cases, case choisie en or, description en bas ; retoucher la case ou *Actions* pour l'utiliser, l'équiper, le donner. **Fiche** : nom et classe, grand portrait, Nv, HP, ressource, ATQ, DÉF, MAG, RAP, présentation. **Dialogues** : portrait, étiquette de nom, réplique. **Bannières dorées** « Nouvelle quête ! », « Quête mise à jour ! », « Quête réussie ! ». **Portraits en pixel art** partout.
+
+**Cité cristalline** : sol « Dalles de cristal », lanternes et piliers de cristal, bannières bleues, haies en bac, fontaine (pinceau *Décor*), et le bâtiment prêt **Place de cristal**.
+
+
 Le jeu est en **pixel art** (sprites originaux générés par `tools/make_sprites.py`) :
 - **Icônes** : chaque objet a son dessin (épée, arc, potion, herbe, relique…) ; les capacités et effets sont des symboles (feu, glace, foudre, cœur…) posés sur une **tuile carrée qui s'éclaire de la couleur de leur élément**.
 - **Carte** : arbres variés (chênes, pins, arbres fruitiers, en fleurs, d'automne, sapins enneigés), buissons, rochers, fleurs, roseaux, nénuphars, cristaux. Les **bâtiments prêts** sont meublés (tables, tonneaux, caisses, lits, étagères, enclume et forge, autel et piliers, chaudron, bottes de foin, tapis), la place du marché a ses **étals colorés**, le campement ses **tentes** et son feu, le puits et les tombes sont dessinés. Repeindre une case enlève son meuble ; *Annuler* le remet.

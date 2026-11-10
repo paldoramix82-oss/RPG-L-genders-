@@ -202,3 +202,10 @@ Format 2 (`CampaignStore.FORMAT`) : session, joueurs, fiches, cartes, messages, 
 - **Essai solo** : `App.open_test_player` lance le jeu avec `-- --autojoin=127.0.0.1:port --force-mobile --profile=essaiN`.
 - **Intégration continue** : `.github/workflows/tests.yml` (compilation, règles, réseau).
 
+## Style visuel
+
+- **Thème** (`Style`) : police `PixelifySans.ttf` (OFL) en trois graisses, repli Alegreya pour les symboles ; cadres 9-patch de `assets/ui` (`Style.tex_box`, générés par `tools/make_ui.py`) ; variations `CardPanel`, `InsetPanel`, `HighlightPanel`, `MagicPanel`, `DangerPanel`, `GoldBanner`, `NameTag`, `SlotPanel`, `SlotSelected`, boutons `PrimaryButton` (or), `MenuItem`, `NavButton`. Les boutons enfoncés sont dorés.
+- **Écran titre** : `tools/make_title.py` → `assets/ui/title_bg.png`, `title_logo.png` ; `Backdrop` réutilise le fond assombri.
+- **Écran joueur** : `_map_stack` superpose à `MapView` la carte de statut, le groupe (`_refresh_party`), la `MiniMap` et le bouton contextuel (`_refresh_context`) ; `MapView.controls_bottom_left`.
+- **Portraits** : `Portrait.pixel_mode` dessine le buste dans une `SubViewport` en basse résolution, agrandie sans lissage ; `Portrait.from_seed` pour les PNJ sans fiche.
+

@@ -60,13 +60,14 @@ const TERRAINS := {
 	"e": ["Dallage de temple", "5f5e74", true],
 	"i": ["Terre battue", "6e5640", true],
 	"j": ["Paille", "a89150", true],
+	"0": ["Dalles de cristal", "4a587e", true],
 }
 
 ## Familles de terrains (palette du MJ).
 const TERRAIN_GROUPS := {
 	"Nature": [".", "y", "f", "F", "h", "m", "q", "s", "k", "z", "n", "g"],
 	"Eau et danger": ["w", "W", "B", "l", "c", "a", "v"],
-	"Chemins et sols": ["r", "p", "o", "d", "6", "7", "8", "9", "e", "i", "j", "u", "x"],
+	"Chemins et sols": ["r", "p", "o", "0", "d", "6", "7", "8", "9", "e", "i", "j", "u", "x"],
 	"Murs": ["#", "1", "2", "3", "4", "5", "t"],
 	"Toits": ["b", "R"],
 }
@@ -164,7 +165,7 @@ static func decor_at(map: Dictionary, x: int, y: int) -> String:
 ## Décors qui bloquent le passage (les tapis, chaises et fleurs non).
 const BLOCKING_DECOR := ["table", "barrel", "crate", "bed", "shelf", "anvil", "hearth", "altar", "well", "statue", "pillar",
 	"cauldron", "sacks", "hay", "grave", "grave_cross", "campfire", "crystal_cluster", "lamp", "fence", "signpost", "bench",
-	"cart", "throne", "candles", "cage", "weapon_rack", "dummy", "firewood", "jars", "flowerpot", "banner", "stump", "log", "door"]
+	"cart", "throne", "candles", "cage", "weapon_rack", "dummy", "firewood", "jars", "flowerpot", "banner", "stump", "log", "door", "crystal_lantern", "banner_blue", "crystal_pillar", "hedge_planter", "fountain"]
 
 
 static func decor_blocks(id: String) -> bool:

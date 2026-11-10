@@ -276,6 +276,12 @@ func _detail(x: int, y: int, code: String) -> void:
 			_ci.draw_rect(Rect2(p + Vector2(S * 0.08, 0), Vector2(S * 0.84, S)), base.lightened(0.05))
 			_ci.draw_line(p + Vector2(S * 0.15, 0), p + Vector2(S * 0.15, S), Color("d9a441", 0.8), 1.0)
 			_ci.draw_line(p + Vector2(S * 0.85, 0), p + Vector2(S * 0.85, S), Color("d9a441", 0.8), 1.0)
+		"0":
+			# Grandes dalles bleutées aux joints clairs, reflets de cristal.
+			_ci.draw_rect(Rect2(p + Vector2(1, 1), Vector2(S - 2, S - 2)), base.lightened(0.05 + (_n(x, y, 3) - 0.5) * 0.08))
+			_ci.draw_rect(Rect2(p, Vector2(S, S)), base.lightened(0.28), false, 1.0)
+			if (x + 2 * y) % 5 == 0:
+				_ci.draw_rect(Rect2(p + Vector2(S * 0.42, S * 0.42), Vector2(S * 0.16, S * 0.16)), Color("7fe0ff", 0.55))
 		"8":
 			for i in 4:
 				var q := p + Vector2(i % 2, i / 2) * S * 0.5

@@ -250,6 +250,14 @@ const LIST := {
 		"####++####",
 		"wwBBBBBBww",
 		"wwwwwwwwww"]},
+	"place_cristal": {"name": "Place de cristal", "floor": "0", "wall": "3", "role": "garde", "icon": "crystal", "label": true, "rows": [
+		"{00000000000{",
+		"0|00[00[00|00",
+		"0000000000000",
+		"0[000}]}000[0",
+		"000000@000000",
+		"0|00000000|00",
+		"{0000000000${"]},
 }
 
 ## Mobilier des plans : lettre → [terrain, décor]. « - » : case couverte par le
@@ -261,6 +269,7 @@ const DECOR := {
 	"V": ["t", "statue"], "I": ["t", "pillar"], "J": ["t", "sacks"], "Y": ["t", "hay"], "D": ["t", "chair"], "Z": ["d", "rug"],
 	"&": ["t", "throne"], "!": ["t", "banner"], "=": ["t", "bench"], "^": ["t", "weapon_rack"], "*": ["t", "jars"],
 	"~": ["t", "cage"], "<": ["t", "firewood"], ">": ["t", "dummy"], "?": ["t", "candles"], ":": ["t", "cart"], ";": [".", "flowerpot"],
+	"|": ["0", "crystal_lantern"], "{": ["0", "banner_blue"], "}": ["0", "crystal_pillar"], "[": ["0", "hedge_planter"], "]": ["0", "fountain"],
 }
 const VARIANTS := {
 	"tent": ["tent_red", "tent_blue", "tent_green", "tent_beige"],
